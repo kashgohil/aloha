@@ -1,0 +1,176 @@
+import { makeMetadata } from "@/lib/seo";
+import { routes } from "@/lib/routes";
+import { Summary } from "../_components/summary";
+import { LegalHeader } from "../_components/legal-header";
+import { LegalFooter } from "../_components/legal-footer";
+
+export const metadata = makeMetadata({
+  title: "Privacy policy",
+  description:
+    "What data Aloha collects, how we use it, who we share it with, and how to get rid of it. In plain English first, lawyerese second.",
+  path: routes.legal.privacy,
+});
+
+<LegalHeader
+  title="Privacy policy"
+  lastUpdated="April 10, 2026"
+  description="What data Aloha collects, how we use it, who we share it with, and how to get rid of it. In plain English first, lawyerese second."
+/>
+
+<Summary>
+  We collect the minimum data we need to run the product: your account info,
+  the posts and analytics you ask us to schedule or analyse, and anonymised
+  usage events that tell us if a feature is working.
+
+  We never sell your data. We never train a public AI model on your posts.
+  Voice models run privately per account.
+
+  You can export everything or delete your account from Settings &rarr;
+  Account, any time. Deletion is hard deletion — your data leaves our
+  systems within 30 days.
+</Summary>
+
+## Who we are
+
+Aloha, Inc. ("Aloha", "we", "us") operates the software at
+[aloha.social](https://aloha.social). Our legal address is Aloha, Inc.,
+Lisbon, Portugal — full details on the [contact page](/contact). We are
+the **data controller** for the personal data you share with us directly,
+and the **data processor** for the social media content you schedule
+through us on behalf of your own audience.
+
+## What we collect
+
+### Account data
+
+When you create an account we collect your email address, your name, and
+a hashed password (or an identifier from your OAuth provider — Google,
+GitHub, or X). We also store your workspace name, billing address if you
+pay us, and any team members you invite.
+
+### Product data
+
+The posts you draft and schedule, your channel connections (OAuth tokens,
+held encrypted at rest), your media library, your analytics history, and
+any inbox messages Aloha ingests on your behalf. This is the data you
+give us in order to use the product; we hold it strictly for that
+purpose.
+
+### Usage data
+
+Anonymous events that tell us "feature X is being used", "route Y loaded
+slowly", "feature Z crashed". We use a first-party analytics pipeline
+(no Google Analytics, no Meta pixel, no Mixpanel). Events are keyed by a
+rotating session identifier, not your email.
+
+### Things we don't collect
+
+We don't use advertising trackers, we don't use third-party session
+replay tools, and we don't collect precise geolocation. We infer
+country-level location from your IP address only for tax and plan
+pricing purposes.
+
+## How we use it
+
+- **To run the product.** Scheduling posts, training your voice model,
+  drawing charts, delivering notifications — the things you signed up
+  for.
+- **To keep the product secure.** Rate limiting, fraud detection,
+  investigating abuse reports.
+- **To bill you.** If you're on a paid plan, we use your billing data
+  to process payments (see "Subprocessors" below).
+- **To improve the product.** Anonymous usage data tells us which
+  features deserve more investment and which aren't earning their
+  keep.
+
+## What we don't do with it
+
+- **We don't sell your data.** To anyone. Ever.
+- **We don't train a public AI model on your posts.** Your voice model
+  is isolated to your workspace. We don't pool voice training data
+  across customers.
+- **We don't share your posts with advertisers.** Aloha has no ad
+  business.
+- **We don't let third parties run scripts on your content.** The
+  Composer runs on private inference endpoints, not a public API.
+
+## Subprocessors
+
+We use a small set of carefully chosen third parties to operate the
+service. Current list:
+
+- **Amazon Web Services (us-east-1, eu-west-1)** — primary hosting.
+- **Cloudflare** — CDN, DDoS protection, image processing.
+- **Stripe** — payment processing for paid plans.
+- **Postmark** — transactional email (invites, receipts, password
+  resets).
+- **Upstash (QStash)** — scheduled job delivery.
+- **OpenAI (API-only, no data retention)** — voice model fallback
+  inference. Covered by a zero-retention agreement; prompts are not
+  used for training and are not persisted beyond the request.
+
+The up-to-date subprocessor list lives at
+[/legal/security#subprocessors](/legal/security#subprocessors). We'll
+email you 30 days before adding a new one if you're on a paid plan.
+
+## Data transfers
+
+Aloha stores data in the region closest to your workspace — US customers
+on AWS us-east-1, EU customers on AWS eu-west-1. Some subprocessors
+(Stripe, Postmark, Cloudflare) operate globally; where data crosses the
+EU/US border we rely on Standard Contractual Clauses.
+
+EU customers on paid plans can sign our [Data Processing Addendum](/legal/dpa)
+at any time from Settings → Legal.
+
+## Your rights
+
+Whichever jurisdiction you're in, you have the right to:
+
+- **See** all the personal data we hold about you — exportable from
+  Settings → Account → Export.
+- **Correct** anything that's wrong — also Settings → Account.
+- **Delete** your account and all associated data. Hard deletion begins
+  immediately; residual backups are purged within 30 days.
+- **Object** to specific processing — write to
+  <a href="mailto:privacy@aloha.social">privacy@aloha.social</a>.
+
+EU/UK residents additionally have the right to lodge a complaint with
+their national data protection authority.
+
+## Cookies
+
+We use a small number of first-party cookies, no third-party trackers.
+See the [cookie policy](/legal/cookies) for the full list and what each
+one does.
+
+## Children
+
+Aloha is not intended for anyone under 16. We don't knowingly collect
+data from children. If you believe we have, email
+<a href="mailto:privacy@aloha.social">privacy@aloha.social</a> and we'll
+delete it.
+
+## Security
+
+We follow industry-standard security practices — encryption in transit
+(TLS 1.3) and at rest (AES-256), regular backups, role-based access
+inside Aloha, incident response procedures. Full detail on the
+[security page](/legal/security).
+
+## Changes to this policy
+
+When we change this policy materially, we'll email all account holders
+at least **14 days** before the change takes effect. For non-material
+changes we'll update the "Last updated" date at the top and log the
+diff to the [changelog](/whats-new).
+
+## Contact
+
+Privacy questions go to
+<a href="mailto:privacy@aloha.social">privacy@aloha.social</a>. Our
+Data Protection Officer can be reached at
+<a href="mailto:dpo@aloha.social">dpo@aloha.social</a>. Postal mail: see
+the [contact page](/contact).
+
+<LegalFooter current={routes.legal.privacy} />
