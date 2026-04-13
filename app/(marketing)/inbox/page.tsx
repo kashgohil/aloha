@@ -78,7 +78,6 @@ export default function InboxPage() {
 				<div className="relative max-w-[1320px] w-full mx-auto px-6 lg:px-10 pt-20 lg:pt-28 pb-32 lg:pb-40 grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-12 items-center">
 					<div className="col-span-12 lg:col-span-7">
 						<div className="inline-flex items-center gap-2 mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/60">
-							<span className="w-6 h-px bg-ink/40" />
 							The Inbox
 						</div>
 
@@ -87,7 +86,7 @@ export default function InboxPage() {
 							<br />
 							for every
 							<br />
-							<span className="italic text-primary font-light">
+							<span className="text-primary font-light">
 								reply worth giving.
 							</span>
 						</h1>
@@ -211,7 +210,7 @@ export default function InboxPage() {
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Sorted by
 								<br />
-								<span className="italic text-primary">worth replying to.</span>
+								<span className="text-primary">worth replying to.</span>
 							</h2>
 							<p className="mt-6 text-[16px] lg:text-[17px] text-ink/75 leading-[1.6] max-w-lg">
 								Inbox reads the shape of every message and sorts them into
@@ -261,7 +260,7 @@ export default function InboxPage() {
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Never start
 								<br />
-								<span className="italic text-primary">from a blank box.</span>
+								<span className="text-primary">from a blank box.</span>
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-5 lg:col-start-8 text-[16px] text-ink/70 leading-[1.6] self-end">
@@ -357,9 +356,7 @@ export default function InboxPage() {
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								When it's
 								<br />
-								<span className="italic text-primary">
-									someone else's to own.
-								</span>
+								<span className="text-primary">someone else's to own.</span>
 							</h2>
 							<p className="mt-6 text-[16px] lg:text-[17px] text-ink/75 leading-[1.6] max-w-lg">
 								Tag a teammate, set an SLA, and the Inbox routes the thread with
@@ -441,17 +438,17 @@ export default function InboxPage() {
 								<span className="text-peach-300">Keep the care.</span>
 							</h2>
 						</div>
-						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
+						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-center">
 							<Link
 								href={routes.signin}
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-ink text-background font-medium text-[15px] hover:bg-primary transition-colors"
+								className="inline-flex items-center gap-2 h-14 px-7 rounded-full text-background font-medium text-[15px] bg-primary transition-colors"
 							>
 								Start free — no card
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<Link
 								href={routes.for.teams}
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								<Users className="w-4 h-4" />
 								Built for teams too
