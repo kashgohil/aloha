@@ -64,7 +64,7 @@ export const routes = {
     helpCenter: "/help",
     apiDocs: "/docs",
     status: "/status",
-    changelog: "/changelog",
+    changelog: "/whats-new",
   },
 
   // Phase 6 — Company
