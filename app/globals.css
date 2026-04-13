@@ -1,310 +1,473 @@
 @import "tailwindcss";
 
 :root {
-  /* Warm cream editorial palette — cohesive peach family + indigo primary */
-  --background:       #f6f1e4;   /* warm cream */
-  --background-elev:  #fffdf6;   /* warm white */
-  --foreground:       #1a1612;   /* warm ink */
-  --muted:            #ebe3ce;
-  --muted-foreground: #6a6050;
-  --border:           #e2d8bf;
-  --border-strong:    #cdc1a0;
+	/* Warm cream editorial palette — cohesive peach family + indigo primary */
+	--background: #f6f1e4; /* warm cream */
+	--background-elev: #fffdf6; /* warm white */
+	--foreground: #1a1612; /* warm ink */
+	--muted: #ebe3ce;
+	--muted-foreground: #6a6050;
+	--border: #e2d8bf;
+	--border-strong: #cdc1a0;
 
-  --primary:          #4f46e5;   /* sharp indigo — kept */
-  --primary-foreground: #ffffff;
-  --primary-soft:     #ecebfc;
-  --primary-deep:     #2e2a85;
+	--primary: #4f46e5; /* sharp indigo — kept */
+	--primary-foreground: #ffffff;
+	--primary-soft: #ecebfc;
+	--primary-deep: #2e2a85;
 
-  /* Peach tonal family — the ONE accent group */
-  --peach-100: #fbe6cf;
-  --peach-200: #f9d5ae;
-  --peach-300: #f4bf87;
-  --peach-400: #ed9f57;
+	/* Peach tonal family — the ONE accent group */
+	--peach-100: #fbe6cf;
+	--peach-200: #f9d5ae;
+	--peach-300: #f4bf87;
+	--peach-400: #ed9f57;
 
-  --ink:              #1a1612;
+	--ink: #1a1612;
 }
 
 @theme inline {
-  --color-background:       var(--background);
-  --color-background-elev:  var(--background-elev);
-  --color-foreground:       var(--foreground);
-  --color-muted:            var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border:           var(--border);
-  --color-border-strong:    var(--border-strong);
-  --color-primary:          var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary-soft:     var(--primary-soft);
-  --color-primary-deep:     var(--primary-deep);
-  --color-peach-100:        var(--peach-100);
-  --color-peach-200:        var(--peach-200);
-  --color-peach-300:        var(--peach-300);
-  --color-peach-400:        var(--peach-400);
-  --color-ink:              var(--ink);
+	--color-background: var(--background);
+	--color-background-elev: var(--background-elev);
+	--color-foreground: var(--foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-border: var(--border);
+	--color-border-strong: var(--border-strong);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary-soft: var(--primary-soft);
+	--color-primary-deep: var(--primary-deep);
+	--color-peach-100: var(--peach-100);
+	--color-peach-200: var(--peach-200);
+	--color-peach-300: var(--peach-300);
+	--color-peach-400: var(--peach-400);
+	--color-ink: var(--ink);
 
-  /* font-display / font-sans utilities defined as plain CSS below —
+	/* font-display / font-sans utilities defined as plain CSS below —
      Tailwind v4 refuses to emit a utility whose theme value is a
      self-referencing var(), so we skip @theme for fonts. */
 
-  --animate-marquee:    marquee 38s linear infinite;
-  --animate-float-soft: float-soft 6s ease-in-out infinite;
+	--animate-marquee: marquee 38s linear infinite;
+	--animate-float-soft: float-soft 6s ease-in-out infinite;
 
-  @keyframes marquee {
-    from { transform: translateX(0); }
-    to   { transform: translateX(-50%); }
-  }
-  @keyframes float-soft {
-    0%, 100% { transform: translateY(0); }
-    50%      { transform: translateY(-6px); }
-  }
+	@keyframes marquee {
+		from {
+			transform: translateX(0);
+		}
+		to {
+			transform: translateX(-50%);
+		}
+	}
+	@keyframes float-soft {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-6px);
+		}
+	}
 }
 
-html { background: var(--background); overflow-x: clip; }
+/* @utility wavy {
+	--s: 1.6em; 
+	--p: 0.8;
+
+	--R: calc(var(--s) * sqrt(var(--p) * var(--p) + 1)) at 50%;
+	mask:
+		radial-gradient(
+				var(--R) calc(100% - var(--s) * (1 + var(--p))),
+				#000 99%,
+				#0000 101%
+			)
+			calc(50% - 2 * var(--s)) 0 / calc(4 * var(--s)),
+		radial-gradient(
+				var(--R) calc(100% + var(--s) * var(--p)),
+				#0000 99%,
+				#000 101%
+			)
+			50% calc(-1 * var(--s)) / calc(4 * var(--s)) repeat-x;
+} */
+
+/* working one */
+@utility wavy {
+	--size: 25px;
+	--p: 0.8;
+	--R: calc(var(--size) * sqrt(var(--p) * var(--p) + 1));
+
+	/* mask:
+		radial-gradient(
+				var(--size) at 50% calc(var(--size) + var(--p)),
+				#000 99%,
+				#0000 101%
+			)
+			calc(50% - 2 * var(--size)) 0 / calc(4 * var(--size)) 100%,
+		radial-gradient(
+				var(--size) at 50% calc(-1 * var(--p)),
+				#0000 99%,
+				#000 101%
+			)
+			50% var(--size) / calc(4 * var(--size)) 100% repeat-x;
+
+	mask:
+		radial-gradient(
+				calc(var(--size) * var(--m)) at 50% calc(100% - var(--size)),
+				#000 99%,
+				#0000 101%
+			)
+			calc(50% - var(--size)) 0 / calc(2 * var(--size)) 100%,
+		radial-gradient(
+				calc(var(--size) * var(--m)) at 50% 100%,
+				#0000 99%,
+				#000 101%
+			)
+			50% calc(100% - var(--size)) / calc(2 * var(--size)) 100% repeat-x; */
+
+	/* mask:
+		radial-gradient(
+				var(--R) at 50% calc(var(--size) * (1 + var(--p))),
+				#000 99%,
+				#0000 101%
+			)
+			calc(50% - 2 * var(--size)) 0 / calc(4 * var(--size)) 100%,
+		radial-gradient(
+				var(--R) at 50% calc(-1 * var(--size) * var(--p)),
+				#0000 99%,
+				#000 101%
+			)
+			50% var(--size) / calc(4 * var(--size)) 100% repeat-x; */
+
+	mask:
+		radial-gradient(
+				var(--R) at 50% calc(100% - var(--size) * (1 + var(--p))),
+				#000 99%,
+				#0000 101%
+			)
+			calc(50% - 2 * var(--size)) 0 / calc(4 * var(--size)) 100%,
+		radial-gradient(
+				var(--R) at 50% calc(100% + var(--size) * var(--p)),
+				#0000 99%,
+				#000 101%
+			)
+			50% calc(-1 * var(--size)) / calc(4 * var(--size)) 100% repeat-x;
+}
+
+html {
+	background: var(--background);
+	overflow-x: clip;
+}
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), ui-sans-serif, system-ui;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+	background: var(--background);
+	color: var(--foreground);
+	font-family: var(--font-sans), ui-sans-serif, system-ui;
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+	overflow-x: clip;
 }
 
 /* Font utilities — next/font sets --font-display (Fraunces) and
    --font-sans (Outfit) on <html>, we just reference them. */
 .font-display {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
 }
 .font-sans {
-  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Pencil-underline link — specialty, keep in CSS */
 .pencil-link {
-  background-image: linear-gradient(currentColor, currentColor);
-  background-size: 0% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 100%;
-  transition: background-size 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: 0% 1px;
+	background-repeat: no-repeat;
+	background-position: 0 100%;
+	transition: background-size 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
-.pencil-link:hover { background-size: 100% 1px; }
+.pencil-link:hover {
+	background-size: 100% 1px;
+}
 
-details[open] > summary .chev { transform: rotate(45deg); }
-.chev { transition: transform 220ms ease; }
+details[open] > summary .chev {
+	transform: rotate(45deg);
+}
+.chev {
+	transition: transform 220ms ease;
+}
 
 @utility border-industrial {
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--foreground);
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--foreground);
 }
 
 @utility button-industrial {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-width: 1px;
-  border-style: solid;
-  border-color: var(--foreground);
-  background-color: var(--background);
-  color: var(--foreground);
-  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	padding: 0.625rem 1rem;
+	border-width: 1px;
+	border-style: solid;
+	border-color: var(--foreground);
+	background-color: var(--background);
+	color: var(--foreground);
+	transition:
+		background-color 150ms ease,
+		color 150ms ease,
+		transform 150ms ease;
 }
 
 @utility active-industrial {
-  background-color: var(--foreground);
-  color: var(--background);
+	background-color: var(--foreground);
+	color: var(--background);
 }
 
 .button-industrial:hover {
-  background-color: var(--foreground);
-  color: var(--background);
+	background-color: var(--foreground);
+	color: var(--background);
 }
 
 /* Legal-doc prose — editorial typography for MDX content. Scoped so
    it only kicks in inside the legal layout's reading column. */
 .legal-prose {
-  color: var(--foreground);
-  font-size: 16px;
-  line-height: 1.7;
+	color: var(--foreground);
+	font-size: 16px;
+	line-height: 1.7;
 }
-.legal-prose > * + * { margin-top: 1.1em; }
+.legal-prose > * + * {
+	margin-top: 1.1em;
+}
 
 .legal-prose h2 {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-weight: 400;
-  font-size: 30px;
-  line-height: 1.1;
-  letter-spacing: -0.015em;
-  margin-top: 2.5em;
-  margin-bottom: 0.5em;
-  scroll-margin-top: 90px;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-weight: 400;
+	font-size: 30px;
+	line-height: 1.1;
+	letter-spacing: -0.015em;
+	margin-top: 2.5em;
+	margin-bottom: 0.5em;
+	scroll-margin-top: 90px;
 }
 .legal-prose h3 {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-weight: 500;
-  font-size: 20px;
-  line-height: 1.25;
-  letter-spacing: -0.005em;
-  margin-top: 1.8em;
-  margin-bottom: 0.4em;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-weight: 500;
+	font-size: 20px;
+	line-height: 1.25;
+	letter-spacing: -0.005em;
+	margin-top: 1.8em;
+	margin-bottom: 0.4em;
 }
 
-.legal-prose p { color: color-mix(in oklab, var(--foreground) 82%, transparent); }
-.legal-prose strong { color: var(--foreground); font-weight: 600; }
-.legal-prose em { font-style: italic; }
+.legal-prose p {
+	color: color-mix(in oklab, var(--foreground) 82%, transparent);
+}
+.legal-prose strong {
+	color: var(--foreground);
+	font-weight: 600;
+}
+.legal-prose em {
+	font-style: italic;
+}
 
 .legal-prose a {
-  color: var(--primary);
-  text-decoration: none;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 100%;
+	color: var(--primary);
+	text-decoration: none;
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: 100% 1px;
+	background-repeat: no-repeat;
+	background-position: 0 100%;
 }
 .legal-prose a:hover {
-  color: var(--primary-deep);
+	color: var(--primary-deep);
 }
 
-.legal-prose ul, .legal-prose ol { padding-left: 1.4em; }
-.legal-prose ul { list-style: disc; }
-.legal-prose ol { list-style: decimal; }
-.legal-prose li { margin-top: 0.5em; color: color-mix(in oklab, var(--foreground) 82%, transparent); }
-.legal-prose li::marker { color: color-mix(in oklab, var(--foreground) 45%, transparent); }
+.legal-prose ul,
+.legal-prose ol {
+	padding-left: 1.4em;
+}
+.legal-prose ul {
+	list-style: disc;
+}
+.legal-prose ol {
+	list-style: decimal;
+}
+.legal-prose li {
+	margin-top: 0.5em;
+	color: color-mix(in oklab, var(--foreground) 82%, transparent);
+}
+.legal-prose li::marker {
+	color: color-mix(in oklab, var(--foreground) 45%, transparent);
+}
 
 .legal-prose blockquote {
-  border-left: 2px solid var(--border-strong);
-  padding-left: 1.2em;
-  font-style: italic;
-  color: color-mix(in oklab, var(--foreground) 75%, transparent);
+	border-left: 2px solid var(--border-strong);
+	padding-left: 1.2em;
+	font-style: italic;
+	color: color-mix(in oklab, var(--foreground) 75%, transparent);
 }
 
 .legal-prose code {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 13.5px;
-  background: var(--muted);
-  padding: 0.1em 0.35em;
-  border-radius: 4px;
+	font-family: ui-monospace, Menlo, monospace;
+	font-size: 13.5px;
+	background: var(--muted);
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
 }
 
 .legal-prose hr {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 2.5em 0;
+	border: 0;
+	border-top: 1px solid var(--border);
+	margin: 2.5em 0;
 }
 
 .legal-prose table {
-  border-collapse: collapse;
-  font-size: 14px;
-  width: 100%;
+	border-collapse: collapse;
+	font-size: 14px;
+	width: 100%;
 }
-.legal-prose th, .legal-prose td {
-  border-bottom: 1px solid var(--border);
-  padding: 0.65em 0.8em;
-  text-align: left;
+.legal-prose th,
+.legal-prose td {
+	border-bottom: 1px solid var(--border);
+	padding: 0.65em 0.8em;
+	text-align: left;
 }
 .legal-prose th {
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 10.5px;
-  letter-spacing: 0.14em;
-  color: color-mix(in oklab, var(--foreground) 55%, transparent);
+	font-weight: 600;
+	text-transform: uppercase;
+	font-size: 10.5px;
+	letter-spacing: 0.14em;
+	color: color-mix(in oklab, var(--foreground) 55%, transparent);
 }
 
 /* not-prose: lets components opt out of prose styling */
-.legal-prose .not-prose { color: var(--foreground); font-size: inherit; line-height: inherit; }
+.legal-prose .not-prose {
+	color: var(--foreground);
+	font-size: inherit;
+	line-height: inherit;
+}
 
 /* Article prose — for /resources essays. Editorial register, looser
    leading and bigger font than legal docs. */
 .article-prose {
-  color: var(--foreground);
-  font-size: 18px;
-  line-height: 1.75;
+	color: var(--foreground);
+	font-size: 18px;
+	line-height: 1.75;
 }
-.article-prose > * + * { margin-top: 1.2em; }
+.article-prose > * + * {
+	margin-top: 1.2em;
+}
 
 .article-prose p {
-  color: color-mix(in oklab, var(--foreground) 85%, transparent);
+	color: color-mix(in oklab, var(--foreground) 85%, transparent);
 }
 
 .article-prose h2 {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-weight: 400;
-  font-size: 32px;
-  line-height: 1.1;
-  letter-spacing: -0.018em;
-  color: var(--foreground);
-  margin-top: 2.4em;
-  margin-bottom: 0.6em;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-weight: 400;
+	font-size: 32px;
+	line-height: 1.1;
+	letter-spacing: -0.018em;
+	color: var(--foreground);
+	margin-top: 2.4em;
+	margin-bottom: 0.6em;
 }
 .article-prose h3 {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-weight: 500;
-  font-size: 22px;
-  line-height: 1.2;
-  letter-spacing: -0.005em;
-  margin-top: 2em;
-  margin-bottom: 0.4em;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-weight: 500;
+	font-size: 22px;
+	line-height: 1.2;
+	letter-spacing: -0.005em;
+	margin-top: 2em;
+	margin-bottom: 0.4em;
 }
 
-.article-prose strong { color: var(--foreground); font-weight: 600; }
-.article-prose em { font-style: italic; }
+.article-prose strong {
+	color: var(--foreground);
+	font-weight: 600;
+}
+.article-prose em {
+	font-style: italic;
+}
 
 .article-prose a {
-  color: var(--primary);
-  text-decoration: none;
-  background-image: linear-gradient(currentColor, currentColor);
-  background-size: 100% 1px;
-  background-repeat: no-repeat;
-  background-position: 0 100%;
+	color: var(--primary);
+	text-decoration: none;
+	background-image: linear-gradient(currentColor, currentColor);
+	background-size: 100% 1px;
+	background-repeat: no-repeat;
+	background-position: 0 100%;
 }
-.article-prose a:hover { color: var(--primary-deep); }
+.article-prose a:hover {
+	color: var(--primary-deep);
+}
 
-.article-prose ul, .article-prose ol { padding-left: 1.4em; }
-.article-prose ul { list-style: disc; }
-.article-prose ol { list-style: decimal; }
-.article-prose li { margin-top: 0.5em; }
-.article-prose li::marker { color: color-mix(in oklab, var(--foreground) 45%, transparent); }
+.article-prose ul,
+.article-prose ol {
+	padding-left: 1.4em;
+}
+.article-prose ul {
+	list-style: disc;
+}
+.article-prose ol {
+	list-style: decimal;
+}
+.article-prose li {
+	margin-top: 0.5em;
+}
+.article-prose li::marker {
+	color: color-mix(in oklab, var(--foreground) 45%, transparent);
+}
 
 .article-prose blockquote {
-  font-family: var(--font-display), ui-serif, Georgia, serif;
-  font-style: italic;
-  font-weight: 400;
-  font-size: 26px;
-  line-height: 1.3;
-  letter-spacing: -0.005em;
-  color: var(--foreground);
-  border-left: 3px solid var(--peach-300);
-  padding-left: 1.4em;
-  margin: 2em 0;
+	font-family: var(--font-display), ui-serif, Georgia, serif;
+	font-style: italic;
+	font-weight: 400;
+	font-size: 26px;
+	line-height: 1.3;
+	letter-spacing: -0.005em;
+	color: var(--foreground);
+	border-left: 3px solid var(--peach-300);
+	padding-left: 1.4em;
+	margin: 2em 0;
 }
 
 .article-prose code {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 14px;
-  background: var(--muted);
-  padding: 0.1em 0.35em;
-  border-radius: 4px;
+	font-family: ui-monospace, Menlo, monospace;
+	font-size: 14px;
+	background: var(--muted);
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
 }
 
 .article-prose hr {
-  border: 0;
-  border-top: 1px solid var(--border);
-  margin: 2.5em 0;
+	border: 0;
+	border-top: 1px solid var(--border);
+	margin: 2.5em 0;
 }
 
 .article-prose img {
-  border-radius: 16px;
-  margin: 2em 0;
-  width: 100%;
-  height: auto;
+	border-radius: 16px;
+	margin: 2em 0;
+	width: 100%;
+	height: auto;
 }
 
-.article-prose .not-prose { color: var(--foreground); font-size: inherit; line-height: inherit; }
+.article-prose .not-prose {
+	color: var(--foreground);
+	font-size: inherit;
+	line-height: inherit;
+}
 
 /* Buffer-style hero background: soft warm gradient + sparse marks */
 .hero-bg {
-  background:
-    radial-gradient(1200px 600px at 80% -10%, var(--peach-200) 0%, transparent 55%),
-    radial-gradient(900px 500px at -10% 40%, var(--peach-100) 0%, transparent 60%),
-    linear-gradient(180deg, var(--background) 0%, var(--peach-100) 100%);
+	background:
+		radial-gradient(
+			1200px 600px at 80% -10%,
+			var(--peach-200) 0%,
+			transparent 55%
+		),
+		radial-gradient(
+			900px 500px at -10% 40%,
+			var(--peach-100) 0%,
+			transparent 60%
+		),
+		linear-gradient(180deg, var(--background) 0%, var(--peach-100) 100%);
 }
