@@ -1,110 +1,129 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fbf9f4; /* Aged Paper */
-  --foreground: #1a1a1a; /* Deep Carbon Ink */
-  --muted: #f2eee4; 
-  --muted-foreground: #6b635d;
-  --border: #e2ddd3;
-  --primary: #bc6c25; /* Burnt Umber */
-  --primary-foreground: #fefae0;
-  --secondary: #606c38; /* Forest Ink */
-  --secondary-foreground: #fefae0;
-  --accent: #d4a373; /* Golden Ochre */
-  --accent-foreground: #283618;
-  --ring: #bc6c25;
-  --radius: 0.75rem; 
+  /* Warm cream editorial palette — cohesive peach family + indigo primary */
+  --background:       #f6f1e4;   /* warm cream */
+  --background-elev:  #fffdf6;   /* warm white */
+  --foreground:       #1a1612;   /* warm ink */
+  --muted:            #ebe3ce;
+  --muted-foreground: #6a6050;
+  --border:           #e2d8bf;
+  --border-strong:    #cdc1a0;
+
+  --primary:          #4f46e5;   /* sharp indigo — kept */
+  --primary-foreground: #ffffff;
+  --primary-soft:     #ecebfc;
+  --primary-deep:     #2e2a85;
+
+  /* Peach tonal family — the ONE accent group */
+  --peach-100: #fbe6cf;
+  --peach-200: #f9d5ae;
+  --peach-300: #f4bf87;
+  --peach-400: #ed9f57;
+
+  --ink:              #1a1612;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
+  --color-background:       var(--background);
+  --color-background-elev:  var(--background-elev);
+  --color-foreground:       var(--foreground);
+  --color-muted:            var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-primary: var(--primary);
+  --color-border:           var(--border);
+  --color-border-strong:    var(--border-strong);
+  --color-primary:          var(--primary);
   --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-ring: var(--ring);
-  --radius-custom: var(--radius);
-  --font-display: var(--font-display);
-  --font-sans: var(--font-sans);
-}
+  --color-primary-soft:     var(--primary-soft);
+  --color-primary-deep:     var(--primary-deep);
+  --color-peach-100:        var(--peach-100);
+  --color-peach-200:        var(--peach-200);
+  --color-peach-300:        var(--peach-300);
+  --color-peach-400:        var(--peach-400);
+  --color-ink:              var(--ink);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #141412; /* Dark Parchment */
-    --foreground: #e9e4d9;
-    --muted: #1f1f1c;
-    --muted-foreground: #969185;
-    --border: #2d2d2a;
-    --primary: #dda15e;
-    --secondary: #a3b18a;
-    --accent: #fefae0;
+  /* font-display / font-sans utilities defined as plain CSS below —
+     Tailwind v4 refuses to emit a utility whose theme value is a
+     self-referencing var(), so we skip @theme for fonts. */
+
+  --animate-marquee:    marquee 38s linear infinite;
+  --animate-float-soft: float-soft 6s ease-in-out infinite;
+
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  @keyframes float-soft {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
   }
 }
+
+html { background: var(--background); overflow-x: clip; }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui;
   -webkit-font-smoothing: antialiased;
-  position: relative;
+  text-rendering: optimizeLegibility;
 }
 
-/* The "Soul" - Grain Overlay */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  opacity: 0.04;
-  pointer-events: none;
-  background-image: url("https://www.transparenttextures.com/patterns/stardust.png");
-  z-index: 9999;
+/* Font utilities — next/font sets --font-display (Fraunces) and
+   --font-sans (Outfit) on <html>, we just reference them. */
+.font-display {
+  font-family: var(--font-display), ui-serif, Georgia, serif;
+}
+.font-sans {
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-display), serif;
-  font-weight: 800;
-  letter-spacing: -0.03em;
+/* Pencil-underline link — specialty, keep in CSS */
+.pencil-link {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: background-size 350ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.pencil-link:hover { background-size: 100% 1px; }
+
+details[open] > summary .chev { transform: rotate(45deg); }
+.chev { transition: transform 220ms ease; }
+
+@utility border-industrial {
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--foreground);
 }
 
-/* Tactile Utilities */
-@utility shadow-tactile {
-  box-shadow: 5px 5px 0px 0px rgba(45, 36, 36, 0.08);
+@utility button-industrial {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--foreground);
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 150ms ease, color 150ms ease, transform 150ms ease;
 }
 
-@utility shadow-taped {
-  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 0 5px rgba(0, 0, 0, 0.05);
+@utility active-industrial {
+  background-color: var(--foreground);
+  color: var(--background);
 }
 
-@utility paper-edge {
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+.button-industrial:hover {
+  background-color: var(--foreground);
+  color: var(--background);
 }
 
-@utility ink-bleed {
-  text-shadow: 0 0 1px rgba(0,0,0,0.1);
-}
-
-@utility button-handcrafted {
-  @apply px-8 py-4 bg-foreground text-background rounded-sm font-bold transition-all hover:-translate-y-1 active:translate-y-0 shadow-tactile hover:shadow-lg flex items-center justify-center gap-3;
-}
-
-/* Custom Scrollbar for better vibe */
-::-webkit-scrollbar {
-  width: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--muted-foreground);
+/* Buffer-style hero background: soft warm gradient + sparse marks */
+.hero-bg {
+  background:
+    radial-gradient(1200px 600px at 80% -10%, var(--peach-200) 0%, transparent 55%),
+    radial-gradient(900px 500px at -10% 40%, var(--peach-100) 0%, transparent 60%),
+    linear-gradient(180deg, var(--background) 0%, var(--peach-100) 100%);
 }
