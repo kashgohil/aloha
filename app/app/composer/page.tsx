@@ -67,7 +67,7 @@ export default function ComposerPage() {
     setIsSaving(true);
     try {
       await saveDraft(content, selectedPlatforms);
-      router.push("/dashboard");
+      router.push("/app/dashboard");
     } catch (error) {
       console.error(error);
     } finally {
@@ -80,7 +80,7 @@ export default function ComposerPage() {
     setIsScheduling(true);
     try {
       await schedulePost(content, selectedPlatforms, new Date(scheduledAt));
-      router.push("/dashboard");
+      router.push("/app/dashboard");
     } catch (error) {
       console.error(error);
     } finally {

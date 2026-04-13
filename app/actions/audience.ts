@@ -26,7 +26,7 @@ export async function updatePage(data: { slug: string, title?: string, bio?: str
       });
     }
 
-    revalidatePath("/audience");
+    revalidatePath("/app/audience");
     return { success: true };
   } catch (error) {
     console.error("Update Page Error:", error);
@@ -51,7 +51,7 @@ export async function addLink(data: { title: string, url: string }) {
       url: data.url,
     });
 
-    revalidatePath("/audience");
+    revalidatePath("/app/audience");
     return { success: true };
   } catch (error) {
     console.error("Add Link Error:", error);

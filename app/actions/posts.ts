@@ -26,8 +26,8 @@ export async function saveDraft(content: string, platforms: string[]) {
       status: "draft",
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/calendar");
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/calendar");
     
     return { success: true };
   } catch (error) {
@@ -65,8 +65,8 @@ export async function schedulePost(content: string, platforms: string[], schedul
       delay,
     });
 
-    revalidatePath("/dashboard");
-    revalidatePath("/calendar");
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/calendar");
     
     return { success: true, postId: newPost.id };
   } catch (error) {

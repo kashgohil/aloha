@@ -27,7 +27,7 @@ export default function SignInPage() {
               <form
                 action={async () => {
                   "use server";
-                  await signIn("google", { redirectTo: "/dashboard" });
+                  await signIn("google", { redirectTo: "/app/dashboard" });
                 }}
               >
                 <button className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-background border-2 border-border rounded-full font-bold text-sm transition-all hover:bg-muted/50 hover:border-primary/30 group">
@@ -39,7 +39,7 @@ export default function SignInPage() {
               <form
                 action={async () => {
                   "use server";
-                  await signIn("github", { redirectTo: "/dashboard" });
+                  await signIn("github", { redirectTo: "/app/dashboard" });
                 }}
               >
                 <button className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-background border-2 border-border rounded-full font-bold text-sm transition-all hover:bg-muted/50 hover:border-primary/30 group">
@@ -51,7 +51,7 @@ export default function SignInPage() {
               <form
                 action={async () => {
                   "use server";
-                  await signIn("twitter", { redirectTo: "/dashboard" });
+                  await signIn("twitter", { redirectTo: "/app/dashboard" });
                 }}
               >
                 <button className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-background border-2 border-border rounded-full font-bold text-sm transition-all hover:bg-muted/50 hover:border-primary/30 group">

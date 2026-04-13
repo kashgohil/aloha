@@ -19,11 +19,11 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { icon: LayoutDashboard, label: "Studio", href: "/dashboard" },
-  { icon: Calendar, label: "Timeline", href: "/calendar" },
-  { icon: PenSquare, label: "Composer", href: "/composer" },
-  { icon: Users, label: "Garden", href: "/audience" },
-  { icon: Zap, label: "Matrix", href: "/automations" },
+  { icon: LayoutDashboard, label: "Studio", href: "/app/dashboard" },
+  { icon: Calendar, label: "Timeline", href: "/app/calendar" },
+  { icon: PenSquare, label: "Composer", href: "/app/composer" },
+  { icon: Users, label: "Garden", href: "/app/audience" },
+  { icon: Zap, label: "Matrix", href: "/app/automations" },
 ];
 
 export default function DashboardLayout({
@@ -97,7 +97,7 @@ export default function DashboardLayout({
                   </div>
                </div>
                <div className="flex gap-3">
-                  <Link href="/settings" className="flex-1 p-3 bg-muted rounded-sm flex items-center justify-center hover:bg-primary/10 transition-colors border border-border/50 shadow-sm">
+                  <Link href="/app/settings" className="flex-1 p-3 bg-muted rounded-sm flex items-center justify-center hover:bg-primary/10 transition-colors border border-border/50 shadow-sm">
                      <Settings className="w-4 h-4 text-muted-foreground" />
                   </Link>
                   <button className="flex-1 p-3 bg-muted rounded-sm flex items-center justify-center hover:bg-red-500/10 group transition-colors border border-border/50 shadow-sm">
