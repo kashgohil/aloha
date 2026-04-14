@@ -15,6 +15,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  passwordHash: text("passwordHash"),
   // Workspace / onboarding fields
   workspaceName: text("workspaceName"),
   role: text("role", {
