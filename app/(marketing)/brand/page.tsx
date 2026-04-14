@@ -101,6 +101,45 @@ const VOICE = [
 	},
 ];
 
+const ASSETS = [
+	{
+		format: "SVG",
+		name: "aloha.svg",
+		href: "/aloha.svg",
+		use: "Web, scalable marks",
+		tint: "bg-background",
+		preview: "/aloha.svg",
+		previewClass: "w-14 h-14",
+	},
+	{
+		format: "PNG",
+		name: "aloha.png",
+		href: "/aloha.png",
+		use: "App icons, transparent BG",
+		tint: "bg-peach-100",
+		preview: "/aloha.png",
+		previewClass: "w-14 h-14 object-contain",
+	},
+	{
+		format: "JPG",
+		name: "aloha.jpg",
+		href: "/aloha.jpg",
+		use: "Social share / OG image",
+		tint: "bg-peach-200",
+		preview: "/aloha.jpg",
+		previewClass: "w-20 h-14 object-contain rounded-md",
+	},
+	{
+		format: "ICO",
+		name: "aloha.ico",
+		href: "/aloha.ico",
+		use: "Legacy favicon",
+		tint: "bg-ink",
+		preview: "/aloha.png",
+		previewClass: "w-10 h-10 object-contain",
+	},
+] as const;
+
 const DONTS = [
 	{
 		h: "Don't recolour the wordmark",
@@ -235,6 +274,115 @@ export default function BrandPage() {
 									</span>
 								</div>
 							</div>
+						</div>
+
+						{/* ── The mark ────────────────────────────────────────────── */}
+						<div className="mt-20 grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-10 mb-10">
+							<div className="col-span-12 lg:col-span-7">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+									The mark
+								</p>
+								<h3 className="font-display text-[30px] lg:text-[40px] leading-[1.05] tracking-[-0.02em]">
+									A square
+									<span className="text-primary"> for small surfaces.</span>
+								</h3>
+							</div>
+							<p className="col-span-12 lg:col-span-5 text-[15.5px] text-ink/70 leading-[1.55]">
+								Favicons, app icons, avatars, OG cards. The standalone mark
+								shares the wordmark&apos;s rules — keep the period indigo and
+								give it breathing room.
+							</p>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+							<div className="p-10 rounded-3xl bg-background border border-border flex items-center justify-center min-h-[220px]">
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img
+									src="/aloha.svg"
+									alt="Aloha mark"
+									width={128}
+									height={128}
+									className="w-[128px] h-[128px]"
+								/>
+							</div>
+							<div className="p-10 rounded-3xl bg-peach-200 flex items-center justify-center min-h-[220px]">
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img
+									src="/aloha.svg"
+									alt="Aloha mark on peach"
+									width={128}
+									height={128}
+									className="w-[128px] h-[128px]"
+								/>
+							</div>
+							<div className="p-10 rounded-3xl bg-ink flex items-center justify-center min-h-[220px]">
+								<div className="p-5 rounded-2xl bg-background-elev">
+									{/* eslint-disable-next-line @next/next/no-img-element */}
+									<img
+										src="/aloha.svg"
+										alt="Aloha mark, reversed"
+										width={96}
+										height={96}
+										className="w-[96px] h-[96px]"
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* ── Downloads ───────────────────────────────────────────── */}
+						<div className="mt-16">
+							<div className="flex items-end justify-between mb-6 gap-4">
+								<div>
+									<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-2">
+										Asset files
+									</p>
+									<h3 className="font-display text-[26px] lg:text-[32px] leading-[1.1] tracking-[-0.02em]">
+										Download what you need.
+									</h3>
+								</div>
+								<Link
+									href={routes.company.press}
+									className="pencil-link inline-flex items-center gap-1.5 text-[13.5px] text-ink/70 hover:text-ink"
+								>
+									Full press kit
+									<ArrowUpRight className="w-3.5 h-3.5" />
+								</Link>
+							</div>
+
+							<ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+								{ASSETS.map((a) => (
+									<li key={a.href}>
+										<a
+											href={a.href}
+											download
+											className="group flex flex-col h-full rounded-2xl border border-border bg-background-elev overflow-hidden"
+										>
+											<div
+												className={`h-28 flex items-center justify-center ${a.tint}`}
+											>
+												{/* eslint-disable-next-line @next/next/no-img-element */}
+												<img
+													src={a.preview}
+													alt=""
+													className={a.previewClass}
+												/>
+											</div>
+											<div className="flex items-center justify-between gap-3 px-4 py-3 border-t border-border">
+												<div className="min-w-0">
+													<p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+														{a.format}
+													</p>
+													<p className="mt-0.5 text-[13.5px] text-ink font-medium truncate">
+														{a.name}
+													</p>
+													<p className="text-[11.5px] text-ink/55">{a.use}</p>
+												</div>
+												<Download className="w-4 h-4 text-ink/40 group-hover:text-ink transition-colors shrink-0" />
+											</div>
+										</a>
+									</li>
+								))}
+							</ul>
 						</div>
 
 						{/* do / don't */}
