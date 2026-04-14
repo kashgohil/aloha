@@ -193,38 +193,6 @@ details[open] > summary .chev {
 	transition: transform 220ms ease;
 }
 
-@utility border-industrial {
-	border-width: 1px;
-	border-style: solid;
-	border-color: var(--foreground);
-}
-
-@utility button-industrial {
-	display: inline-flex;
-	align-items: center;
-	gap: 0.5rem;
-	padding: 0.625rem 1rem;
-	border-width: 1px;
-	border-style: solid;
-	border-color: var(--foreground);
-	background-color: var(--background);
-	color: var(--foreground);
-	transition:
-		background-color 150ms ease,
-		color 150ms ease,
-		transform 150ms ease;
-}
-
-@utility active-industrial {
-	background-color: var(--foreground);
-	color: var(--background);
-}
-
-.button-industrial:hover {
-	background-color: var(--foreground);
-	color: var(--background);
-}
-
 /* Legal-doc prose — editorial typography for MDX content. Scoped so
    it only kicks in inside the legal layout's reading column. */
 .legal-prose {

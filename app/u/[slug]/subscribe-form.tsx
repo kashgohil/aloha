@@ -1,77 +1,82 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, Loader2, Check } from "lucide-react";
+import { useState, useTransition } from "react";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { subscribe } from "@/app/actions/audience";
 
 export default function SubscribeForm({ userId }: { userId: string }) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
 
-  async function handleSubmit(e: React.FormEvent) {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-
-    setStatus("loading");
-    try {
+    setError(null);
+    startTransition(async () => {
       const result = await subscribe({ email, userId });
       if (result.success) {
         setStatus("success");
         setEmail("");
       } else {
         setStatus("error");
+        setError(result.error ?? "Something went wrong. Please try again.");
       }
-    } catch (error) {
-      setStatus("error");
-    }
-  }
+    });
+  };
 
   if (status === "success") {
     return (
-      <div className="p-6 border-industrial border-dashed bg-accent/5 flex flex-col items-center justify-center text-center gap-2 animate-in fade-in zoom-in-95 duration-500">
-        <div className="w-12 h-12 bg-accent text-accent-foreground flex items-center justify-center">
-          <Check className="w-6 h-6" />
-        </div>
-        <div>
-          <div className="font-black uppercase tracking-tight text-sm">Access Granted</div>
-          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Strategic updates will be transmitted to your terminal</p>
-        </div>
+      <div className="flex flex-col items-center text-center gap-3 py-2">
+        <span className="w-10 h-10 rounded-full bg-ink text-background grid place-items-center">
+          <Check className="w-4 h-4" />
+        </span>
+        <p className="font-display text-[20px] leading-[1.2] tracking-[-0.01em] text-ink">
+          You&apos;re on the list.
+        </p>
+        <p className="text-[12.5px] text-ink/60 leading-[1.5] max-w-[280px]">
+          Thanks for subscribing. We&apos;ll only reach out when there&apos;s
+          something worth sharing.
+        </p>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
-      <div className="relative group">
-        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-accent transition-colors" />
-        <input 
-          type="email" 
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="TERMINAL EMAIL ADDRESS..."
-          required
-          className="w-full pl-10 pr-4 py-4 bg-background border-industrial text-xs font-black uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-ring transition-all placeholder:opacity-30"
-        />
-      </div>
-      <button 
+    <form onSubmit={handleSubmit} className="space-y-2.5">
+      <label htmlFor="subscribe-email" className="sr-only">
+        Email
+      </label>
+      <input
+        id="subscribe-email"
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        required
+        autoComplete="email"
+        className="w-full h-12 px-4 rounded-full bg-background border border-border-strong text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink transition-colors"
+      />
+      <button
         type="submit"
-        disabled={status === "loading" || !email}
-        className="w-full py-4 bg-foreground text-background font-black uppercase tracking-widest text-xs hover:bg-foreground/90 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+        disabled={isPending || !email}
+        className="w-full inline-flex items-center justify-center gap-1.5 h-12 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
       >
-        {status === "loading" ? (
-          <>
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Initializing Sync...
-          </>
+        {isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          "Join Mission Control"
+          <>
+            Subscribe
+            <ArrowRight className="w-3.5 h-3.5" />
+          </>
         )}
       </button>
-      {status === "error" && (
-        <p className="text-[10px] text-red-500 font-black uppercase tracking-widest text-center italic">
-          SYNC ERROR: RETRY TRANSMISSION
+      {status === "error" && error ? (
+        <p className="text-[12px] text-primary-deep text-center leading-[1.45]">
+          {error}
         </p>
-      )}
+      ) : null}
     </form>
   );
 }
