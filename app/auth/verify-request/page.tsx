@@ -72,7 +72,7 @@ export default async function VerifyRequestPage({
             <p className="text-[14.5px] text-ink font-medium">Sign-in link sent</p>
             <p className="mt-1 text-[13px] text-ink/65 leading-[1.55]">
               Can&apos;t find it? Check Promotions and Spam. The sender is
-              hey@aloha.so.
+              hey@usealoha.app.
             </p>
             <p className="mt-3 inline-flex items-center gap-2 text-[12px] text-ink/55">
               <Clock className="w-3.5 h-3.5" />
