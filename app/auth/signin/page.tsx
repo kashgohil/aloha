@@ -4,6 +4,7 @@ import Link from "next/link";
 import { makeMetadata } from "@/lib/seo";
 import { routes } from "@/lib/routes";
 import { AuthShell } from "../_components/auth-shell";
+import { CredentialsForm } from "../_components/credentials-form";
 import { ProviderButton } from "../_components/provider-button";
 
 export const metadata = makeMetadata({
@@ -100,29 +101,19 @@ export default async function SignInPage({
 				<form
 					action={async () => {
 						"use server";
-						await signIn("linkedin", { redirectTo });
-					}}
-				>
-					<ProviderButton provider="linkedin" />
-				</form>
-
-				<form
-					action={async () => {
-						"use server";
 						await signIn("github", { redirectTo });
 					}}
 				>
 					<ProviderButton provider="github" />
 				</form>
 
-				<form
-					action={async () => {
-						"use server";
-						await signIn("twitter", { redirectTo });
-					}}
-				>
-					<ProviderButton provider="twitter" />
-				</form>
+				<div className="flex items-center gap-4 py-1 text-[11px] uppercase tracking-[0.22em] text-ink/45">
+					<span className="h-px flex-1 bg-border" />
+					or with email
+					<span className="h-px flex-1 bg-border" />
+				</div>
+
+				<CredentialsForm mode="signin" redirectTo={redirectTo} />
 
 				<p className="pt-4 text-[12px] text-ink/55 leading-[1.55]">
 					By continuing you agree to our{" "}
