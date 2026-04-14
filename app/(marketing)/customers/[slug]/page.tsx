@@ -8,7 +8,12 @@ import {
   MessageSquareQuote,
   CalendarDays,
 } from "lucide-react";
-import { articleJsonLd, breadcrumbJsonLd, makeMetadata } from "@/lib/seo";
+import {
+  articleJsonLd,
+  breadcrumbJsonLd,
+  makeMetadata,
+  reviewJsonLd,
+} from "@/lib/seo";
 import { JsonLd } from "@/lib/json-ld";
 import { routes } from "@/lib/routes";
 import {
@@ -66,6 +71,12 @@ export default async function CaseStudyPage({
             { name: "Customers", path: routes.customers.caseStudies },
             { name: s.customer.business, path },
           ]),
+          reviewJsonLd({
+            body: s.heroQuote.replace(/["'\u201C\u201D]/g, ""),
+            authorName: s.customer.name,
+            authorRole: `${s.customer.role} at ${s.customer.business}`,
+            datePublished: s.publishedDate,
+          }),
         ]}
       />
       {/* ─── HERO ────────────────────────────────────────────────────── */}

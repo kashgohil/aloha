@@ -102,9 +102,16 @@ export function organizationJsonLd() {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: "Lisbon",
-        addressCountry: "PT",
+        addressLocality: "Bengaluru",
+        addressRegion: "Karnataka",
+        addressCountry: "IN",
       },
+    },
+    address: {
+      "@type": "PostalAddress",
+      addressLocality: "Bengaluru",
+      addressRegion: "Karnataka",
+      addressCountry: "IN",
     },
     contactPoint: [
       {
@@ -202,6 +209,43 @@ export function breadcrumbJsonLd(items: { name: string; path: string }[]) {
       name: item.name,
       item: absoluteUrl(item.path),
     })),
+  };
+}
+
+export function reviewJsonLd(opts: {
+  // What's being reviewed — almost always Aloha itself.
+  itemName?: string;
+  itemPath?: string;
+  body: string;
+  authorName: string;
+  authorRole?: string;
+  datePublished: string;
+}) {
+  const {
+    itemName = SITE_NAME,
+    itemPath = "/",
+    body,
+    authorName,
+    authorRole,
+    datePublished,
+  } = opts;
+  return {
+    "@context": "https://schema.org",
+    "@type": "Review",
+    itemReviewed: {
+      "@type": "SoftwareApplication",
+      name: itemName,
+      url: absoluteUrl(itemPath),
+      applicationCategory: "BusinessApplication",
+    },
+    reviewBody: body,
+    author: {
+      "@type": "Person",
+      name: authorName,
+      ...(authorRole ? { jobTitle: authorRole } : {}),
+    },
+    datePublished,
+    publisher: { "@id": ORGANIZATION_ID },
   };
 }
 
