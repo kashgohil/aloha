@@ -139,7 +139,7 @@ export default function AboutPage() {
 							<h1 className="font-display font-normal text-ink leading-[0.95] tracking-[-0.03em] text-[56px] sm:text-[72px] lg:text-[92px]">
 								A small team
 								<br />
-								<span className="italic text-primary font-light">
+								<span className="text-primary font-light">
 									building one calm thing.
 								</span>
 							</h1>
@@ -174,7 +174,7 @@ export default function AboutPage() {
 								<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 									Three years,
 									<br />
-									<span className="italic text-primary">four milestones.</span>
+									<span className="text-primary">four milestones.</span>
 								</h2>
 							</div>
 							<p className="col-span-12 lg:col-span-5 text-[15.5px] text-ink/70 leading-[1.55]">
@@ -228,7 +228,7 @@ export default function AboutPage() {
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Six people.
 								<br />
-								<span className="italic text-primary">One roadmap.</span>
+								<span className="text-primary">One roadmap.</span>
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-5 text-[15.5px] text-ink/70 leading-[1.55]">
@@ -293,7 +293,7 @@ export default function AboutPage() {
 							</p>
 							<h2 className="font-display text-[36px] lg:text-[48px] leading-[1.02] tracking-[-0.02em]">
 								Three cities,
-								<span className="italic text-primary"> one calendar.</span>
+								<span className="text-primary"> one calendar.</span>
 							</h2>
 						</div>
 
@@ -336,7 +336,7 @@ export default function AboutPage() {
 								<h2 className="font-display text-[32px] lg:text-[40px] leading-[1.05] tracking-[-0.015em]">
 									People who signed
 									<br />
-									<span className="italic text-primary">
+									<span className="text-primary">
 										the calm-tool side letter.
 									</span>
 								</h2>
