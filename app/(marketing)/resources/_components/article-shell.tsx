@@ -7,6 +7,8 @@ import {
   CalendarDays,
 } from "lucide-react";
 import { routes } from "@/lib/routes";
+import { JsonLd } from "@/lib/json-ld";
+import { articleJsonLd, breadcrumbJsonLd } from "@/lib/seo";
 
 type Author = {
   name: string;
@@ -31,6 +33,10 @@ type Props = {
   dateLabel: string;
   readTime: string;
   author: Author;
+  // Canonical path of this article — drives Article + Breadcrumb schema.
+  path: string;
+  // Optional category surfaced in Article schema.
+  articleSection?: string;
   // Hero accent for the colour stripe.
   accent?: "bg-peach-100" | "bg-peach-200" | "bg-peach-300" | "bg-primary-soft";
   children: ReactNode; // MDX content
@@ -47,6 +53,8 @@ export function ArticleShell({
   dateLabel,
   readTime,
   author,
+  path,
+  articleSection,
   accent = "bg-peach-200",
   children,
   related = [],
@@ -54,6 +62,25 @@ export function ArticleShell({
 }: Props) {
   return (
     <>
+      <JsonLd
+        data={[
+          articleJsonLd({
+            headline: title,
+            description: lead,
+            path,
+            datePublished: date,
+            authorName: author.name,
+            authorRole: author.role,
+            articleSection: articleSection ?? collection.name,
+          }),
+          breadcrumbJsonLd([
+            { name: "Home", path: routes.home },
+            { name: "Resources", path: routes.resources.index },
+            { name: collection.name, path: collection.href },
+            { name: title, path },
+          ]),
+        ]}
+      />
       {/* ─── HERO ────────────────────────────────────────────────────── */}
       <header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
         <span aria-hidden className="absolute top-[18%] left-[5%] font-display text-[28px] text-ink/20 rotate-[-8deg] select-none">✳</span>

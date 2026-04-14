@@ -14,6 +14,7 @@ export const metadata = makeMetadata({
 export default function BioGeneratorPage() {
 	return (
 		<ToolShell
+			path={routes.tools.bioGenerator}
 			eyebrow="Bio generator"
 			headline={
 				<>

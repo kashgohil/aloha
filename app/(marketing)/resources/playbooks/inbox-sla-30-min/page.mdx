@@ -20,6 +20,7 @@ export const metadata = makeMetadata({
   readTime={playbook.readTime}
   author={playbook.author}
   accent={playbook.accent}
+  path={`${routes.resources.playbooks}/${playbook.slug}`}
   related={relatedPlaybooks(playbook.slug)}
   collectionPitch="Want operational playbooks like this in your inbox? The newsletter sends both essays and playbooks."
 >

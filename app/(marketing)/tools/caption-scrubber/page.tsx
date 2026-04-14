@@ -14,6 +14,7 @@ export const metadata = makeMetadata({
 export default function CaptionScrubberPage() {
 	return (
 		<ToolShell
+			path={routes.tools.captionScrubber}
 			eyebrow="Caption scrubber"
 			headline={
 				<>

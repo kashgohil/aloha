@@ -9,7 +9,8 @@ import {
   FileText,
   Eraser,
 } from "lucide-react";
-import { makeMetadata } from "@/lib/seo";
+import { absoluteUrl, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { routes } from "@/lib/routes";
 import { TOOLS } from "@/lib/tools";
 
@@ -19,6 +20,21 @@ export const metadata = makeMetadata({
     "Aloha's free tools. Five tiny utilities you can use without an account: bio generator, best-time finder, hashtag decoder, post critic, caption scrubber.",
   path: "/tools",
 });
+
+const TOOLS_ITEM_LIST = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "Aloha free tools",
+  numberOfItems: TOOLS.length,
+  itemListOrder: "https://schema.org/ItemListOrderAscending",
+  itemListElement: TOOLS.map((t, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: t.name,
+    description: t.tagline,
+    url: absoluteUrl(t.href),
+  })),
+};
 
 const ICON_FOR: Record<string, typeof Sparkle> = {
   "bio-generator": Mail,
@@ -31,6 +47,7 @@ const ICON_FOR: Record<string, typeof Sparkle> = {
 export default function ToolsIndexPage() {
   return (
     <>
+      <JsonLd data={TOOLS_ITEM_LIST} />
       {/* ─── HERO ────────────────────────────────────────────────────── */}
       <header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
         <span aria-hidden className="absolute top-[14%] left-[5%] font-display text-[28px] text-ink/25 rotate-[-8deg] select-none">✳</span>

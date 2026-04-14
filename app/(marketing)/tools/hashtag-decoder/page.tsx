@@ -14,6 +14,7 @@ export const metadata = makeMetadata({
 export default function HashtagDecoderPage() {
 	return (
 		<ToolShell
+			path={routes.tools.hashtagDecoder}
 			eyebrow="Hashtag decoder"
 			headline={
 				<>

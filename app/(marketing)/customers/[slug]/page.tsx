@@ -8,7 +8,8 @@ import {
   MessageSquareQuote,
   CalendarDays,
 } from "lucide-react";
-import { makeMetadata } from "@/lib/seo";
+import { articleJsonLd, breadcrumbJsonLd, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { routes } from "@/lib/routes";
 import {
   CASE_STUDIES,
@@ -45,9 +46,28 @@ export default async function CaseStudyPage({
 
   const persona = PERSONAS[s.personaSlug];
   const related = Object.values(CASE_STUDIES).filter((c) => c.slug !== s.slug);
+  const path = `/customers/${s.slug}`;
 
   return (
     <>
+      <JsonLd
+        data={[
+          articleJsonLd({
+            headline: `${s.customer.business}: ${s.pull.replace(/["']/g, "")}`,
+            description: s.summary,
+            path,
+            datePublished: s.publishedDate,
+            authorName: `${s.customer.name}, ${s.customer.role} at ${s.customer.business}`,
+            authorRole: s.customer.role,
+            articleSection: "Customer stories",
+          }),
+          breadcrumbJsonLd([
+            { name: "Home", path: routes.home },
+            { name: "Customers", path: routes.customers.caseStudies },
+            { name: s.customer.business, path },
+          ]),
+        ]}
+      />
       {/* ─── HERO ────────────────────────────────────────────────────── */}
       <header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
         <span aria-hidden className="absolute top-[14%] left-[5%] font-display text-[28px] text-ink/25 rotate-[-8deg] select-none">✳</span>

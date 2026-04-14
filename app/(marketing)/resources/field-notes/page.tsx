@@ -1,6 +1,7 @@
 import { FIELD_NOTES } from "@/lib/field-notes";
 import { routes } from "@/lib/routes";
-import { makeMetadata } from "@/lib/seo";
+import { absoluteUrl, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { ArrowRight, ArrowUpRight, Clock, Rss } from "lucide-react";
 import Link from "next/link";
 
@@ -11,11 +12,30 @@ export const metadata = makeMetadata({
 	path: routes.resources.fieldNotes,
 });
 
+const FIELD_NOTES_BLOG = {
+	"@context": "https://schema.org",
+	"@type": "Blog",
+	name: "Aloha — Field notes",
+	description:
+		"Essays from the Aloha team. Product craft, creator economy, the quiet shape of good tools.",
+	url: absoluteUrl(routes.resources.fieldNotes),
+	inLanguage: "en",
+	blogPost: FIELD_NOTES.map((n) => ({
+		"@type": "BlogPosting",
+		headline: n.title,
+		description: n.lead,
+		datePublished: n.date,
+		url: absoluteUrl(`${routes.resources.fieldNotes}/${n.slug}`),
+		author: { "@type": "Person", name: n.author.name },
+	})),
+};
+
 export default function FieldNotesIndexPage() {
 	const [featured, ...rest] = FIELD_NOTES;
 
 	return (
 		<>
+			<JsonLd data={FIELD_NOTES_BLOG} />
 			{/* ─── HERO ────────────────────────────────────────────────────── */}
 			<header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
 				<span

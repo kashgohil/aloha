@@ -1,7 +1,8 @@
 import { CASE_STUDIES } from "@/lib/case-studies";
 import { PERSONAS } from "@/lib/personas";
 import { routes } from "@/lib/routes";
-import { makeMetadata } from "@/lib/seo";
+import { absoluteUrl, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { ArrowRight, ArrowUpRight, Clock } from "lucide-react";
 import Link from "next/link";
 
@@ -12,12 +13,27 @@ export const metadata = makeMetadata({
 	path: routes.customers.caseStudies,
 });
 
+const CASE_STUDIES_ITEM_LIST = {
+	"@context": "https://schema.org",
+	"@type": "ItemList",
+	name: "Aloha customer case studies",
+	numberOfItems: Object.keys(CASE_STUDIES).length,
+	itemListElement: Object.values(CASE_STUDIES).map((s, i) => ({
+		"@type": "ListItem",
+		position: i + 1,
+		name: `${s.customer.business}: ${s.pull.replace(/["']/g, "")}`,
+		description: s.summary,
+		url: absoluteUrl(`/customers/${s.slug}`),
+	})),
+};
+
 export default function CustomersIndexPage() {
 	const studies = Object.values(CASE_STUDIES);
 	const [featured, ...rest] = studies;
 
 	return (
 		<>
+			<JsonLd data={CASE_STUDIES_ITEM_LIST} />
 			{/* ─── HERO ────────────────────────────────────────────────────── */}
 			<header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
 				<span

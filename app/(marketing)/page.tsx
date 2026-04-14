@@ -8,9 +8,23 @@ import {
 	Sparkle,
 } from "lucide-react";
 import Link from "next/link";
+import {
+	faqJsonLd,
+	makeMetadata,
+	softwareApplicationJsonLd,
+} from "@/lib/seo";
+import { routes } from "@/lib/routes";
+import { JsonLd } from "@/lib/json-ld";
 import { SOCIAL_ICONS } from "./_components/social-icons";
 import { EngageInbox } from "./engage-inbox";
 import { FaqList } from "./faq-list";
+
+export const metadata = makeMetadata({
+	title: "The calm social media OS",
+	description:
+		"Aloha is the quiet operator behind creators who post on six platforms and still have a life. Plan, write, schedule, automate — and get the afternoon back.",
+	path: routes.home,
+});
 
 const FAQ = [
 	{
@@ -42,6 +56,18 @@ const FAQ = [
 export default function LandingPage() {
 	return (
 		<>
+			<JsonLd
+				data={[
+					softwareApplicationJsonLd({
+						name: "Aloha",
+						path: routes.home,
+						description:
+							"Aloha is a calm social media OS for creators and communities. Schedule across Instagram, LinkedIn, X, TikTok, Threads, Facebook, Pinterest, and YouTube from one draft; automate first-follower DMs with the Logic Matrix; see analytics that tell you what to do next.",
+						applicationCategory: "BusinessApplication",
+					}),
+					faqJsonLd(FAQ.map((f) => ({ q: f.q, a: f.a }))),
+				]}
+			/>
 			{/* ─── HERO ──────────────────────────────────────────────────────── */}
 			<header className="relative overflow-hidden bg-peach-200 min-h-[calc(100vh-72px)] flex flex-col">
 				{/* sparse decorative marks — Buffer-style playful restraint */}

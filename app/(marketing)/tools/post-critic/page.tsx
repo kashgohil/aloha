@@ -14,6 +14,7 @@ export const metadata = makeMetadata({
 export default function PostCriticPage() {
 	return (
 		<ToolShell
+			path={routes.tools.postCritic}
 			eyebrow="Post critic"
 			headline={
 				<>

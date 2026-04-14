@@ -20,6 +20,7 @@ export const metadata = makeMetadata({
   readTime={note.readTime}
   author={note.author}
   accent={note.accent}
+  path={`${routes.resources.fieldNotes}/${note.slug}`}
   related={relatedFieldNotes(note.slug)}
 >
 

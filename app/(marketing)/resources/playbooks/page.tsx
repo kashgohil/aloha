@@ -1,7 +1,8 @@
 import { PERSONAS } from "@/lib/personas";
 import { PLAYBOOKS } from "@/lib/playbooks";
 import { routes } from "@/lib/routes";
-import { makeMetadata } from "@/lib/seo";
+import { absoluteUrl, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { ArrowRight, ArrowUpRight, Clock, ListChecks } from "lucide-react";
 import Link from "next/link";
 
@@ -12,9 +13,24 @@ export const metadata = makeMetadata({
 	path: routes.resources.playbooks,
 });
 
+const PLAYBOOKS_ITEM_LIST = {
+	"@context": "https://schema.org",
+	"@type": "ItemList",
+	name: "Aloha playbooks",
+	numberOfItems: PLAYBOOKS.length,
+	itemListElement: PLAYBOOKS.map((p, i) => ({
+		"@type": "ListItem",
+		position: i + 1,
+		name: p.title,
+		description: p.lead,
+		url: absoluteUrl(`${routes.resources.playbooks}/${p.slug}`),
+	})),
+};
+
 export default function PlaybooksIndexPage() {
 	return (
 		<>
+			<JsonLd data={PLAYBOOKS_ITEM_LIST} />
 			{/* ─── HERO ────────────────────────────────────────────────────── */}
 			<header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
 				<span

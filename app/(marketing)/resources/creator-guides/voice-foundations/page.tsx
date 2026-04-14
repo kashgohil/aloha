@@ -8,15 +8,45 @@ import {
   Sparkle,
   ChevronRight,
 } from "lucide-react";
-import { makeMetadata } from "@/lib/seo";
+import { breadcrumbJsonLd, makeMetadata } from "@/lib/seo";
+import { JsonLd } from "@/lib/json-ld";
 import { routes } from "@/lib/routes";
+
+const GUIDE_PATH = "/resources/creator-guides/voice-foundations";
 
 export const metadata = makeMetadata({
   title: "Voice foundations — train and tune the voice model",
   description:
     "A six-lesson learning path for the Aloha voice model. Goes from 'what is it' to 'I trust it with Wednesday's post' in roughly 45 minutes.",
-  path: "/resources/creator-guides/voice-foundations",
+  path: GUIDE_PATH,
 });
+
+const GUIDE_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "LearningResource",
+  name: "Voice foundations",
+  description:
+    "A six-lesson learning path for the Aloha voice model. Goes from 'what is it' to 'I trust it with Wednesday's post' in roughly 45 minutes.",
+  url: `https://usealoha.app${GUIDE_PATH}`,
+  learningResourceType: "Course",
+  educationalLevel: "Beginner",
+  timeRequired: "PT45M",
+  inLanguage: "en",
+  isAccessibleForFree: true,
+  teaches: [
+    "Training the Aloha voice model on a small curated sample",
+    "Choosing voice-representative posts",
+    "Tuning the model for different channels",
+    "Recovering when the voice drifts",
+  ],
+};
+
+const GUIDE_BREADCRUMBS = breadcrumbJsonLd([
+  { name: "Home", path: routes.home },
+  { name: "Resources", path: routes.resources.index },
+  { name: "Creator guides", path: routes.resources.creatorGuides },
+  { name: "Voice foundations", path: GUIDE_PATH },
+]);
 
 const LESSONS = [
   {
@@ -110,6 +140,7 @@ const TOTAL_MINUTES = "45 min total";
 export default function VoiceFoundationsGuidePage() {
   return (
     <>
+      <JsonLd data={[GUIDE_JSON_LD, GUIDE_BREADCRUMBS]} />
       {/* ─── HERO ────────────────────────────────────────────────────── */}
       <header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
         <span aria-hidden className="absolute top-[14%] left-[5%] font-display text-[28px] text-ink/25 rotate-[-8deg] select-none">✳</span>

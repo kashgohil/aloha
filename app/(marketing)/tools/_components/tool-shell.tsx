@@ -2,12 +2,16 @@ import { routes } from "@/lib/routes";
 import { ArrowRight, ArrowUpRight, Sparkle } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { JsonLd } from "@/lib/json-ld";
+import { breadcrumbJsonLd, softwareApplicationJsonLd } from "@/lib/seo";
 
 type Props = {
 	eyebrow: string;
 	headline: ReactNode; // usually two lines with an second line
 	lead: string;
 	tool: ReactNode; // client component
+	// Canonical path of this tool page — drives SoftwareApplication + Breadcrumb schema.
+	path: string;
 	// "How this works" bullet list.
 	howItWorks: string[];
 	// Which Aloha feature page to cross-link in the footer.
@@ -21,12 +25,30 @@ export function ToolShell({
 	headline,
 	lead,
 	tool,
+	path,
 	howItWorks,
 	productFeature,
 	otherTools,
 }: Props) {
 	return (
 		<>
+			<JsonLd
+				data={[
+					softwareApplicationJsonLd({
+						name: `Aloha ${eyebrow}`,
+						path,
+						description: lead,
+						applicationCategory: "WebApplication",
+						operatingSystem: "Web",
+						offers: { price: "0", priceCurrency: "USD" },
+					}),
+					breadcrumbJsonLd([
+						{ name: "Home", path: routes.home },
+						{ name: "Free tools", path: "/tools" },
+						{ name: eyebrow, path },
+					]),
+				]}
+			/>
 			{/* ─── HERO ────────────────────────────────────────────────────── */}
 			<header className="relative overflow-hidden bg-peach-200 pb-16 lg:pb-20">
 				<span

@@ -14,6 +14,7 @@ export const metadata = makeMetadata({
 export default function BestTimeFinderPage() {
 	return (
 		<ToolShell
+			path={routes.tools.bestTimeFinder}
 			eyebrow="Best-time finder"
 			headline={
 				<>
