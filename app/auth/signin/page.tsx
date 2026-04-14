@@ -1,5 +1,5 @@
 import { signIn } from "@/auth";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { makeMetadata } from "@/lib/seo";
 import { routes } from "@/lib/routes";
@@ -37,6 +37,7 @@ export default async function SignInPage({
 	const params = await searchParams;
 	const callbackUrl = first(params.callbackUrl);
 	const error = first(params.error);
+	const verified = first(params.verified) === "1";
 
 	// Only allow same-origin relative paths. Anything else falls back.
 	const redirectTo =
@@ -73,6 +74,18 @@ export default async function SignInPage({
 			}
 		>
 			<div className="space-y-3">
+				{verified ? (
+					<div
+						role="status"
+						className="flex items-start gap-3 rounded-2xl border border-border-strong bg-peach-100/60 px-4 py-3 text-[13.5px] text-ink"
+					>
+						<CheckCircle2 className="w-4 h-4 mt-[2px] text-primary shrink-0" />
+						<span className="leading-[1.45]">
+							Email verified. Sign in to open your workspace.
+						</span>
+					</div>
+				) : null}
+
 				{errorMessage ? (
 					<div
 						role="alert"

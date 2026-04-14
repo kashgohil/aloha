@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Mail } from "lucide-react";
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import {
   signupWithPassword,
 } from "../actions";
 
-const INITIAL: AuthFormState = { error: null };
+const INITIAL: AuthFormState = { error: null, info: null };
 
 type Mode = "signin" | "signup";
 
@@ -35,6 +35,16 @@ export function CredentialsForm({
         >
           <AlertCircle className="w-4 h-4 mt-[2px] text-primary shrink-0" />
           <span className="leading-[1.45]">{state.error}</span>
+        </div>
+      ) : null}
+
+      {state.info ? (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-2xl border border-border-strong bg-peach-100/60 px-4 py-3 text-[13.5px] text-ink"
+        >
+          <Mail className="w-4 h-4 mt-[2px] text-primary shrink-0" />
+          <span className="leading-[1.45]">{state.info}</span>
         </div>
       ) : null}
 

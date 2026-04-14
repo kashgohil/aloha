@@ -1,16 +1,24 @@
 "use server";
 
-import { AuthError } from "next-auth";
+import { AuthError, CredentialsSignin } from "next-auth";
+import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { signIn } from "@/auth";
+import { env } from "@/lib/env";
+import { createVerificationToken } from "@/lib/auth/tokens";
+import { sendEmail } from "@/lib/email/send";
+import { verifyEmail } from "@/lib/email/templates/verify";
 
 export type AuthFormState = {
   error: string | null;
+  info: string | null;
 };
+
+const INITIAL: AuthFormState = { error: null, info: null };
 
 const signinSchema = z.object({
   email: z.string().email(),
@@ -28,6 +36,17 @@ function normalizeRedirect(value: FormDataEntryValue | null): string {
   return v.startsWith("/") && !v.startsWith("//") ? v : "/app/dashboard";
 }
 
+function buildVerifyUrl(token: string): string {
+  const base = env.APP_URL.replace(/\/$/, "");
+  return `${base}/auth/verify?token=${encodeURIComponent(token)}`;
+}
+
+async function issueVerificationEmail(email: string, name: string | null) {
+  const { token } = await createVerificationToken(email);
+  const tpl = verifyEmail({ verifyUrl: buildVerifyUrl(token), name });
+  await sendEmail({ to: email, ...tpl });
+}
+
 export async function signinWithPassword(
   _prev: AuthFormState,
   formData: FormData,
@@ -38,25 +57,45 @@ export async function signinWithPassword(
   });
 
   if (!parsed.success) {
-    return { error: "Enter a valid email and password." };
+    return { ...INITIAL, error: "Enter a valid email and password." };
   }
 
+  const email = parsed.data.email.toLowerCase();
   const redirectTo = normalizeRedirect(formData.get("redirectTo"));
 
   try {
     await signIn("credentials", {
-      email: parsed.data.email.toLowerCase(),
+      email,
       password: parsed.data.password,
       redirectTo,
     });
   } catch (err) {
+    if (err instanceof CredentialsSignin && err.code === "EmailNotVerified") {
+      const [user] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      try {
+        await issueVerificationEmail(email, user?.name ?? null);
+      } catch {
+        // swallow; surface generic message
+      }
+
+      return {
+        error: null,
+        info: "Almost there — we just sent a fresh verification link to your inbox.",
+      };
+    }
+
     if (err instanceof AuthError) {
-      return { error: "Email or password is incorrect." };
+      return { ...INITIAL, error: "Email or password is incorrect." };
     }
     throw err;
   }
 
-  return { error: null };
+  return INITIAL;
 }
 
 export async function signupWithPassword(
@@ -73,25 +112,31 @@ export async function signupWithPassword(
     const first = parsed.error.issues[0];
     const field = first?.path[0];
     if (field === "password") {
-      return { error: "Password must be at least 8 characters." };
+      return { ...INITIAL, error: "Password must be at least 8 characters." };
     }
     if (field === "email") {
-      return { error: "Enter a valid email address." };
+      return { ...INITIAL, error: "Enter a valid email address." };
     }
-    return { error: "Please fill in every field." };
+    return { ...INITIAL, error: "Please fill in every field." };
   }
 
   const email = parsed.data.email.toLowerCase();
-  const redirectTo = normalizeRedirect(formData.get("redirectTo"));
 
   const [existing] = await db
-    .select({ id: users.id, passwordHash: users.passwordHash })
+    .select({
+      id: users.id,
+      passwordHash: users.passwordHash,
+      emailVerified: users.emailVerified,
+    })
     .from(users)
     .where(eq(users.email, email))
     .limit(1);
 
-  if (existing?.passwordHash) {
-    return { error: "An account with that email already exists. Sign in instead." };
+  if (existing?.passwordHash && existing.emailVerified) {
+    return {
+      ...INITIAL,
+      error: "An account with that email already exists. Sign in instead.",
+    };
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 10);
@@ -99,7 +144,12 @@ export async function signupWithPassword(
   if (existing) {
     await db
       .update(users)
-      .set({ passwordHash, name: parsed.data.name, updatedAt: new Date() })
+      .set({
+        passwordHash,
+        name: parsed.data.name,
+        emailVerified: null,
+        updatedAt: new Date(),
+      })
       .where(eq(users.id, existing.id));
   } else {
     await db.insert(users).values({
@@ -110,17 +160,15 @@ export async function signupWithPassword(
   }
 
   try {
-    await signIn("credentials", {
-      email,
-      password: parsed.data.password,
-      redirectTo,
-    });
+    await issueVerificationEmail(email, parsed.data.name);
   } catch (err) {
-    if (err instanceof AuthError) {
-      return { error: "Account created, but we couldn't sign you in. Try signing in." };
-    }
-    throw err;
+    console.error("Failed to send verification email", err);
+    return {
+      ...INITIAL,
+      error:
+        "We created your account but couldn't send the verification email. Try signing in to trigger a resend.",
+    };
   }
 
-  return { error: null };
+  redirect(`/auth/verify-request?email=${encodeURIComponent(email)}`);
 }

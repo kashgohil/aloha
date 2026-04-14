@@ -6,7 +6,7 @@ import { AuthShell } from "../_components/auth-shell";
 
 export const metadata = makeMetadata({
   title: "Check your email",
-  description: "We sent you a sign-in link. Open it on this device.",
+  description: "We sent you a verification link. Open it on this device.",
   path: routes.verifyRequest,
   noindex: true,
 });
@@ -44,13 +44,13 @@ export default async function VerifyRequestPage({
       subtitle={
         email ? (
           <>
-            We sent a sign-in link to{" "}
+            We sent a verification link to{" "}
             <span className="text-ink font-medium">{email}</span>. Open it on
-            this device to continue — the link works once and expires in 24
-            hours.
+            this device to finish setting up your workspace — the link works
+            once and expires in 24 hours.
           </>
         ) : (
-          "We sent you a sign-in link. Open it on this device to continue — the link works once and expires in 24 hours."
+          "We sent you a verification link. Open it on this device to finish setting up your workspace — the link works once and expires in 24 hours."
         )
       }
       footer={
@@ -72,7 +72,7 @@ export default async function VerifyRequestPage({
             <Mail className="w-4 h-4 text-ink" />
           </div>
           <div className="flex-1">
-            <p className="text-[14.5px] text-ink font-medium">Sign-in link sent</p>
+            <p className="text-[14.5px] text-ink font-medium">Verification link sent</p>
             <p className="mt-1 text-[13px] text-ink/65 leading-[1.55]">
               Can&apos;t find it? Check Promotions and Spam. The sender is
               hey@usealoha.app.

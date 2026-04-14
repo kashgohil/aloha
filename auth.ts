@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "./db";
 import { users } from "./db/schema";
@@ -7,6 +7,10 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { env } from "@/lib/env";
 import Credentials from "next-auth/providers/credentials";
+
+class EmailNotVerifiedError extends CredentialsSignin {
+  code = "EmailNotVerified";
+}
 import GitHub from "next-auth/providers/github";
 import Twitter from "next-auth/providers/twitter";
 import LinkedIn from "next-auth/providers/linkedin";
@@ -45,6 +49,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!user?.passwordHash) return null;
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
+
+        if (!user.emailVerified) {
+          throw new EmailNotVerifiedError();
+        }
 
         return {
           id: user.id,
