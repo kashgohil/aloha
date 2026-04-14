@@ -390,7 +390,7 @@ function ChannelsCard({ providers }: { providers: string[] }) {
           </p>
         </div>
         <Link
-          href="/app/settings"
+          href="/app/settings/channels"
           className="pencil-link text-[12.5px] text-ink/70 hover:text-ink"
         >
           Manage

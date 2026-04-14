@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { LogOut, Settings, User2, LifeBuoy } from "lucide-react";
+import { LogOut, Settings, Plug, LifeBuoy } from "lucide-react";
 import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
@@ -97,8 +97,8 @@ export function AvatarMenu({
           </div>
 
           <ul className="py-1 text-[13.5px]">
-            <MenuItem href="/app/settings" icon={User2} label="Account" />
-            <MenuItem href="/app/settings" icon={Settings} label="Settings" />
+            <MenuItem href="/app/settings/profile" icon={Settings} label="Settings" />
+            <MenuItem href="/app/settings/channels" icon={Plug} label="Channels" />
             <MenuItem href="/help" icon={LifeBuoy} label="Help & docs" external />
           </ul>
 
