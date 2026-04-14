@@ -337,18 +337,18 @@ export default function HelpCenterPage() {
 									</span>
 								</h2>
 								<p className="mt-5 text-[15px] text-background-elev/75 leading-[1.6] max-w-xl">
-									hello@aloha.social goes to the whole team. One business day or
+									hello@usealoha.app goes to the whole team. One business day or
 									less. Screenshots and Loom links welcome — it's always faster
 									than typing it out.
 								</p>
 							</div>
 							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
 								<a
-									href="mailto:hello@aloha.social"
+									href="mailto:hello@usealoha.app"
 									className="inline-flex items-center gap-2 h-12 px-6 rounded-full text-[14px] font-medium bg-primary transition-colors"
 								>
 									<Mail className="w-4 h-4" />
-									hello@aloha.social
+									hello@usealoha.app
 								</a>
 								<Link
 									href={routes.company.contact}

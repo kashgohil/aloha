@@ -129,10 +129,10 @@ export default function CustomersIndexPage() {
 							<p className="col-span-12 lg:col-span-5 text-[15.5px] text-ink/70 leading-[1.55]">
 								New studies every few weeks. Pitch your own story to{" "}
 								<a
-									href="mailto:stories@aloha.social"
+									href="mailto:stories@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									stories@aloha.social
+									stories@usealoha.app
 								</a>{" "}
 								— we're specifically looking for teams and agencies.
 							</p>
@@ -266,7 +266,7 @@ export default function CustomersIndexPage() {
 						</div>
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<a
-								href="mailto:stories@aloha.social"
+								href="mailto:stories@usealoha.app"
 								className="inline-flex items-center gap-2 h-14 px-7 rounded-full text-background font-medium text-[15px] bg-primary transition-colors"
 							>
 								Pitch a story

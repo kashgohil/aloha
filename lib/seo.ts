@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 const SITE_NAME = "Aloha";
-const SITE_URL = "https://aloha.social";
+const SITE_URL = "https://usealoha.app";
 const DEFAULT_DESCRIPTION =
   "The calm social media OS for creators who'd rather be making the work than managing the posting of the work.";
 

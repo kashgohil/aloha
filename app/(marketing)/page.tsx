@@ -1391,10 +1391,10 @@ export default function LandingPage() {
 							<p className="mt-6 text-[14.5px] text-ink/70 leading-[1.55] max-w-sm">
 								Still stuck? Write us at{" "}
 								<a
-									href="mailto:hello@aloha.social"
+									href="mailto:hello@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									hello@aloha.social
+									hello@usealoha.app
 								</a>{" "}
 								— a real human answers within a day.
 							</p>

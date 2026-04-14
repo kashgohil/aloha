@@ -117,7 +117,7 @@ export function ArticleShell({
           </p>
           <p>
             <a
-              href={`mailto:${"hello"}@aloha.social?subject=Re: ${encodeURIComponent(title)}`}
+              href={`mailto:${"hello"}@usealoha.app?subject=Re: ${encodeURIComponent(title)}`}
               className="pencil-link text-ink"
             >
               Reply by email

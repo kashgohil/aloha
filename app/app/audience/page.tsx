@@ -112,7 +112,7 @@ export default async function AudiencePage() {
                   </label>
                   <div className="flex rounded-xl overflow-hidden border border-border-strong focus-within:border-ink transition-colors">
                     <span className="inline-flex items-center px-3.5 bg-muted text-[13px] text-ink/60 select-none">
-                      aloha.com/u/
+                      usealoha.app/u/
                     </span>
                     <input
                       id="slug"

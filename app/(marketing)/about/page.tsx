@@ -273,10 +273,10 @@ export default function AboutPage() {
 						</Link>
 						; if none fit, we still read{" "}
 						<a
-							href="mailto:hello@aloha.social"
+							href="mailto:hello@usealoha.app"
 							className="pencil-link text-ink"
 						>
-							hello@aloha.social
+							hello@usealoha.app
 						</a>
 						.
 					</p>
@@ -389,10 +389,10 @@ export default function AboutPage() {
 							<p className="mt-6 text-[15.5px] text-ink/70 max-w-lg leading-[1.55]">
 								Write us at{" "}
 								<a
-									href="mailto:hello@aloha.social"
+									href="mailto:hello@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									hello@aloha.social
+									hello@usealoha.app
 								</a>{" "}
 								— a real person replies, usually within a day.
 							</p>

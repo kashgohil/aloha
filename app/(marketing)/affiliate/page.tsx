@@ -242,10 +242,10 @@ export default function AffiliatePage() {
 							</Link>
 							. One page. Questions:{" "}
 							<a
-								href="mailto:affiliate@aloha.social"
+								href="mailto:affiliate@usealoha.app"
 								className="pencil-link text-ink"
 							>
-								affiliate@aloha.social
+								affiliate@usealoha.app
 							</a>
 							.
 						</p>
@@ -385,7 +385,7 @@ export default function AffiliatePage() {
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<a
-								href="mailto:affiliate@aloha.social"
+								href="mailto:affiliate@usealoha.app"
 								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								Or ask a question

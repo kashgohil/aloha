@@ -378,7 +378,7 @@ export default function PodcastPage() {
 							</div>
 							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
 								<a
-									href="mailto:podcast@aloha.social"
+									href="mailto:podcast@usealoha.app"
 									className="inline-flex items-center gap-2 h-12 px-6 rounded-full text-background font-medium text-[14px] bg-primary transition-colors"
 								>
 									Pitch us

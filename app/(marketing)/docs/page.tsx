@@ -191,7 +191,7 @@ export default function ApiDocsPage() {
                 </p>
 
                 <pre className="mt-5 p-5 rounded-2xl bg-ink text-background-elev text-[12.5px] font-mono leading-[1.6] overflow-auto">
-{`curl https://api.aloha.social/v1/posts \\
+{`curl https://api.usealoha.app/v1/posts \\
   -H "Authorization: Bearer alo_live_xxxxxxxxxxxxxxxxxxxx" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -357,7 +357,7 @@ await client.posts.create({
             {[
               { h: "Live API status", p: "All green right now? Check before paging.", href: routes.resources.status },
               { h: "Changelog", p: "Breaking changes get 60 days' notice.", href: routes.product.whatsNew },
-              { h: "Developer support", p: "Email developers@aloha.social — a real engineer answers.", href: "mailto:developers@aloha.social" },
+              { h: "Developer support", p: "Email developers@usealoha.app — a real engineer answers.", href: "mailto:developers@usealoha.app" },
             ].map((l) => (
               <a
                 key={l.href}

@@ -26,7 +26,7 @@ const ROUTES = [
 	{
 		icon: Headphones,
 		title: "Support",
-		email: "hello@aloha.social",
+		email: "hello@usealoha.app",
 		sla: "Within a business day",
 		body: "Account issues, feature help, something broken. A real person reads every email — the support inbox isn't triaged by a bot.",
 		tone: "bg-peach-100",
@@ -34,7 +34,7 @@ const ROUTES = [
 	{
 		icon: DollarSign,
 		title: "Sales & procurement",
-		email: "sales@aloha.social",
+		email: "sales@usealoha.app",
 		sla: "Within 4 business hours",
 		body: "Pricing negotiations for teams of 10+, annual contracts, procurement questionnaires, invoicing terms.",
 		tone: "bg-primary-soft",
@@ -42,7 +42,7 @@ const ROUTES = [
 	{
 		icon: Sparkle,
 		title: "Migration",
-		email: "migrate@aloha.social",
+		email: "migrate@usealoha.app",
 		sla: "Within 4 business hours",
 		body: "Moving from Buffer, Hootsuite, Later, Sprout, Typefully or Kit. We walk the first import with you, no meetings required.",
 		tone: "bg-peach-200",
@@ -54,7 +54,7 @@ const ROUTES = [
 	{
 		icon: ShieldCheck,
 		title: "Security & compliance",
-		email: "security@aloha.social",
+		email: "security@usealoha.app",
 		sla: "Within 24 hours",
 		body: "Vulnerability reports, SOC 2 questionnaires, penetration-testing requests. PGP key for sensitive reports is at /.well-known/security.pgp.",
 		tone: "bg-background-elev border-2 border-border",
@@ -63,7 +63,7 @@ const ROUTES = [
 	{
 		icon: Newspaper,
 		title: "Press",
-		email: "press@aloha.social",
+		email: "press@usealoha.app",
 		sla: "Within a business day",
 		body: "Stories, interviews, quotes. Logos and brand assets are in the press kit.",
 		tone: "bg-peach-300",
@@ -72,7 +72,7 @@ const ROUTES = [
 	{
 		icon: Handshake,
 		title: "Partnerships",
-		email: "partners@aloha.social",
+		email: "partners@usealoha.app",
 		sla: "Within 2 business days",
 		body: "Integrations, co-marketing, agency partner programme, affiliate enrolment.",
 		tone: "bg-peach-100",

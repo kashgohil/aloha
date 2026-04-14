@@ -455,10 +455,10 @@ export default function EventsPage() {
 							</div>
 							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
 								<a
-									href="mailto:events@aloha.social"
+									href="mailto:events@usealoha.app"
 									className="inline-flex items-center gap-2 h-12 px-6 rounded-full text-[14px] font-medium bg-primary transition-colors"
 								>
-									events@aloha.social
+									events@usealoha.app
 									<ArrowRight className="w-4 h-4" />
 								</a>
 								<Link

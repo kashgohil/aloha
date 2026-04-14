@@ -142,7 +142,7 @@ export default function StatusPage() {
 						</div>
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-3">
 							<a
-								href="mailto:status@aloha.social?subject=Subscribe%20to%20incident%20updates"
+								href="mailto:status@usealoha.app?subject=Subscribe%20to%20incident%20updates"
 								className="inline-flex items-center gap-2 h-12 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
 							>
 								<Mail className="w-4 h-4" />

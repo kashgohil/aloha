@@ -69,10 +69,10 @@ const SUBPROCESSORS = [
 ];
 
 const CONTACTS = [
-  { role: "Security", email: "security@aloha.social", note: "Vulnerabilities, incident reports" },
-  { role: "Compliance", email: "compliance@aloha.social", note: "Audits, SOC 2, questionnaires" },
-  { role: "Privacy / DPO", email: "privacy@aloha.social", note: "Data access, deletion, GDPR requests" },
-  { role: "AI", email: "ai@aloha.social", note: "Responsible-AI policy questions" },
+  { role: "Security", email: "security@usealoha.app", note: "Vulnerabilities, incident reports" },
+  { role: "Compliance", email: "compliance@usealoha.app", note: "Audits, SOC 2, questionnaires" },
+  { role: "Privacy / DPO", email: "privacy@usealoha.app", note: "Data access, deletion, GDPR requests" },
+  { role: "AI", email: "ai@usealoha.app", note: "Responsible-AI policy questions" },
 ];
 
 export default function TrustPage() {
@@ -109,7 +109,7 @@ export default function TrustPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               <a
-                href="mailto:security@aloha.social"
+                href="mailto:security@usealoha.app"
                 className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
               >
                 <Mail className="w-3.5 h-3.5" />
@@ -181,8 +181,8 @@ export default function TrustPage() {
 
           <p className="mt-8 text-[13px] text-ink/60">
             SOC 2 Type II report available under NDA —{" "}
-            <a href="mailto:compliance@aloha.social" className="pencil-link text-ink">
-              compliance@aloha.social
+            <a href="mailto:compliance@usealoha.app" className="pencil-link text-ink">
+              compliance@usealoha.app
             </a>
             .
           </p>
@@ -485,11 +485,11 @@ export default function TrustPage() {
 
                 <div className="col-span-2 flex flex-wrap gap-3 mt-2">
                   <a
-                    href="mailto:security@aloha.social"
+                    href="mailto:security@usealoha.app"
                     className="inline-flex items-center gap-2 h-11 px-5 rounded-full bg-peach-300 text-ink text-[13px] font-medium hover:bg-peach-400 transition-colors"
                   >
                     <Mail className="w-3.5 h-3.5" />
-                    security@aloha.social
+                    security@usealoha.app
                   </a>
                   <Link
                     href={routes.legal.security}

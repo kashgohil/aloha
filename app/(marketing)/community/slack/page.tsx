@@ -251,10 +251,10 @@ export default function SlackCommunityPage() {
 								Moderation here is three people with name-tags. They're gentle,
 								direct, and don't pile on. If something's off, message{" "}
 								<a
-									href="mailto:moderators@aloha.social"
+									href="mailto:moderators@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									moderators@aloha.social
+									moderators@usealoha.app
 								</a>
 								.
 							</p>

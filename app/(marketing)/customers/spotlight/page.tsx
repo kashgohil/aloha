@@ -321,10 +321,10 @@ export default function SpotlightPage() {
 							</div>
 							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
 								<a
-									href="mailto:spotlight@aloha.social"
+									href="mailto:spotlight@usealoha.app"
 									className="inline-flex items-center gap-2 h-12 px-6 rounded-full text-[14px] font-medium bg-primary transition-colors"
 								>
-									spotlight@aloha.social
+									spotlight@usealoha.app
 									<ArrowRight className="w-4 h-4" />
 								</a>
 								<Link

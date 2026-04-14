@@ -164,10 +164,10 @@ export default function PartnersPage() {
 								Apply
 							</a>
 							<a
-								href="mailto:partners@aloha.social"
+								href="mailto:partners@usealoha.app"
 								className="mt-4 inline-flex items-center gap-2 text-[14px] font-medium text-ink pencil-link"
 							>
-								partners@aloha.social
+								partners@usealoha.app
 								<ArrowUpRight className="w-4 h-4" />
 							</a>
 						</div>
@@ -462,7 +462,7 @@ export default function PartnersPage() {
 								See affiliate
 							</Link>
 							<a
-								href="mailto:partners@aloha.social"
+								href="mailto:partners@usealoha.app"
 								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								Or write us

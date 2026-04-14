@@ -98,10 +98,10 @@ export default function PressPage() {
 								quotes, and a direct press contact. If you need something that
 								isn't here, email{" "}
 								<a
-									href="mailto:press@aloha.social"
+									href="mailto:press@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									press@aloha.social
+									press@usealoha.app
 								</a>{" "}
 								— same-day reply in business hours.
 							</p>
@@ -115,11 +115,11 @@ export default function PressPage() {
 								Jump to downloads
 							</a>
 							<a
-								href="mailto:press@aloha.social"
+								href="mailto:press@usealoha.app"
 								className="mt-4 inline-flex items-center gap-2 text-[14px] font-medium text-ink pencil-link"
 							>
 								<Mail className="w-4 h-4" />
-								press@aloha.social
+								press@usealoha.app
 							</a>
 						</div>
 					</div>
@@ -250,7 +250,7 @@ export default function PressPage() {
 
 						<p className="mt-10 text-[12.5px] text-ink/55 max-w-xl font-mono">
 							Asset links in this kit currently resolve to placeholder zips
-							(press @ aloha.social to request the real files while we migrate
+							(press @ usealoha.app to request the real files while we migrate
 							the download CDN).
 						</p>
 					</div>
@@ -322,10 +322,10 @@ export default function PressPage() {
 							<p className="mt-5 text-[15.5px] text-ink/70 max-w-xl leading-[1.6]">
 								If you want a custom quote for your angle, email{" "}
 								<a
-									href="mailto:press@aloha.social"
+									href="mailto:press@usealoha.app"
 									className="pencil-link text-ink"
 								>
-									press@aloha.social
+									press@usealoha.app
 								</a>{" "}
 								— we turn those around in a day.
 							</p>
@@ -379,10 +379,10 @@ export default function PressPage() {
 							</div>
 							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
 								<a
-									href="mailto:press@aloha.social"
+									href="mailto:press@usealoha.app"
 									className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-primary text-background text-[14px] font-medium hover:bg-primary/90 transition-colors"
 								>
-									press@aloha.social
+									press@usealoha.app
 									<ArrowRight className="w-4 h-4" />
 								</a>
 								<a
