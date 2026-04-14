@@ -15,6 +15,13 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
+  // Workspace / onboarding fields
+  workspaceName: text("workspaceName"),
+  role: text("role", {
+    enum: ["solo", "creator", "team", "agency", "nonprofit"],
+  }),
+  timezone: text("timezone"),
+  onboardedAt: timestamp("onboardedAt", { mode: "date" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

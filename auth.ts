@@ -49,6 +49,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientSecret: env.AUTH_TIKTOK_SECRET,
     }),
   ],
+  pages: {
+    signIn: "/auth/signin",
+    error: "/auth/error",
+    verifyRequest: "/auth/verify-request",
+    newUser: "/auth/onboarding/workspace",
+  },
   callbacks: {
     async session({ session, user }) {
       if (session.user) {
