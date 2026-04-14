@@ -1,12 +1,15 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Mail, ArrowUpRight, Clock } from "lucide-react";
+import { makeMetadata } from "@/lib/seo";
+import { routes } from "@/lib/routes";
 import { AuthShell } from "../_components/auth-shell";
 
-export const metadata: Metadata = {
-  title: "Check your email — Aloha",
+export const metadata = makeMetadata({
+  title: "Check your email",
   description: "We sent you a sign-in link. Open it on this device.",
-};
+  path: routes.verifyRequest,
+  noindex: true,
+});
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 

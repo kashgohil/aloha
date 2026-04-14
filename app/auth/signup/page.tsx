@@ -1,15 +1,18 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertCircle } from "lucide-react";
 import { signIn } from "@/auth";
+import { makeMetadata } from "@/lib/seo";
+import { routes } from "@/lib/routes";
 import { AuthShell } from "../_components/auth-shell";
 import { ProviderButton } from "../_components/provider-button";
 
-export const metadata: Metadata = {
-  title: "Create your workspace — Aloha",
+export const metadata = makeMetadata({
+  title: "Create your workspace",
   description:
     "Start a free Aloha workspace. Three channels, ten posts per channel per month, no card.",
-};
+  path: routes.signup,
+  noindex: true,
+});
 
 const ERROR_MESSAGES: Record<string, string> = {
   OAuthAccountNotLinked:

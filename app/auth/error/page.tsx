@@ -1,13 +1,15 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { AuthShell } from "../_components/auth-shell";
+import { makeMetadata } from "@/lib/seo";
 import { routes } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "Sign-in problem — Aloha",
+export const metadata = makeMetadata({
+  title: "Sign-in problem",
   description: "We ran into a problem signing you in.",
-};
+  path: routes.authError,
+  noindex: true,
+});
 
 type ErrorKind = {
   title: string;

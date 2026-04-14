@@ -1,13 +1,16 @@
-import type { Metadata } from "next";
 import { AlertCircle, Users, User, Building2, Heart, Sparkles } from "lucide-react";
 import { getCurrentUser } from "@/lib/current-user";
+import { makeMetadata } from "@/lib/seo";
+import { routes } from "@/lib/routes";
 import { saveWorkspace } from "../actions";
 import { ProgressRail } from "../_components/progress-rail";
 import { cn } from "@/lib/utils";
 
-export const metadata: Metadata = {
-  title: "Name your workspace — Aloha",
-};
+export const metadata = makeMetadata({
+  title: "Name your workspace",
+  path: routes.onboarding.workspace,
+  noindex: true,
+});
 
 const ROLES = [
   {

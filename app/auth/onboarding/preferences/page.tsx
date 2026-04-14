@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, Plug } from "lucide-react";
@@ -6,11 +5,14 @@ import { getCurrentUser } from "@/lib/current-user";
 import { finishOnboarding } from "../actions";
 import { ProgressRail } from "../_components/progress-rail";
 import { TimezoneSelect } from "../_components/timezone-select";
+import { makeMetadata } from "@/lib/seo";
 import { routes } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "Preferences — Aloha",
-};
+export const metadata = makeMetadata({
+  title: "Preferences",
+  path: routes.onboarding.preferences,
+  noindex: true,
+});
 
 function getTimezones(): string[] {
   // Node 18+ / modern browsers support Intl.supportedValuesOf.
