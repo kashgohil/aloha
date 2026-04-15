@@ -6,10 +6,10 @@ import { effectivePrice, FREE_TIER_CHANNELS } from "@/lib/billing/pricing";
 import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
 import { routes } from "@/lib/routes";
 import { eq } from "drizzle-orm";
-import { AlertTriangle, CheckCircle2, Sparkle } from "lucide-react";
+import { CheckCircle2, Sparkle } from "lucide-react";
 import { redirect } from "next/navigation";
-import { cancelMyPlan } from "./actions";
 import { ChannelAdjuster } from "./_components/channel-adjuster";
+import { DangerZone } from "./_components/danger-zone";
 import { IntervalSwitch } from "./_components/interval-switch";
 import { InvoicesList } from "./_components/invoices";
 import { MuseToggleSection } from "./_components/muse-toggle-section";
@@ -117,7 +117,12 @@ export default async function BillingPage({
 
 			<InvoicesList invoices={invoices} />
 
-			<DangerZone cancelAtPeriodEnd={sub.cancelAtPeriodEnd} />
+			<DangerZone
+				cancelAtPeriodEnd={sub.cancelAtPeriodEnd}
+				currentPeriodEndISO={currentPeriodEndISO}
+				freeTierChannels={FREE_TIER_CHANNELS}
+				currentChannels={sub.channels}
+			/>
 		</div>
 	);
 }
@@ -270,36 +275,3 @@ function PlanSummary({
 	);
 }
 
-function DangerZone({ cancelAtPeriodEnd }: { cancelAtPeriodEnd: boolean }) {
-	return (
-		<form
-			action={cancelMyPlan}
-			className="rounded-3xl border border-dashed border-border-strong p-6 lg:p-8"
-		>
-			<div className="flex items-start gap-4">
-				<span className="mt-[2px] w-9 h-9 rounded-full bg-background border border-border-strong grid place-items-center shrink-0">
-					<AlertTriangle className="w-4 h-4 text-ink/65" />
-				</span>
-				<div className="flex-1 min-w-0">
-					<p className="text-[13.5px] text-ink font-medium">
-						{cancelAtPeriodEnd
-							? "Your plan is already set to cancel."
-							: "Cancel subscription"}
-					</p>
-					<p className="mt-1 text-[12.5px] text-ink/60 leading-[1.55] max-w-2xl">
-						You&apos;ll keep paid features until the end of the current period,
-						then drop back to the free tier ({FREE_TIER_CHANNELS} channels).
-						Connected accounts beyond the free limit are paused, not deleted.
-					</p>
-				</div>
-				<button
-					type="submit"
-					disabled={cancelAtPeriodEnd}
-					className="inline-flex items-center h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-primary-deep hover:bg-peach-100/60 transition-colors disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-ink/65"
-				>
-					Cancel plan
-				</button>
-			</div>
-		</form>
-	);
-}

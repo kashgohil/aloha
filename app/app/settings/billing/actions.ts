@@ -9,6 +9,7 @@ import { accounts } from "@/db/schema";
 import {
 	cancelSubscription,
 	createCheckout,
+	resumeSubscription,
 	setBillingInterval,
 	setMuseEnabled,
 	syncChannelQuantity,
@@ -59,6 +60,12 @@ export async function updateChannels(formData: FormData) {
 export async function cancelMyPlan() {
 	const userId = await requireUserId();
 	await cancelSubscription(userId);
+	revalidatePath("/app/settings/billing");
+}
+
+export async function resumeMyPlan() {
+	const userId = await requireUserId();
+	await resumeSubscription(userId);
 	revalidatePath("/app/settings/billing");
 }
 
