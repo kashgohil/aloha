@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
@@ -9,6 +9,7 @@ import {
   Loader2,
   Paperclip,
   Plug,
+  RotateCcw,
   Send,
   Sparkles,
   X as XIcon,
@@ -16,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { refineContent } from "@/app/actions/ai";
 import { saveDraft, schedulePost } from "@/app/actions/posts";
-import type { PostMedia } from "@/db/schema";
+import type { ChannelOverride, PostMedia } from "@/db/schema";
 import {
   BlueskyIcon,
   FacebookIcon,
@@ -66,6 +67,8 @@ const PLATFORMS: Platform[] = [
   { id: "bluesky", name: "Bluesky", handle: "@handle", limit: 300, accent: "bg-[#0085ff] text-white" },
 ];
 
+type TabId = "all" | string;
+
 export function Composer({
   author,
   connectedProviders,
@@ -74,13 +77,15 @@ export function Composer({
   connectedProviders: string[];
 }) {
   const router = useRouter();
-  const [content, setContent] = useState("");
+  const [baseContent, setBaseContent] = useState("");
+  const [baseMedia, setBaseMedia] = useState<PostMedia[]>([]);
+  const [overrides, setOverrides] = useState<Record<string, ChannelOverride>>({});
   const [selected, setSelected] = useState<string[]>(
     connectedProviders.length > 0 ? [connectedProviders[0]] : ["twitter"],
   );
+  const [activeTab, setActiveTab] = useState<TabId>("all");
   const [scheduledAt, setScheduledAt] = useState("");
   const [showSchedule, setShowSchedule] = useState(false);
-  const [media, setMedia] = useState<PostMedia[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isRefining, startRefining] = useTransition();
   const [isSaving, startSaving] = useTransition();
@@ -88,22 +93,76 @@ export function Composer({
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const shortestLimit = useMemo(
-    () =>
-      Math.min(
-        ...PLATFORMS.filter((p) => selected.includes(p.id)).map((p) => p.limit),
-      ),
-    [selected],
-  );
+  // If the active tab's platform gets deselected, fall back to "all".
+  useEffect(() => {
+    if (activeTab !== "all" && !selected.includes(activeTab)) {
+      setActiveTab("all");
+    }
+  }, [activeTab, selected]);
 
-  const overLimit = content.length > shortestLimit;
-  const hasBody = content.trim().length > 0 || media.length > 0;
+  const selectedPlatforms = PLATFORMS.filter((p) => selected.includes(p.id));
+  const activePlatform =
+    activeTab === "all" ? null : PLATFORMS.find((p) => p.id === activeTab) ?? null;
+
+  const effectiveContent = (platformId: string): string =>
+    overrides[platformId]?.content ?? baseContent;
+
+  const isOverridden = (platformId: string): boolean =>
+    typeof overrides[platformId]?.content === "string";
+
+  const editorValue =
+    activeTab === "all" ? baseContent : effectiveContent(activeTab);
+
+  const activeLimit = activePlatform
+    ? activePlatform.limit
+    : selectedPlatforms.length > 0
+      ? Math.min(...selectedPlatforms.map((p) => p.limit))
+      : Number.POSITIVE_INFINITY;
+
+  // Validate every selected channel's effective content — a too-long override
+  // on a background tab still blocks publish.
+  const perPlatformOverflow = selectedPlatforms
+    .map((p) => ({ platform: p, over: effectiveContent(p.id).length > p.limit }))
+    .filter((x) => x.over);
+
+  const overLimit = perPlatformOverflow.length > 0;
+  const hasBody =
+    baseContent.trim().length > 0 ||
+    baseMedia.length > 0 ||
+    selectedPlatforms.some(
+      (p) => (overrides[p.id]?.content ?? "").trim().length > 0,
+    );
   const canSubmit =
     hasBody && selected.length > 0 && !overLimit && !isUploading;
 
+  const handleEditorChange = (value: string) => {
+    if (activeTab === "all") {
+      setBaseContent(value);
+    } else {
+      setOverrides((prev) => ({
+        ...prev,
+        [activeTab]: { ...prev[activeTab], content: value },
+      }));
+    }
+  };
+
+  const handleResetOverride = (platformId: string) => {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      const entry = { ...next[platformId] };
+      delete entry.content;
+      if (entry.media === undefined) {
+        delete next[platformId];
+      } else {
+        next[platformId] = entry;
+      }
+      return next;
+    });
+  };
+
   const handleFilesSelected = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const remaining = MAX_MEDIA - media.length;
+    const remaining = MAX_MEDIA - baseMedia.length;
     const toUpload = Array.from(files).slice(0, remaining);
     if (toUpload.length === 0) return;
     setFormError(null);
@@ -123,7 +182,7 @@ export function Composer({
         const json = (await res.json()) as { url: string; mimeType: string };
         uploaded.push({ url: json.url, mimeType: json.mimeType });
       }
-      setMedia((prev) => [...prev, ...uploaded]);
+      setBaseMedia((prev) => [...prev, ...uploaded]);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
@@ -133,7 +192,7 @@ export function Composer({
   };
 
   const removeMedia = (url: string) =>
-    setMedia((prev) => prev.filter((m) => m.url !== url));
+    setBaseMedia((prev) => prev.filter((m) => m.url !== url));
 
   const toggle = (id: string) =>
     setSelected((prev) =>
@@ -141,24 +200,32 @@ export function Composer({
     );
 
   const handleRefine = () => {
-    if (!content.trim()) return;
+    if (!editorValue.trim()) return;
     setFormError(null);
     startRefining(async () => {
       try {
-        const refined = await refineContent(content, selected[0] ?? "general");
-        setContent(refined);
+        const context = activePlatform?.id ?? selected[0] ?? "general";
+        const refined = await refineContent(editorValue, context);
+        handleEditorChange(refined);
       } catch {
         setFormError("Refine failed. Try again in a moment.");
       }
     });
   };
 
+  const buildPayload = () => ({
+    content: baseContent,
+    platforms: selected,
+    media: baseMedia,
+    channelContent: overrides,
+  });
+
   const handleSaveDraft = () => {
     if (!canSubmit) return;
     setFormError(null);
     startSaving(async () => {
       try {
-        await saveDraft(content, selected, media);
+        await saveDraft(buildPayload());
         router.push("/app/dashboard");
       } catch {
         setFormError("Couldn't save draft. Please try again.");
@@ -171,7 +238,10 @@ export function Composer({
     setFormError(null);
     startPublishing(async () => {
       try {
-        await schedulePost(content, selected, new Date(scheduledAt), media);
+        await schedulePost({
+          ...buildPayload(),
+          scheduledAt: new Date(scheduledAt),
+        });
         router.push("/app/dashboard");
       } catch {
         setFormError("Couldn't schedule. Check the time and try again.");
@@ -184,15 +254,13 @@ export function Composer({
     setFormError(null);
     startPublishing(async () => {
       try {
-        await schedulePost(content, selected, new Date(), media);
+        await schedulePost({ ...buildPayload(), scheduledAt: new Date() });
         router.push("/app/dashboard");
       } catch {
         setFormError("Couldn't publish. Please try again.");
       }
     });
   };
-
-  const displayPlatforms = PLATFORMS.filter((p) => selected.includes(p.id));
 
   return (
     <div className="space-y-10">
@@ -264,7 +332,6 @@ export function Composer({
         <div className="flex flex-wrap gap-1.5">
           {PLATFORMS.map((p) => {
             const isSelected = selected.includes(p.id);
-            const isConnected = connectedProviders.includes(p.id);
             const Icon = PLATFORM_ICONS[p.id];
             return (
               <button
@@ -298,18 +365,72 @@ export function Composer({
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Editor */}
         <div className="lg:col-span-7">
+          {/* Tab strip */}
+          <div
+            role="tablist"
+            aria-label="Content scope"
+            className="flex flex-wrap items-center gap-1 mb-3"
+          >
+            <TabButton
+              active={activeTab === "all"}
+              onClick={() => setActiveTab("all")}
+            >
+              All channels
+            </TabButton>
+            {selectedPlatforms.map((p) => {
+              const Icon = PLATFORM_ICONS[p.id];
+              const over = effectiveContent(p.id).length > p.limit;
+              return (
+                <TabButton
+                  key={p.id}
+                  active={activeTab === p.id}
+                  onClick={() => setActiveTab(p.id)}
+                  dot={isOverridden(p.id)}
+                  warn={over}
+                >
+                  {Icon && <Icon className="w-3.5 h-3.5" />}
+                  {p.name}
+                </TabButton>
+              );
+            })}
+          </div>
+
           <div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
+            {activePlatform ? (
+              <div className="flex items-center justify-between gap-3 px-5 pt-4 text-[12px] text-ink/60">
+                <span>
+                  {isOverridden(activePlatform.id)
+                    ? `Customized for ${activePlatform.name}.`
+                    : `Inheriting from all channels. Edit to customize for ${activePlatform.name}.`}
+                </span>
+                {isOverridden(activePlatform.id) ? (
+                  <button
+                    type="button"
+                    onClick={() => handleResetOverride(activePlatform.id)}
+                    className="inline-flex items-center gap-1 text-[12px] text-ink/70 hover:text-ink transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    Reset to base
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
             <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="Write something worth showing up for…"
+              value={editorValue}
+              onChange={(e) => handleEditorChange(e.target.value)}
+              placeholder={
+                activePlatform
+                  ? `Write a version tailored for ${activePlatform.name}…`
+                  : "Write something worth showing up for…"
+              }
               className="w-full min-h-[340px] p-7 lg:p-8 bg-transparent focus:outline-none resize-none text-[17px] leading-[1.6] text-ink placeholder:text-ink/35 font-sans"
               aria-label="Post content"
             />
 
-            {media.length > 0 ? (
+            {baseMedia.length > 0 ? (
               <div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {media.map((m) => (
+                {baseMedia.map((m) => (
                   <div
                     key={m.url}
                     className="relative aspect-square rounded-xl overflow-hidden border border-border bg-background"
@@ -346,11 +467,11 @@ export function Composer({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading || media.length >= MAX_MEDIA}
+                  disabled={isUploading || baseMedia.length >= MAX_MEDIA}
                   className="inline-flex items-center justify-center w-9 h-9 rounded-full text-ink/60 hover:text-ink hover:bg-muted/60 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
                   aria-label="Attach image"
                   title={
-                    media.length >= MAX_MEDIA
+                    baseMedia.length >= MAX_MEDIA
                       ? `Up to ${MAX_MEDIA} images`
                       : "Attach image"
                   }
@@ -363,22 +484,21 @@ export function Composer({
                 </button>
                 <div className="w-px h-5 bg-border mx-2" />
                 <CharCounter
-                  length={content.length}
-                  limit={shortestLimit}
-                  over={overLimit}
+                  length={editorValue.length}
+                  limit={activeLimit}
                   tightestPlatforms={
-                    overLimit
-                      ? PLATFORMS.filter(
-                          (p) => selected.includes(p.id) && p.limit === shortestLimit,
-                        ).map((p) => p.name)
-                      : []
+                    activePlatform
+                      ? editorValue.length > activeLimit
+                        ? [activePlatform.name]
+                        : []
+                      : perPlatformOverflow.map((x) => x.platform.name)
                   }
                 />
               </div>
               <button
                 type="button"
                 onClick={handleRefine}
-                disabled={isRefining || !content.trim()}
+                disabled={isRefining || !editorValue.trim()}
                 className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors"
               >
                 {isRefining ? (
@@ -392,9 +512,9 @@ export function Composer({
           </div>
 
           <p className="mt-4 text-[12px] text-ink/50 leading-[1.5]">
-            Tip: write for the network with the shortest limit, then let the
-            previews flex. Refine trims, clarifies, and re-paces without
-            rewriting your voice.
+            {activePlatform
+              ? "Changes here only affect this channel. Switch to All channels to edit the shared copy."
+              : "Tip: write once for everyone, then open a channel tab to fine-tune the version that ships there."}
           </p>
         </div>
 
@@ -403,18 +523,24 @@ export function Composer({
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-3">
             Live preview
           </p>
-          {displayPlatforms.length === 0 ? (
+          {selectedPlatforms.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border-strong bg-background-elev px-6 py-10 text-center text-[13px] text-ink/55">
               Pick a channel to see the preview.
             </div>
+          ) : activePlatform ? (
+            <PreviewCard
+              platform={activePlatform}
+              author={author}
+              content={effectiveContent(activePlatform.id)}
+            />
           ) : (
             <div className="space-y-4">
-              {displayPlatforms.map((p) => (
+              {selectedPlatforms.map((p) => (
                 <PreviewCard
                   key={p.id}
                   platform={p}
                   author={author}
-                  content={content}
+                  content={effectiveContent(p.id)}
                 />
               ))}
             </div>
@@ -425,17 +551,62 @@ export function Composer({
   );
 }
 
+function TabButton({
+  active,
+  onClick,
+  children,
+  dot,
+  warn,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  dot?: boolean;
+  warn?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={cn(
+        "relative inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12.5px] font-medium transition-colors",
+        active
+          ? "bg-ink text-background border-ink"
+          : "bg-background-elev text-ink/70 border-border-strong hover:border-ink hover:text-ink",
+      )}
+    >
+      {children}
+      {warn ? (
+        <span
+          className="inline-block w-1.5 h-1.5 rounded-full bg-primary-deep"
+          aria-label="Over limit"
+        />
+      ) : dot ? (
+        <span
+          className={cn(
+            "inline-block w-1.5 h-1.5 rounded-full",
+            active ? "bg-background" : "bg-primary",
+          )}
+          aria-label="Customized"
+        />
+      ) : null}
+    </button>
+  );
+}
+
 function CharCounter({
   length,
   limit,
-  over,
   tightestPlatforms,
 }: {
   length: number;
   limit: number;
-  over: boolean;
   tightestPlatforms: string[];
 }) {
+  const over = length > limit;
+  const hasFiniteLimit = Number.isFinite(limit);
   return (
     <div className="flex items-center gap-2 text-[12px]">
       <span
@@ -444,9 +615,10 @@ function CharCounter({
           over ? "text-primary-deep" : "text-ink/60",
         )}
       >
-        {length} / {limit}
+        {length}
+        {hasFiniteLimit ? ` / ${limit}` : ""}
       </span>
-      {over ? (
+      {tightestPlatforms.length > 0 ? (
         <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary-deep">
           <AlertCircle className="w-3 h-3" />
           Too long for {tightestPlatforms.join(", ")}
