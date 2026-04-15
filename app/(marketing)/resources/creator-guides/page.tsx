@@ -33,7 +33,7 @@ const PATHS = [
 	{
 		slug: "calendar-cadence",
 		icon: CalendarDays,
-		title: "Calendar &amp; cadence",
+		title: "Calendar & cadence",
 		lead: "Set up a posting rhythm you can keep — weekly, monthly, launch arcs — without burnout.",
 		lessons: 5,
 		minutes: "35 min total",
@@ -189,7 +189,7 @@ export default function CreatorGuidesIndexPage() {
 									<p className="mt-3 text-[14px] text-ink/75 leading-[1.6]">
 										{p.lead}
 									</p>
-									<span className="mt-auto pt-6 pencil-link text-[13px] font-medium text-ink inline-flex items-center gap-2">
+									<span className="self-start mt-auto pt-6 pencil-link text-[13px] font-medium text-ink inline-flex items-center gap-2">
 										Start path
 										<ArrowUpRight className="w-3.5 h-3.5" />
 									</span>
@@ -204,7 +204,7 @@ export default function CreatorGuidesIndexPage() {
 			<section className="bg-ink relative">
 				<div
 					aria-hidden
-					className="absolute inset-0 top-2! opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+					className="absolute inset-0 top-2! opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-20 lg:py-24 bg-background-elev pb-32 lg:pb-40 wavy">
 					<div className="max-w-[1180px] mx-auto px-6 lg:px-10 grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-16 items-start">
