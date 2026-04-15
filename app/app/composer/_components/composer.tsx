@@ -298,7 +298,7 @@ export function Composer({
                 ) : (
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                 )}
-                Refine with AI
+                Refine
               </button>
             </div>
           </div>
