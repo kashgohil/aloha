@@ -6,6 +6,7 @@ import {
 	Check,
 	Inbox as InboxIcon,
 	MessageSquareQuote,
+	Sparkle,
 	Users,
 } from "lucide-react";
 import Link from "next/link";
@@ -14,7 +15,7 @@ import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 export const metadata = makeMetadata({
 	title: "Inbox — every comment, DM and mention, in one quiet list",
 	description:
-		"Aloha's Inbox unifies the comments, DMs and mentions across every channel into one triageable feed. Reply once, in your voice.",
+		"Aloha's Inbox unifies the comments, DMs and mentions across every channel into one triageable feed. Reply once, in your voice — with drafts suggested by Muse where you've switched it on.",
 	path: routes.product.inbox,
 });
 
@@ -122,7 +123,7 @@ export default function InboxPage() {
 							</span>
 							<span className="inline-flex items-center gap-2">
 								<Check className="w-3.5 h-3.5 text-primary" strokeWidth={2.5} />
-								AI reply drafts on voice
+								Muse reply drafts on voice
 							</span>
 							<span className="inline-flex items-center gap-2">
 								<Check className="w-3.5 h-3.5 text-primary" strokeWidth={2.5} />
@@ -254,8 +255,9 @@ export default function InboxPage() {
 				<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 					<div className="grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-10 mb-14">
 						<div className="col-span-12 lg:col-span-6">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
-								Reply drafts, in your voice
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4 inline-flex items-center gap-2">
+								<Sparkle className="w-3 h-3 text-primary" />
+								Reply drafts by Muse
 							</p>
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Never start
@@ -264,9 +266,11 @@ export default function InboxPage() {
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-5 lg:col-start-8 text-[16px] text-ink/70 leading-[1.6] self-end">
-							The same voice model that powers Composer drafts the reply too —
-							three variants, short to long, adjusted to the channel convention.
-							Edit or send as-is. You're the last set of eyes, always.
+							<span className="font-medium text-ink">Muse</span> — the same
+							voice model that powers Composer — drafts the reply too, three
+							variants short to long, adjusted to the channel convention. Edit
+							or send as-is. You're the last set of eyes, always. Available on
+							every channel you've switched Muse on for.
 						</p>
 					</div>
 
@@ -322,7 +326,7 @@ export default function InboxPage() {
 											Draft · {r.len}
 										</span>
 										<span className="text-[11px] text-primary font-medium">
-											voice match 92%
+											Muse match 92%
 										</span>
 									</div>
 									<p className="text-[13.5px] text-ink/85 leading-[1.55]">

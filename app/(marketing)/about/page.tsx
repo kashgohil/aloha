@@ -21,7 +21,7 @@ const TIMELINE = [
 	{
 		year: "2024",
 		label: "First prototype",
-		body: "We built the Composer on weekends. Forty friends tried it. The voice model — trained on your best posts, not your whole archive — was the piece that people kept asking us to turn into a product.",
+		body: "We built the Composer on weekends. Forty friends tried it. Muse — the voice model, trained on your best posts, not your whole archive — was the piece that people kept asking us to turn into a product.",
 		tone: "bg-peach-200",
 	},
 	{

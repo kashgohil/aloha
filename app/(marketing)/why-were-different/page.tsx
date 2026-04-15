@@ -80,7 +80,7 @@ export default function WhyWereDifferentPage() {
                     generic templates: "🚀 5 lessons I learned from a
                     plumber", "Here's a hot take that will get engagement."
                     They're fast and they sound like everybody else. We
-                    built a voice model that trains on your best posts —
+                    built Muse, a voice model that trains on your best posts —
                     not your whole archive, just the ones that sounded
                     like you — so the rewrites it hands back have your
                     cadence, your hook habits, your line breaks.{" "}
@@ -88,7 +88,9 @@ export default function WhyWereDifferentPage() {
                       The result is slower to start with and much harder
                       to spot as AI.
                     </span>{" "}
-                    That trade felt worth it.
+                    That trade felt worth it — which is why Muse is
+                    priced as a per-channel switch you only pay for
+                    where it's actually earning its keep.
                   </>
                 ),
               },

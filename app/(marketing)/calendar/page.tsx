@@ -185,7 +185,7 @@ export default function CalendarPage() {
 								{/* footer summary */}
 								<div className="px-5 py-3 border-t border-border bg-muted/40 flex items-center justify-between">
 									<span className="text-[11px] text-ink/55">
-										all channels on voice
+										all channels on-voice · Muse
 									</span>
 									<div className="flex items-center gap-3">
 										<button className="text-[11px] text-ink/70 pencil-link">

@@ -32,8 +32,8 @@ const CATEGORIES = [
 	},
 	{
 		icon: BookOpen,
-		h: "Composer & voice",
-		p: "Training the voice model, per-channel rewrites, approval flows.",
+		h: "Composer & Muse",
+		p: "Training Muse (the voice model), per-channel rewrites, approval flows.",
 		count: 22,
 		tone: "bg-primary-soft",
 	},
@@ -74,13 +74,13 @@ const TOP_ARTICLES = [
 		read: "3 min",
 	},
 	{
-		h: "Training the voice model — step by step",
-		c: "Composer & voice",
+		h: "Training Muse on your writing — step by step",
+		c: "Composer & Muse",
 		read: "5 min",
 	},
 	{
-		h: "Setting up per-brand voice for a team",
-		c: "Composer & voice",
+		h: "Setting up per-brand Muse profiles for a team",
+		c: "Composer & Muse",
 		read: "4 min",
 	},
 	{
@@ -322,7 +322,7 @@ export default function HelpCenterPage() {
 			<section className="py-20 lg:py-28 bg-ink relative wavy text-background-elev">
 				<div
 					aria-hidden
-					className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+					className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="max-w-[1180px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
 					<div className="p-10 lg:p-14 rounded-3xl overflow-hidden relative">

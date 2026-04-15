@@ -192,7 +192,7 @@ export default async function ChannelPage({
 
 								<div className="px-5 py-3 border-t border-ink/10 bg-background-elev/50 flex items-center justify-between">
 									<span className="text-[11px] text-ink/60">
-										all on voice · 93%
+										Muse match · 93%
 									</span>
 									<button className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-ink text-background text-[11.5px] font-medium">
 										Schedule
