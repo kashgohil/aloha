@@ -112,5 +112,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Pricing.
   entries.push(entry(routes.pricing, 0.95, "weekly"));
 
+  // Human-readable utility pages (footer).
+  entries.push(entry(routes.misc.sitemap, 0.3, "monthly"));
+  entries.push(entry(routes.misc.accessibility, 0.3, "yearly"));
+
   return entries;
 }
