@@ -39,6 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authenticatorsTable: authenticators,
   }),
   secret: env.AUTH_SECRET,
+  debug: process.env.NODE_ENV !== "production",
   session: { strategy: "jwt" },
   providers: [
     Credentials({
@@ -86,6 +87,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: env.AUTH_TWITTER_ID,
       clientSecret: env.AUTH_TWITTER_SECRET,
       authorization: {
+        url: "https://x.com/i/oauth2/authorize",
         params: {
           scope:
             "tweet.read tweet.write users.read media.write offline.access",
@@ -96,7 +98,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: env.AUTH_LINKEDIN_ID,
       clientSecret: env.AUTH_LINKEDIN_SECRET,
       authorization: {
-        params: { scope: "r_liteprofile r_emailaddress w_member_social" },
+        params: { scope: "openid profile email w_member_social" },
       },
     }),
     Facebook({
