@@ -50,6 +50,11 @@ const envSchema = z.object({
   POLAR_PRODUCT_BASIC_YEAR: z.string().optional(),
   POLAR_PRODUCT_BUNDLE_MONTH: z.string().optional(),
   POLAR_PRODUCT_BUNDLE_YEAR: z.string().optional(),
+
+  // Vercel Blob — keep dev and prod on separate stores. Create one "development"
+  // Blob store and one "production" Blob store on Vercel, then set this token
+  // per environment. Local dev uses the development store's token in .env.local.
+  BLOB_READ_WRITE_TOKEN: z.string().min(1),
 });
 
 // Validate process.env
