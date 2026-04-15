@@ -23,6 +23,37 @@ export const users = pgTable("users", {
   }),
   timezone: text("timezone"),
   onboardedAt: timestamp("onboardedAt", { mode: "date" }),
+  // Billing — lazy-created on first checkout
+  polarCustomerId: text("polarCustomerId").unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// One row per Polar subscription. A user with Basic + Muse has two rows;
+// the BillingService presents them as a single logical subscription.
+export const subscriptions = pgTable("subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  polarSubscriptionId: text("polarSubscriptionId").notNull().unique(),
+  // Which product family this subscription is on. "basic" = Basic-only,
+  // "bundle" = Basic+Muse combined. Switching between these is a product
+  // migration on the same Polar subscription — no second checkout.
+  productKey: text("productKey", { enum: ["basic", "bundle"] }).notNull(),
+  status: text("status", {
+    enum: [
+      "incomplete",
+      "active",
+      "past_due",
+      "canceled",
+      "revoked",
+    ],
+  }).notNull(),
+  interval: text("interval", { enum: ["month", "year"] }).notNull(),
+  seats: integer("seats").notNull().default(1),
+  currentPeriodEnd: timestamp("currentPeriodEnd", { mode: "date" }),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

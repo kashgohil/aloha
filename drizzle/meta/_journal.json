@@ -8,6 +8,13 @@
       "when": 1776185376689,
       "tag": "0000_special_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776253864767,
+      "tag": "0001_brown_giant_girl",
+      "breakpoints": true
     }
   ]
 }
