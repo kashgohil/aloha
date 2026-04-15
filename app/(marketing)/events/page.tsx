@@ -432,14 +432,10 @@ export default function EventsPage() {
 			<section className="py-8 lg:py-12 bg-ink relative wavy text-background-elev">
 				<div
 					aria-hidden
-					className="absolute inset-0 opacity-10 -z-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+					className="absolute inset-0 opacity-20 -z-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="max-w-[1180px] mx-auto px-6 lg:px-10 pb-12 lg:pb-16">
-					<div className="p-10 lg:p-14 rounded-3xl bg-ink text-background-elev overflow-hidden relative">
-						<div
-							aria-hidden
-							className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
-						/>
+					<div className="p-10 lg:p-14 rounded-3xl overflow-hidden relative">
 						<div className="relative grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-8 items-center">
 							<div className="col-span-12 lg:col-span-8">
 								<Users className="w-7 h-7 text-peach-300 mb-5" />

@@ -358,7 +358,7 @@ export default function PressPage() {
 			<section className="py-24 lg:py-32 bg-ink relative wavy pb-32 lg:pb-40 text-background-elev">
 				<div
 					aria-hidden
-					className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+					className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="max-w-[1180px] mx-auto px-6 lg:px-10">
 					<div className="p-10 lg:p-14 rounded-3xl overflow-hidden relative">

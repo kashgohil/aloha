@@ -389,7 +389,7 @@ export default function TemplatesPage() {
 						<section className="bg-ink relative">
 							<div
 								aria-hidden
-								className="absolute inset-0 top-2! opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+								className="absolute inset-0 top-2! opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 							/>
 							{content}
 						</section>
@@ -403,7 +403,7 @@ export default function TemplatesPage() {
 			<section className="py-20 lg:py-24 bg-ink relative wavy text-background-elev">
 				<div
 					aria-hidden
-					className="absolute inset-0 opacity-[0.08] bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
+					className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="max-w-[1180px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
 					<div className="p-10 lg:p-14 rounded-3xl overflow-hidden relative">
