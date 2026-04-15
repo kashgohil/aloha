@@ -5,15 +5,17 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-	/* Warm cream editorial palette — cohesive peach family + indigo primary */ /* warm cream */
-	--background-elev: #fffdf6; /* warm white */ /* warm ink */
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--border: oklch(0.922 0 0);
+	/* Warm cream editorial palette — cohesive peach family + indigo primary */
+	--background: #f6f1e4; /* warm cream */
+	--background-elev: #fffdf6; /* warm white */
+	--foreground: #1a1612; /* warm ink */
+	--muted: #ebe3ce;
+	--muted-foreground: #6a6050;
+	--border: #e2d8bf;
 	--border-strong: #cdc1a0;
 
-	--primary: oklch(0.205 0 0); /* sharp indigo — kept */
-	--primary-foreground: oklch(0.985 0 0);
+	--primary: #4f46e5; /* sharp indigo — kept */
+	--primary-foreground: #ffffff;
 	--primary-soft: #ecebfc;
 	--primary-deep: #2e2a85;
 
@@ -25,59 +27,34 @@
 
 	--ink: #1a1612;
 
-	--background: oklch(1 0 0);
-
-	--foreground: oklch(0.145 0 0);
-
-	--card: oklch(1 0 0);
-
-	--card-foreground: oklch(0.145 0 0);
-
-	--popover: oklch(1 0 0);
-
-	--popover-foreground: oklch(0.145 0 0);
-
-	--secondary: oklch(0.97 0 0);
-
-	--secondary-foreground: oklch(0.205 0 0);
-
-	--accent: oklch(0.97 0 0);
-
-	--accent-foreground: oklch(0.205 0 0);
-
+	/* shadcn tokens mapped onto our palette */
+	--card: var(--background-elev);
+	--card-foreground: var(--foreground);
+	--popover: var(--background-elev);
+	--popover-foreground: var(--foreground);
+	--secondary: var(--peach-100);
+	--secondary-foreground: var(--foreground);
+	--accent: var(--peach-100);
+	--accent-foreground: var(--foreground);
 	--destructive: oklch(0.577 0.245 27.325);
-
-	--input: oklch(0.922 0 0);
-
-	--ring: oklch(0.708 0 0);
-
-	--chart-1: oklch(0.87 0 0);
-
-	--chart-2: oklch(0.556 0 0);
-
-	--chart-3: oklch(0.439 0 0);
-
-	--chart-4: oklch(0.371 0 0);
-
-	--chart-5: oklch(0.269 0 0);
-
+	--input: var(--border);
+	--ring: color-mix(in oklab, var(--primary) 40%, transparent);
 	--radius: 0.625rem;
 
-	--sidebar: oklch(0.985 0 0);
+	--chart-1: var(--peach-400);
+	--chart-2: var(--peach-300);
+	--chart-3: var(--peach-200);
+	--chart-4: var(--primary);
+	--chart-5: var(--primary-deep);
 
-	--sidebar-foreground: oklch(0.145 0 0);
-
-	--sidebar-primary: oklch(0.205 0 0);
-
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-
-	--sidebar-accent: oklch(0.97 0 0);
-
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-
-	--sidebar-border: oklch(0.922 0 0);
-
-	--sidebar-ring: oklch(0.708 0 0);
+	--sidebar: var(--background-elev);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--peach-100);
+	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
 }
 
 @theme inline {
