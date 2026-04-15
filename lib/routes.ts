@@ -37,6 +37,7 @@ export const routes = {
 		facebook: "/channels/facebook",
 		pinterest: "/channels/pinterest",
 		youtube: "/channels/youtube",
+		bluesky: "/channels/bluesky",
 	},
 
 	// Phase 3 — Compare + positioning
@@ -64,8 +65,6 @@ export const routes = {
 	// Phase 5 — Resources
 	resources: {
 		index: "/resources",
-		fieldNotes: "/resources/field-notes",
-		playbooks: "/resources/playbooks",
 		templates: "/resources/templates",
 		creatorGuides: "/resources/creator-guides",
 		helpCenter: "/help",
@@ -82,14 +81,6 @@ export const routes = {
 		press: "/press",
 		brand: "/brand",
 		contact: "/contact",
-	},
-
-	// Phase 7 — Customers
-	customers: {
-		caseStudies: "/customers",
-		creatorSpotlight: "/customers/spotlight",
-		community: "/community",
-		events: "/events",
 	},
 
 	// Phase 8 — Free tools
@@ -115,8 +106,6 @@ export const routes = {
 	// Phase 10 — Connect
 	connect: {
 		newsletter: "/newsletter",
-		podcast: "/podcast",
-		slack: "/community/slack",
 		affiliate: "/affiliate",
 		partners: "/partners",
 	},
@@ -163,6 +152,7 @@ export const footerLinks = {
 				{ label: "Facebook", href: routes.channels.facebook },
 				{ label: "Pinterest", href: routes.channels.pinterest },
 				{ label: "YouTube", href: routes.channels.youtube },
+				{ label: "Bluesky", href: routes.channels.bluesky },
 			],
 		},
 		{
@@ -181,8 +171,6 @@ export const footerLinks = {
 		{
 			heading: "Resources",
 			links: [
-				{ label: "Field notes", href: routes.resources.fieldNotes },
-				{ label: "Playbooks", href: routes.resources.playbooks },
 				{ label: "Templates", href: routes.resources.templates },
 				{ label: "Creator guides", href: routes.resources.creatorGuides },
 				{ label: "Help center", href: routes.resources.helpCenter },
@@ -215,15 +203,6 @@ export const footerLinks = {
 			],
 		},
 		{
-			heading: "Customers",
-			links: [
-				{ label: "Case studies", href: routes.customers.caseStudies },
-				{ label: "Creator spotlight", href: routes.customers.creatorSpotlight },
-				{ label: "Community", href: routes.customers.community },
-				{ label: "Events", href: routes.customers.events },
-			],
-		},
-		{
 			heading: "Free tools",
 			links: [
 				{ label: "Bio generator", href: routes.tools.bioGenerator },
@@ -249,8 +228,6 @@ export const footerLinks = {
 			heading: "Connect",
 			links: [
 				{ label: "Newsletter", href: routes.connect.newsletter },
-				{ label: "Podcast", href: routes.connect.podcast },
-				{ label: "Community Slack", href: routes.connect.slack },
 				{ label: "Affiliate", href: routes.connect.affiliate },
 				{ label: "Partners", href: routes.connect.partners },
 			],

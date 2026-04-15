@@ -438,6 +438,55 @@ export const CHANNELS: Record<string, Channel> = {
     },
     cta: { line1: "Pair the Short.", line2: "Stretch the view." },
   },
+  bluesky: {
+    slug: "bluesky",
+    name: "Bluesky",
+    tagline: "Feeds. Threads. No algorithm.",
+    eyebrow: "For Bluesky",
+    headline: {
+      line1: "Your voice,",
+      line2: "no filters in the way.",
+    },
+    lead:
+      "Bluesky is the open social web with no algorithmic feed to fight. Post text, images, and threads — Composer keeps your cadence natural without trimming for reach.",
+    accent: "bg-primary-soft",
+    postTypes: [
+      { label: "Text post", desc: "Up to 300 chars recommended for visibility, but no hard limit.", tone: "bg-primary-soft" },
+      { label: "Image post", desc: "Single image or 4-image grid with alt text, up to 1MB each.", tone: "bg-peach-100" },
+      { label: "Thread", desc: "Reply to your own posts to create threaded conversations.", tone: "bg-peach-200" },
+    ],
+    supports: [
+      "Text posts with rich link previews",
+      "Image posts with alt text",
+      "Threaded replies (self-replies to thread)",
+      "Custom feed scheduling coming soon",
+    ],
+    missing: [
+      "Video posts (in beta on Bluesky)",
+      "Custom feeds (API access needed)",
+    ],
+    voiceNote:
+      "Bluesky rewards authentic voice over performance. Composer keeps your posts natural — no keyword stuffing, no performative hooks.",
+    bestTimes: [
+      8, 6, 4, 3, 4, 8, 14, 22, 32, 42, 48, 52,
+      54, 52, 50, 48, 50, 56, 64, 72, 78, 70, 52, 28,
+    ],
+    peakInsight:
+      "Bluesky has two peaks: morning (9–11am) and evening (7–10pm). The platform is more synchronous than others — readers engage when they see it.",
+    templates: [
+      { name: "Daily check-in", desc: "One short observation, posted at your morning window.", count: "1 post" },
+      { name: "Thread of thoughts", desc: "3–5 replies that build a single idea together.", count: "1 thread" },
+      { name: "Link drop", desc: "An interesting link with a 2-sentence commentary.", count: "1 post" },
+    ],
+    testimonial: {
+      q: "Finally a place where I can just... post. No games, no reach metrics, just people reading what I write.",
+      n: "Mara S.",
+      r: "Writer · 4K on Bluesky",
+      ini: "M",
+      tone: "bg-primary-soft",
+    },
+    cta: { line1: "Post freely.", line2: "No games attached." },
+  },
 };
 
 export const CHANNEL_SLUGS = Object.keys(CHANNELS);

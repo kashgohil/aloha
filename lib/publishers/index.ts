@@ -12,8 +12,9 @@ import { accounts, postDeliveries, posts, type PostMedia } from "@/db/schema";
 import { PublishError } from "./errors";
 import { publishToLinkedIn } from "./linkedin";
 import { publishToX } from "./x";
+import { publishToBluesky } from "./bluesky";
 
-type PlatformKey = "linkedin" | "twitter";
+type PlatformKey = "linkedin" | "twitter" | "bluesky";
 
 const PUBLISHERS: Record<
 	PlatformKey,
@@ -25,10 +26,11 @@ const PUBLISHERS: Record<
 > = {
 	linkedin: publishToLinkedIn,
 	twitter: publishToX,
+	bluesky: publishToBluesky,
 };
 
 function isSupportedPlatform(p: string): p is PlatformKey {
-	return p === "linkedin" || p === "twitter";
+	return p === "linkedin" || p === "twitter" || p === "bluesky";
 }
 
 export type PublishSummary = {

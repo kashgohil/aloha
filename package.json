@@ -13,6 +13,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@atproto/api": "^0.19.9",
     "@auth/drizzle-adapter": "^1.11.1",
     "@base-ui/react": "^1.4.0",
     "@google/generative-ai": "^0.24.1",

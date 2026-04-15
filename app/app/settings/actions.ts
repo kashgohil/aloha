@@ -5,9 +5,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn } from "@/auth";
 import { db } from "@/db";
-import { accounts, users } from "@/db/schema";
+import { accounts, users, blueskyCredentials } from "@/db/schema";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
 import { syncChannelQuantity } from "@/lib/billing/service";
+import { AtpAgent } from "@atproto/api";
 
 const VALID_ROLES = [
   "solo",
@@ -90,14 +91,17 @@ export async function disconnectChannel(formData: FormData) {
   const provider = String(formData.get("provider") ?? "");
   if (!provider) return;
 
+  if (provider === "bluesky") {
+    await disconnectBluesky();
+    return;
+  }
+
   await db
     .delete(accounts)
     .where(
       and(eq(accounts.userId, userId), eq(accounts.provider, provider)),
     );
 
-  // Keep the Polar seat count in lockstep with connected channels on paid
-  // plans. No-op on free tier.
   const remaining = await currentChannelCount(userId);
   try {
     await syncChannelQuantity(userId, Math.max(1, remaining));
@@ -110,9 +114,84 @@ export async function disconnectChannel(formData: FormData) {
 }
 
 async function currentChannelCount(userId: string): Promise<number> {
-  const rows = await db
-    .select({ provider: accounts.provider })
-    .from(accounts)
-    .where(eq(accounts.userId, userId));
-  return rows.length;
+  const [oauthRows, blueskyRow] = await Promise.all([
+    db
+      .select({ provider: accounts.provider })
+      .from(accounts)
+      .where(eq(accounts.userId, userId)),
+    db
+      .select({ id: blueskyCredentials.id })
+      .from(blueskyCredentials)
+      .where(eq(blueskyCredentials.userId, userId))
+      .limit(1),
+  ]);
+  return oauthRows.length + (blueskyRow ? 1 : 0);
+}
+
+export async function connectBluesky(
+  _prevState: { error?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string } | null> {
+  const userId = await requireUserId();
+
+  const handle = String(formData.get("handle") ?? "").trim();
+  const appPassword = String(formData.get("appPassword") ?? "").trim();
+
+  if (!handle || !appPassword) {
+    return { error: "Handle and app password are required." };
+  }
+
+  const connected = await currentChannelCount(userId);
+  const entitlements = await getEntitlements(userId, connected);
+  if (!canConnectAnotherChannel(entitlements)) {
+    redirect("/app/settings/channels?limit=1");
+  }
+
+  try {
+    const agent = new AtpAgent({ service: "https://bsky.social" });
+    await agent.login({
+      identifier: handle,
+      password: appPassword,
+    });
+
+    const did = agent.session?.did ?? null;
+
+    await db
+      .insert(blueskyCredentials)
+      .values({
+        userId,
+        handle,
+        appPassword,
+        did,
+      })
+      .onConflictDoUpdate({
+        target: blueskyCredentials.userId,
+        set: {
+          handle,
+          appPassword,
+          did,
+          updatedAt: new Date(),
+        },
+      });
+
+    revalidatePath("/app/settings/channels");
+    revalidatePath("/app/dashboard");
+    redirect("/app/settings/channels?connected=bluesky");
+  } catch (err) {
+    console.error("[bluesky] connect failed", err);
+    return {
+      error: "Invalid handle or app password. Please check your credentials and try again.",
+    };
+  }
+}
+
+export async function disconnectBluesky() {
+  const userId = await requireUserId();
+
+  await db
+    .delete(blueskyCredentials)
+    .where(eq(blueskyCredentials.userId, userId));
+
+  revalidatePath("/app/settings/channels");
+  revalidatePath("/app/dashboard");
 }

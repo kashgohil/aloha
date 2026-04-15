@@ -2,7 +2,7 @@ import Link from "next/link";
 import { eq } from "drizzle-orm";
 import { ArrowUpRight, Lock, Plus, ShieldCheck, Sparkle, Trash2 } from "lucide-react";
 import { db } from "@/db";
-import { accounts } from "@/db/schema";
+import { accounts, blueskyCredentials } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,7 @@ import {
   LinkedInIcon,
   GitHubIcon,
   XIcon,
+  BlueskyIcon,
 } from "@/app/auth/_components/provider-icons";
 
 export const dynamic = "force-dynamic";
@@ -76,6 +77,14 @@ const PROVIDERS: ProviderConfig[] = [
     name: "TikTok",
     purpose: "Queue short-form video.",
     Icon: GenericMark,
+    status: "available",
+  },
+  {
+    id: "bluesky",
+    name: "Bluesky",
+    purpose: "Posts, threads, and images.",
+    Icon: BlueskyIcon,
+    mono: true,
     status: "available",
   },
   {
@@ -220,14 +229,25 @@ export default async function ChannelsSettingsPage({
 }) {
   const user = (await getCurrentUser())!;
 
-  const rows = await db
-    .select({
-      provider: accounts.provider,
-      reauthRequired: accounts.reauthRequired,
-    })
-    .from(accounts)
-    .where(eq(accounts.userId, user.id));
+  const [rows, blueskyRows] = await Promise.all([
+    db
+      .select({
+        provider: accounts.provider,
+        reauthRequired: accounts.reauthRequired,
+      })
+      .from(accounts)
+      .where(eq(accounts.userId, user.id)),
+    db
+      .select({ id: blueskyCredentials.id })
+      .from(blueskyCredentials)
+      .where(eq(blueskyCredentials.userId, user.id))
+      .limit(1),
+  ]);
+
   const connected = new Set(rows.map((r) => r.provider));
+  if (blueskyRows.length > 0) {
+    connected.add("bluesky");
+  }
   const needsReauth = new Set(
     rows.filter((r) => r.reauthRequired).map((r) => r.provider),
   );
@@ -325,7 +345,14 @@ export default async function ChannelsSettingsPage({
                   </button>
                 ) : isConnected ? (
                   <div className="flex items-center gap-1.5">
-                    {isReauth ? (
+                    {p.id === "bluesky" ? (
+                      <Link
+                        href="/app/settings/channels/bluesky-connect"
+                        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
+                      >
+                        Reconnect
+                      </Link>
+                    ) : isReauth ? (
                       <form action={connectChannel}>
                         <input type="hidden" name="provider" value={p.id} />
                         <button
@@ -354,6 +381,14 @@ export default async function ChannelsSettingsPage({
                   >
                     <Lock className="w-3.5 h-3.5" />
                     Upgrade to connect
+                  </Link>
+                ) : p.id === "bluesky" ? (
+                  <Link
+                    href="/app/settings/channels/bluesky-connect"
+                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Connect
                   </Link>
                 ) : (
                   <form action={connectChannel}>

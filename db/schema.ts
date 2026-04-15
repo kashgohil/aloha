@@ -236,3 +236,16 @@ export const subscribers = pgTable("subscribers", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
+
+export const blueskyCredentials = pgTable("bluesky_credentials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  handle: text("handle").notNull(),
+  appPassword: text("appPassword").notNull(),
+  did: text("did"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});

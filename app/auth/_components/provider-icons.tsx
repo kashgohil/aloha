@@ -72,3 +72,25 @@ export function XIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function BlueskyIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 256 256"
+      className={className}
+      aria-hidden
+      focusable="false"
+    >
+      <defs>
+        <linearGradient id="bsky-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#0EA5E9" />
+          <stop offset="100%" stopColor="#6366F1" />
+        </linearGradient>
+      </defs>
+      <path
+        fill="url(#bsky-gradient)"
+        d="M224 48c0 26.5-21.5 48-48 48-7.5 0-14.5-1.7-20.7-4.7C163.3 120.1 128 157.4 128 200c0 22.8 8.3 43.8 21.9 60.1-1.5-1.7-2.9-3.5-4.1-5.4-8.2 4.5-17.3 7.3-27 7.3-44.2 0-80-35.8-80-80s35.8-80 80-80c10.3 0 19.9 2 28.3 5.6C119 54.4 89.8 32 56.5 32c-9.3 0-18.1 2.3-25.8 6.5C12.4 44.7 0 60.6 0 80c0 66.2 53.8 120 120 120h88c52.9 0 96-43.1 96-96s-43.1-96-96-96c-9.8 0-19.1 1.5-27.8 4.2C202.3 22.6 224 56.6 224 96"
+      />
+    </svg>
+  );
+}

@@ -144,8 +144,14 @@ async function refreshX(userId: string, refreshToken: string) {
 // token, or the refresh call fails.
 export async function getFreshToken(
 	userId: string,
-	provider: "linkedin" | "twitter",
+	provider: "linkedin" | "twitter" | "bluesky",
 ): Promise<ProviderAccount> {
+	if (provider === "bluesky") {
+		throw new PublishError(
+			"needs_reauth",
+			"Bluesky uses app password auth. Token refresh not applicable.",
+		);
+	}
 	const account = await loadAccount(userId, provider);
 	if (!account) {
 		throw new PublishError(
@@ -174,8 +180,14 @@ export async function getFreshToken(
 // when the stored expires_at says "still valid" but the provider disagrees.
 export async function forceRefresh(
 	userId: string,
-	provider: "linkedin" | "twitter",
+	provider: "linkedin" | "twitter" | "bluesky",
 ): Promise<ProviderAccount> {
+	if (provider === "bluesky") {
+		throw new PublishError(
+			"needs_reauth",
+			"Bluesky uses app password auth. Force refresh not applicable.",
+		);
+	}
 	const account = await loadAccount(userId, provider);
 	if (!account?.refreshToken) {
 		throw new PublishError(
