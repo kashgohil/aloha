@@ -1,35 +1,30 @@
+import { JsonLd } from "@/lib/json-ld";
+import { routes } from "@/lib/routes";
+import { faqJsonLd, makeMetadata, softwareApplicationJsonLd } from "@/lib/seo";
 import {
 	ArrowRight,
 	ArrowUpRight,
 	Check,
-	Flame,
 	Leaf,
 	Smile,
 	Sparkle,
 } from "lucide-react";
 import Link from "next/link";
-import {
-	faqJsonLd,
-	makeMetadata,
-	softwareApplicationJsonLd,
-} from "@/lib/seo";
-import { routes } from "@/lib/routes";
-import { JsonLd } from "@/lib/json-ld";
 import { SOCIAL_ICONS } from "./_components/social-icons";
 import { EngageInbox } from "./engage-inbox";
 import { FaqList } from "./faq-list";
 
 export const metadata = makeMetadata({
-	title: "The calm social media OS",
+	title: "The calm social media OS — with Muse, the AI that sounds like you",
 	description:
-		"Aloha is the quiet operator behind creators who post on six platforms and still have a life. Plan, write, schedule, automate — and get the afternoon back.",
+		"Aloha is the quiet operator behind creators who post on six platforms and still have a life. Plan, write, schedule, automate — with Muse, the voice model trained on your own writing.",
 	path: routes.home,
 });
 
 const FAQ = [
 	{
 		q: "Is there really a free plan, or is this a trial in disguise?",
-		a: "Really free. Up to three channels, ten scheduled posts per channel per month, no card. We only ask for a card when you pick a paid plan.",
+		a: "Really free. Three channels, the AI companion with 50 generations a month, full scheduling and calendar. No card. We only ask for a card when you pick a paid plan.",
 	},
 	{
 		q: "Will I lose my queue if I downgrade?",
@@ -114,7 +109,7 @@ export default function LandingPage() {
 							The calm social media OS
 						</div>
 
-						<h1 className="font-display font-normal text-ink leading-[0.95] sm:leading-[0.92] tracking-[-0.035em] text-[44px] sm:text-[72px] lg:text-[112px]">
+						<h1 className="font-display font-normal text-ink leading-[0.95] sm:leading-[1.02] tracking-[-0.035em] text-[44px] sm:text-[72px] lg:text-[112px]">
 							Show up
 							<br />
 							everywhere
@@ -236,7 +231,7 @@ export default function LandingPage() {
 											Shipping to
 										</p>
 										<p className="text-[10px] font-mono text-ink/40">
-											4 networks · all on voice
+											4 networks · on-voice · Muse
 										</p>
 									</div>
 
@@ -394,15 +389,17 @@ export default function LandingPage() {
 								<span className="text-primary">Tailor everywhere.</span>
 							</h2>
 							<p className="mt-8 max-w-[440px] text-[16.5px] leading-[1.55] text-ink/75">
-								The Composer writes a native version for each platform in the
-								tone you've taught it — long for LinkedIn, sharp for X, soft for
-								Instagram — without turning one post into six jobs.
+								The Composer, powered by{" "}
+								<span className="font-medium text-ink">Muse</span>, writes a
+								native version for each platform in the tone you've taught it
+								— long for LinkedIn, sharp for X, soft for Instagram — without
+								turning one post into six jobs.
 							</p>
 
 							<ul className="mt-10 space-y-4 text-[15px]">
 								{[
 									"Per-platform previews that actually match what will ship.",
-									"A tone-of-voice you train once and edit when it drifts.",
+									"Muse — a voice model trained on your own posts, not a template library.",
 									"Queues, calendar, and grid view — pick the one your brain prefers.",
 								].map((t) => (
 									<li key={t} className="flex items-start gap-3">
@@ -416,7 +413,7 @@ export default function LandingPage() {
 							</ul>
 
 							<a
-								href="#"
+								href={routes.product.composer}
 								className="pencil-link inline-flex mt-10 items-center gap-2 text-[15px] font-medium text-ink"
 							>
 								Take the Composer tour
@@ -563,6 +560,75 @@ export default function LandingPage() {
 								})()}
 							</div>
 						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* ─── MUSE SPOTLIGHT ───────────────────────────────────────────── */}
+			<section className="bg-background-elev relative">
+				<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-20 lg:py-28">
+					<div className="grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-10 items-end mb-10 lg:mb-14">
+						<div className="col-span-12 lg:col-span-7">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4 inline-flex items-center gap-2">
+								<Sparkle className="w-3 h-3 text-primary" />
+								Meet Muse
+							</p>
+							<h2 className="font-display text-[36px] sm:text-[44px] lg:text-[60px] leading-[0.98] tracking-[-0.025em] text-ink">
+								The AI that sounds
+								<br />
+								<span className="text-primary">like you wrote it.</span>
+							</h2>
+						</div>
+						<p className="col-span-12 lg:col-span-4 text-[15.5px] text-ink/70 leading-[1.6]">
+							Muse is the voice model inside Composer. Trained on your own
+							writing, native to every channel, and priced as a per-channel
+							switch you can flip on where it earns its keep.
+						</p>
+					</div>
+
+					<ul className="grid grid-cols-1 md:grid-cols-3 gap-5 lg:gap-6">
+						{[
+							{
+								t: "Writes in your cadence",
+								d: "Trained on the posts you marked as sounding like you — not a generic tone library.",
+							},
+							{
+								t: "Native to every channel",
+								d: "LinkedIn long, X short, TikTok hook, Instagram soft — from one draft, in one stream.",
+							},
+							{
+								t: "Whole-campaign brain",
+								d: "Beat sheets, fan-out, best-time + virality scoring, inbox replies. All in your style.",
+							},
+						].map((c) => (
+							<li
+								key={c.t}
+								className="rounded-3xl bg-background border border-border p-7 lg:p-8 flex flex-col"
+							>
+								<p className="font-display text-[22px] leading-tight tracking-[-0.005em]">
+									{c.t}
+								</p>
+								<p className="mt-3 text-[13.5px] text-ink/70 leading-[1.6]">
+									{c.d}
+								</p>
+							</li>
+						))}
+					</ul>
+
+					<div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-[14px]">
+						<Link
+							href={routes.pricing}
+							className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-ink text-background-elev font-medium text-[13.5px] hover:bg-primary transition-colors"
+						>
+							How Muse is priced
+							<ArrowRight className="w-4 h-4" />
+						</Link>
+						<Link
+							href={routes.product.composer}
+							className="pencil-link inline-flex items-center gap-1.5 font-medium text-ink"
+						>
+							See Muse inside Composer <ArrowUpRight className="w-4 h-4" />
+						</Link>
 					</div>
 				</div>
 			</section>
@@ -1054,9 +1120,9 @@ export default function LandingPage() {
 										LinkedIn
 									</span>
 									<blockquote className="font-display text-[19px] lg:text-[22px] leading-[1.3] tracking-[-0.005em]">
-										"The voice model writes in my cadence now. My editor can't
-										always tell which drafts I wrote and which Aloha did — and
-										she's been editing me for four years."
+										"Muse writes in my cadence now. My editor can't always
+										tell which drafts I wrote and which Aloha did — and she's
+										been editing me for four years."
 									</blockquote>
 								</div>
 								<figcaption className="mt-6 flex items-center gap-3">
@@ -1182,33 +1248,34 @@ export default function LandingPage() {
 					<div className="grid grid-cols-12 gap-x-0 gap-y-6 lg:gap-10 mb-12 lg:mb-14">
 						<div className="col-span-12 lg:col-span-5">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
-								Built for
+								Pricing
 							</p>
 							<h2 className="font-display text-[32px] sm:text-[40px] lg:text-[56px] leading-[0.98] tracking-[-0.02em]">
-								Pick the shape of
+								Pay per channel.
 								<br />
-								<span className="text-primary">your week.</span>
+								<span className="text-primary">Muse is a switch.</span>
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-6 lg:col-start-7 text-[16px] text-ink/70 leading-[1.6]">
-							Three starting points with opinions baked in — you can still turn
-							every knob. Switch any time; your data moves with you. No
-							asterisks, no trial countdowns.
+							Free for three channels and the AI companion. Basic is $5 per
+							channel for scheduling, calendar, automations. Flip Muse on for
+							another $5 per channel and get style-trained AI where it earns
+							its keep. Prices decline past 10 channels.
 						</p>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
 						{[
 							{
-								name: "Solo creator",
+								name: "Free",
 								icon: Smile,
-								tagline: "Everything personal",
-								desc: "Link-in-bio, a smart queue, AI that learns your voice, and the calendar view that fits a one-human team.",
+								tagline: "Taste every feature",
+								desc: "Three channels, manual posting, calendar, link-in-bio, and the AI companion — 50 generations a month to write, refine, and suggest.",
 								features: [
-									"3 channels",
-									"10 posts / channel / month",
-									"Unlimited drafts",
-									"Weekly nudges",
+									"3 connected channels",
+									"AI companion · 50 generations / mo",
+									"Scheduling + calendar + link-in-bio",
+									"Basic analytics (30 days)",
 									"Community support",
 								],
 								priceLine: "Free forever",
@@ -1217,40 +1284,39 @@ export default function LandingPage() {
 								accent: "bg-peach-100",
 							},
 							{
-								name: "Working team",
+								name: "Basic",
 								icon: Leaf,
-								tagline: "Ship without stepping on toes",
-								desc: "Roles, approvals, a shared voice, and brand kits so a junior hire can write as confidently as the founder.",
+								tagline: "Scheduling + AI companion",
+								desc: "Per-channel pricing for publishing, calendar, automations, and the AI companion. The companion is fair-use — write, refine, suggest, translate.",
 								features: [
-									"8 channels · 3 seats",
-									"Unlimited scheduling",
-									"AI Composer + brand voice",
-									"Approval workflows & brand kits",
-									"Logic Matrix automation",
+									"Per-channel · declines past 10",
+									"Unlimited scheduling + calendar",
+									"Automation engine",
+									"AI companion (fair use)",
 									"Email support",
 								],
-								priceLine: "$16 / month",
-								priceSub: "billed yearly · 14-day trial",
-								cta: "Start free trial",
+								priceLine: "$5 / channel",
+								priceSub: "declines to $3 past channel 25",
+								cta: "Start on Basic",
 								accent: "bg-primary-soft",
-								featured: true,
 							},
 							{
-								name: "Agency",
-								icon: Flame,
-								tagline: "Many brands, one head",
-								desc: "Isolated client workspaces, white-labeled reports, and bulk scheduling for the person who runs it all.",
+								name: "Basic + Muse",
+								icon: Sparkle,
+								tagline: "Add the style-trained AI",
+								desc: "Muse learns from your writing and writes in your cadence — per channel, native to every platform. Fan-out, advanced campaigns, commentary, inbox replies.",
 								features: [
-									"Unlimited workspaces",
-									"White-labeled PDFs",
-									"Priority + Slack support",
-									"SSO + SCIM",
-									"Dedicated onboarding",
+									"Everything in Basic",
+									"Style-trained voice per channel",
+									"Per-channel native variants",
+									"Fan-out + advanced campaigns",
+									"Best-time, virality, commentary",
 								],
-								priceLine: "$49 / month",
-								priceSub: "billed yearly · talk first",
-								cta: "Talk to us",
+								priceLine: "$10 / channel",
+								priceSub: "declines to $6 past channel 25",
+								cta: "Switch Muse on",
 								accent: "bg-peach-300",
+								featured: true,
 							},
 						].map((u, i) => (
 							<article
@@ -1291,7 +1357,7 @@ export default function LandingPage() {
 										<span className="text-ink/45"> · {u.priceSub}</span>
 									</p>
 									<Link
-										href="/auth/signin"
+										href={u.name === "Free" ? routes.signup : routes.pricing}
 										className={`inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-medium text-[13.5px] transition-colors w-full ${
 											u.featured
 												? "bg-primary text-primary-foreground hover:bg-primary-deep"
