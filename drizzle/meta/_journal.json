@@ -15,6 +15,27 @@
       "when": 1776253864767,
       "tag": "0001_brown_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776271219065,
+      "tag": "0002_bored_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776271679838,
+      "tag": "0003_open_garia",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1776272503976,
+      "tag": "0004_lazy_princess_powerful",
+      "breakpoints": true
     }
   ]
 }

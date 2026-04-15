@@ -6,8 +6,17 @@ import {
   integer,
   primaryKey,
   boolean,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
+
+export type PostMedia = {
+  url: string;
+  mimeType: string;
+  width?: number;
+  height?: number;
+  alt?: string;
+};
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -74,6 +83,10 @@ export const accounts = pgTable(
     scope: text("scope"),
     id_token: text("id_token"),
     session_state: text("session_state"),
+    // Flipped to true by the publisher when a token can't be refreshed;
+    // cleared on successful publish or on re-sign-in (events.signIn).
+    // NextAuth's DrizzleAdapter ignores custom columns.
+    reauthRequired: boolean("reauthRequired").default(false).notNull(),
   },
   (account) => [
     {
@@ -136,11 +149,36 @@ export const posts = pgTable("posts", {
     .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   platforms: text("platforms").array().notNull(), // Stores ["twitter", "linkedin"]
+  media: jsonb("media").$type<PostMedia[]>().default([]).notNull(),
   status: text("status", { enum: ["draft", "scheduled", "published", "failed"] })
     .default("draft")
     .notNull(),
   scheduledAt: timestamp("scheduledAt"),
   publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// One row per (post × platform) attempt. Lets us represent partial success
+// ("LinkedIn went out, X failed"), surface per-channel errors, and flag
+// reauth needed without losing the other platform's success state.
+export const postDeliveries = pgTable("post_deliveries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  postId: uuid("postId")
+    .notNull()
+    .references(() => posts.id, { onDelete: "cascade" }),
+  platform: text("platform").notNull(),
+  status: text("status", {
+    enum: ["pending", "published", "failed", "needs_reauth"],
+  })
+    .default("pending")
+    .notNull(),
+  remotePostId: text("remotePostId"),
+  remoteUrl: text("remoteUrl"),
+  errorCode: text("errorCode"),
+  errorMessage: text("errorMessage"),
+  attemptCount: integer("attemptCount").default(0).notNull(),
+  publishedAt: timestamp("publishedAt", { mode: "date" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

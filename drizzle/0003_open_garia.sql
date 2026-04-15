@@ -1,0 +1,1 @@
+ALTER TABLE "accounts" ADD COLUMN "reauthRequired" boolean DEFAULT false NOT NULL;
