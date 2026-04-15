@@ -14,9 +14,9 @@ import Link from "next/link";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
-	title: "Composer — write once, speak native on every channel",
+	title: "Composer — write once, sound like you on every channel",
 	description:
-		"Aloha's Composer learns your cadence and rewrites a single draft into native posts for every channel — without flattening your voice into mush.",
+		"Aloha's Composer, powered by Muse — the voice model trained on your writing that rewrites a single draft into native posts for every channel, without flattening your cadence into mush.",
 	path: routes.product.composer,
 });
 
@@ -60,23 +60,24 @@ export default function ComposerPage() {
 					{/* Copy */}
 					<div className="col-span-12 lg:col-span-7 relative">
 						<div className="inline-flex items-center gap-2 mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/60">
-							The Composer
+							The Composer · powered by Muse
 						</div>
 
 						<h1 className="font-display font-normal text-ink leading-[0.95] tracking-[-0.03em] text-[56px] sm:text-[72px] lg:text-[92px]">
 							Write once.
 							<br />
-							<span className="text-primary font-light">Speak native</span>
+							<span className="text-primary font-light">Sound like you</span>
 							<br />
 							on every channel.
 						</h1>
 
 						<p className="mt-8 max-w-[520px] text-[17px] lg:text-[18px] leading-[1.55] text-ink/70">
-							The Composer learns your cadence — the way you start sentences,
-							when you dash, how long you go before a break — and rewrites a
-							single draft into native posts for each network. Long for
-							LinkedIn. Sharp for X. Soft for Instagram. Your voice, eight ways,
-							no mush.
+							Composer is the editor; <span className="font-medium text-ink">Muse</span>{" "}
+							is the voice model inside it. Muse learns your cadence — the way
+							you start sentences, when you dash, how long you go before a
+							break — and rewrites a single draft into native posts for each
+							network. Long for LinkedIn. Sharp for X. Soft for Instagram.
+							Your voice, eight ways, no mush.
 						</p>
 
 						<div className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
@@ -88,10 +89,10 @@ export default function ComposerPage() {
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<a
-								href="#voice-model"
+								href="#muse"
 								className="pencil-link inline-flex items-center gap-2 text-[15px] font-medium text-ink"
 							>
-								See the voice model
+								Meet Muse
 								<ArrowUpRight className="w-4 h-4" />
 							</a>
 						</div>
@@ -144,7 +145,7 @@ export default function ComposerPage() {
 								<div className="px-5 py-3 border-b border-border flex items-center justify-between bg-peach-100/50">
 									<div className="flex items-center gap-2 text-[11px] text-ink/75">
 										<Sparkle className="w-3 h-3 text-primary" />
-										<span className="font-medium">Voice match</span>
+										<span className="font-medium">Muse match</span>
 										<span className="font-mono text-ink/50">· 94%</span>
 									</div>
 									<button className="text-[11px] text-primary font-medium pencil-link">
@@ -196,7 +197,7 @@ export default function ComposerPage() {
 								{/* footer */}
 								<div className="px-5 py-3 bg-muted/40 flex items-center justify-between">
 									<span className="text-[11px] text-ink/55">
-										all rewrites on voice
+										all rewrites on-voice · Muse
 									</span>
 									<button className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-ink text-background text-[11.5px] font-medium">
 										Schedule all
@@ -220,25 +221,26 @@ export default function ComposerPage() {
 				</div>
 			</section>
 
-			{/* ─── FEATURE 1 · VOICE MODEL ──────────────────────────────────── */}
+			{/* ─── FEATURE 1 · MEET MUSE ────────────────────────────────────── */}
 			<section className="bg-background-elev">
 				<section
-					id="voice-model"
+					id="muse"
 					className="py-24 pb-32 lg:pb-40 bg-background lg:py-32 wavy"
 				>
 					<div className="max-w-[1320px] mx-auto px-6 lg:px-10 grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-16 items-center">
 						<div className="col-span-12 lg:col-span-5 order-2 lg:order-1">
 							<ScreenshotPlaceholder
-								label="Voice settings — the model learns from your best posts, not a survey."
-								notes="Needed: screenshot of Composer > Voice tab. Shows trained-on count, sample posts list with 'use / ignore' toggles, tone sliders (formal ←→ casual, short ←→ long, emoji density), and a 'Try a rewrite' button. Keep the cream bg, rounded-3xl. Crop to 5:3."
+								label="Muse — the voice model reads your best posts and copies the patterns."
+								notes="Needed: screenshot of Composer > Muse tab. Shows trained-on count, sample posts list with 'use / ignore' toggles, tone sliders (formal ←→ casual, short ←→ long, emoji density), and a 'Try a rewrite' button. Keep the cream bg, rounded-3xl. Crop to 5:3."
 								aspect="aspect-[5/4]"
 								tone="bg-peach-100"
 							/>
 						</div>
 
 						<div className="col-span-12 lg:col-span-6 lg:col-start-7 order-1 lg:order-2">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
-								Voice model
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4 inline-flex items-center gap-2">
+								<Sparkle className="w-3 h-3 text-primary" />
+								Meet Muse
 							</p>
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Your cadence,
@@ -247,17 +249,18 @@ export default function ComposerPage() {
 							</h2>
 							<p className="mt-6 text-[16px] lg:text-[17px] text-ink/75 leading-[1.6] max-w-lg">
 								Most AI writing tools pick a flavor — chirpy, corporate, "viral"
-								— and flatten you into it. The Composer studies the posts you
-								liked writing and copies <em>those</em> patterns. The way you
-								open. Where you break. When you don't use periods. The sentence
+								— and flatten you into it. Muse studies the posts you liked
+								writing and copies <em>those</em> patterns. The way you open.
+								Where you break. When you don't use periods. The sentence
 								fragments you lean on. It's less magic than careful listening.
 							</p>
 
 							<ul className="mt-8 space-y-3 text-[14.5px] text-ink/85">
 								{[
 									"Trains on the posts you mark as sounding like you — not your entire archive.",
-									"Runs privately per account; we don't pool voices across users.",
+									"Runs privately per account; we never pool voices across users.",
 									"Re-trainable in two clicks when your style shifts.",
+									"A per-channel switch — flip Muse on where it earns its keep, leave the rest on the AI companion.",
 								].map((f) => (
 									<li key={f} className="flex items-start gap-3">
 										<Check
@@ -268,6 +271,14 @@ export default function ComposerPage() {
 									</li>
 								))}
 							</ul>
+
+							<Link
+								href={routes.pricing}
+								className="pencil-link mt-8 inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+							>
+								How Muse is priced
+								<ArrowUpRight className="w-4 h-4" />
+							</Link>
 						</div>
 					</div>
 				</section>
@@ -551,9 +562,9 @@ export default function ComposerPage() {
 						<figure className="relative rounded-3xl p-10 lg:p-14 overflow-hidden">
 							<MessageSquareQuote className="relative w-8 h-8 text-primary mb-6" />
 							<blockquote className="relative font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"The voice model writes in my cadence now. My editor can't
-								always tell which drafts I wrote and which Aloha did — and she's
-								been editing me for four years."
+								"Muse writes in my cadence now. My editor can't always tell
+								which drafts I wrote and which Aloha did — and she's been
+								editing me for four years."
 							</blockquote>
 							<figcaption className="relative mt-8 flex items-center gap-4">
 								<span className="w-11 h-11 rounded-full bg-primary text-primary-foreground font-display flex items-center justify-center">
