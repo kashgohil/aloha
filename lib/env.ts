@@ -40,6 +40,16 @@ const envSchema = z.object({
   QSTASH_TOKEN: z.string().min(1),
   QSTASH_CURRENT_SIGNING_KEY: z.string().min(1),
   QSTASH_NEXT_SIGNING_KEY: z.string().min(1),
+
+  // Billing — Polar
+  POLAR_ACCESS_TOKEN: z.string().min(1),
+  POLAR_WEBHOOK_SECRET: z.string().min(1).optional(),
+  POLAR_SERVER: z.enum(["sandbox", "production"]).default("sandbox"),
+  POLAR_ORGANIZATION_ID: z.string().optional(),
+  POLAR_PRODUCT_BASIC_MONTH: z.string().optional(),
+  POLAR_PRODUCT_BASIC_YEAR: z.string().optional(),
+  POLAR_PRODUCT_BUNDLE_MONTH: z.string().optional(),
+  POLAR_PRODUCT_BUNDLE_YEAR: z.string().optional(),
 });
 
 // Validate process.env
