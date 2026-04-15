@@ -311,7 +311,7 @@ export function Composer({
         </div>
 
         {/* Preview */}
-        <aside className="lg:col-span-5 lg:sticky lg:top-[96px]">
+        <aside className="lg:col-span-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-3">
             Live preview
           </p>
@@ -320,7 +320,7 @@ export function Composer({
               Pick a channel to see the preview.
             </div>
           ) : (
-            <div className="space-y-4 max-h-[calc(100vh-180px)] overflow-auto pr-1 pb-10">
+            <div className="space-y-4">
               {displayPlatforms.map((p) => (
                 <PreviewCard
                   key={p.id}
