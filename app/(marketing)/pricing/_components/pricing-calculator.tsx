@@ -1,46 +1,32 @@
 "use client";
 
 import { ArrowRight, Sparkle } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
-import { routes } from "@/lib/routes";
-
-type Band = { from: number; to: number; basic: number; muse: number };
-
-const BANDS: Band[] = [
-	{ from: 1, to: 10, basic: 5, muse: 5 },
-	{ from: 11, to: 15, basic: 4.5, muse: 4.5 },
-	{ from: 16, to: 20, basic: 4, muse: 4 },
-	{ from: 21, to: 25, basic: 3.5, muse: 3.5 },
-	{ from: 26, to: Infinity, basic: 3, muse: 3 },
-];
-
-function bandFor(position: number): Band {
-	return BANDS.find((b) => position >= b.from && position <= b.to) ?? BANDS[BANDS.length - 1];
-}
-
-function calcBill(channels: number) {
-	let basic = 0;
-	let muse = 0;
-	for (let i = 1; i <= channels; i++) {
-		const b = bandFor(i);
-		basic += b.basic;
-		muse += b.muse;
-	}
-	return { basic, muse, withMuse: basic + muse };
-}
+import { BANDS, bandFor, calcMonthly } from "@/lib/billing/pricing";
 
 function formatMoney(n: number) {
 	const rounded = Math.round(n * 100) / 100;
 	return Number.isInteger(rounded) ? `${rounded}` : rounded.toFixed(2);
 }
 
-export function PricingCalculator() {
-	const [channels, setChannels] = useState(5);
-	const [muse, setMuse] = useState(true);
-	const [annual, setAnnual] = useState(true);
+type CalculatorProps = {
+	initialChannels?: number;
+	initialMuse?: boolean;
+	initialAnnual?: boolean;
+	submitLabel?: string;
+};
 
-	const bill = useMemo(() => calcBill(channels), [channels]);
+export function PricingCalculator({
+	initialChannels = 5,
+	initialMuse = true,
+	initialAnnual = true,
+	submitLabel,
+}: CalculatorProps = {}) {
+	const [channels, setChannels] = useState(initialChannels);
+	const [muse, setMuse] = useState(initialMuse);
+	const [annual, setAnnual] = useState(initialAnnual);
+
+	const bill = useMemo(() => calcMonthly(channels), [channels]);
 	const monthly = muse ? bill.withMuse : bill.basic;
 	const effective = annual ? monthly * 0.8 : monthly;
 	const yearly = effective * 12;
@@ -248,19 +234,25 @@ export function PricingCalculator() {
 					</p>
 				</div>
 
-				{/* CTA */}
+				{/* CTA — one checkout. "bundle" is Basic+Muse combined pricing. */}
 				<div className="pt-6 border-t border-border">
-					<Link
-						href={routes.signup}
-						className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-primary text-primary-foreground font-medium text-[13.5px] hover:bg-primary-deep transition-colors w-full"
-					>
-						{channels === 0
-							? "Start free · 3 channels"
-							: muse
-								? `Start with Muse on ${channels} ${channels === 1 ? "channel" : "channels"}`
-								: `Start Basic on ${channels} ${channels === 1 ? "channel" : "channels"}`}
-						<ArrowRight className="w-4 h-4" />
-					</Link>
+					<form action="/api/billing/checkout" method="post">
+						<input type="hidden" name="plan" value={muse ? "bundle" : "basic"} />
+						<input type="hidden" name="interval" value={annual ? "year" : "month"} />
+						<input type="hidden" name="channels" value={Math.max(1, channels)} />
+						<button
+							type="submit"
+							className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-primary text-primary-foreground font-medium text-[13.5px] hover:bg-primary-deep transition-colors w-full"
+						>
+							{submitLabel ??
+								(channels === 0
+									? "Start free · 3 channels"
+									: muse
+										? `Start with Muse on ${channels} ${channels === 1 ? "channel" : "channels"}`
+										: `Start Basic on ${channels} ${channels === 1 ? "channel" : "channels"}`)}
+							<ArrowRight className="w-4 h-4" />
+						</button>
+					</form>
 				</div>
 			</div>
 
