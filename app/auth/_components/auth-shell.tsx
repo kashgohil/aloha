@@ -155,7 +155,7 @@ function AuthNarrative({ children }: { children?: ReactNode }) {
 function DefaultNarrative() {
 	return (
 		<div className="relative max-w-[520px]">
-			<p className="font-display text-[40px] xl:text-[52px] leading-[1.05] tracking-[-0.025em] text-ink font-normal">
+			<p className="font-display text-[40px] xl:text-[52px] leading-[1.1] tracking-[-0.025em] text-ink font-normal">
 				Show up everywhere
 				<span className="text-ink/25">,</span>{" "}
 				<span className="text-primary font-light">
