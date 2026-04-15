@@ -8,7 +8,7 @@ import {
   users,
   verificationTokens,
 } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { env } from "@/lib/env";
@@ -86,7 +86,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: env.AUTH_TWITTER_ID,
       clientSecret: env.AUTH_TWITTER_SECRET,
       authorization: {
-        params: { scope: "tweet.read tweet.write users.read offline.access" },
+        params: {
+          scope:
+            "tweet.read tweet.write users.read media.write offline.access",
+        },
       },
     }),
     LinkedIn({
@@ -125,6 +128,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         session.user.id = token.sub;
       }
       return session;
+    },
+  },
+  events: {
+    // When a user re-links an OAuth account (used by Aloha to "reconnect"
+    // a channel after token expiry), clear any stale reauth flag — fresh
+    // tokens have just been written by the adapter.
+    async linkAccount({ user, account }) {
+      if (!user.id || !account.provider) return;
+      await db
+        .update(accounts)
+        .set({ reauthRequired: false })
+        .where(
+          and(
+            eq(accounts.userId, user.id),
+            eq(accounts.provider, account.provider),
+          ),
+        );
+    },
+    async signIn({ user, account }) {
+      if (!user.id || !account?.provider) return;
+      await db
+        .update(accounts)
+        .set({ reauthRequired: false })
+        .where(
+          and(
+            eq(accounts.userId, user.id),
+            eq(accounts.provider, account.provider),
+          ),
+        );
     },
   },
 });
