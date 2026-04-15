@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plug, UserRound } from "lucide-react";
+import { CreditCard, Plug, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -17,6 +17,12 @@ const ITEMS = [
     label: "Channels",
     caption: "Connected accounts",
     Icon: Plug,
+  },
+  {
+    href: "/app/settings/billing",
+    label: "Billing",
+    caption: "Plan & invoices",
+    Icon: CreditCard,
   },
 ];
 
