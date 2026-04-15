@@ -18,6 +18,13 @@ export type PostMedia = {
   alt?: string;
 };
 
+// Per-channel customization. Any field left undefined inherits the post's
+// base content/media. Keyed by platform id ("twitter", "linkedin", etc.).
+export type ChannelOverride = {
+  content?: string;
+  media?: PostMedia[];
+};
+
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name"),
@@ -150,6 +157,13 @@ export const posts = pgTable("posts", {
   content: text("content").notNull(),
   platforms: text("platforms").array().notNull(), // Stores ["twitter", "linkedin"]
   media: jsonb("media").$type<PostMedia[]>().default([]).notNull(),
+  // Per-channel overrides layered on top of `content` + `media`. A missing
+  // entry (or entry with undefined fields) means the channel inherits the
+  // base values, so existing rows stay valid with `{}`.
+  channelContent: jsonb("channelContent")
+    .$type<Record<string, ChannelOverride>>()
+    .default({})
+    .notNull(),
   status: text("status", { enum: ["draft", "scheduled", "published", "failed"] })
     .default("draft")
     .notNull(),
