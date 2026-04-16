@@ -3,9 +3,13 @@ import { inboxMessages, inboxSyncCursors } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { fetchBlueskyNotifications } from "./bluesky";
 import { fetchXMentions } from "./x";
+import { fetchFacebookInbox } from "./facebook";
+import { fetchInstagramInbox } from "./instagram";
+import { fetchThreadsInbox } from "./threads";
+import { fetchMastodonNotifications } from "./mastodon";
 import type { NormalizedMessage } from "./types";
 
-type Platform = "bluesky" | "twitter";
+type Platform = "bluesky" | "twitter" | "facebook" | "instagram" | "threads" | "mastodon";
 
 const FETCHERS: Partial<
   Record<
@@ -15,6 +19,10 @@ const FETCHERS: Partial<
 > = {
   bluesky: fetchBlueskyNotifications,
   twitter: fetchXMentions,
+  facebook: fetchFacebookInbox,
+  instagram: fetchInstagramInbox,
+  threads: fetchThreadsInbox,
+  mastodon: fetchMastodonNotifications,
 };
 
 export async function syncInbox(
