@@ -38,6 +38,7 @@ export const routes = {
 		pinterest: "/channels/pinterest",
 		youtube: "/channels/youtube",
 		bluesky: "/channels/bluesky",
+		medium: "/channels/medium",
 	},
 
 	// Phase 3 — Compare + positioning
@@ -153,6 +154,7 @@ export const footerLinks = {
 				{ label: "Pinterest", href: routes.channels.pinterest },
 				{ label: "YouTube", href: routes.channels.youtube },
 				{ label: "Bluesky", href: routes.channels.bluesky },
+				{ label: "Medium", href: routes.channels.medium },
 			],
 		},
 		{

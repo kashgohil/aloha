@@ -487,6 +487,58 @@ export const CHANNELS: Record<string, Channel> = {
     },
     cta: { line1: "Post freely.", line2: "No games attached." },
   },
+
+  medium: {
+    slug: "medium",
+    name: "Medium",
+    tagline: "Articles. Stories. Long-form.",
+    eyebrow: "For Medium",
+    headline: {
+      line1: "Your ideas",
+      line2: "deserve more than a thread.",
+    },
+    lead:
+      "Publish articles directly from Aloha. Write once, cross-publish to Medium alongside your social posts — same draft, different format, zero copy-paste.",
+    accent: "bg-peach-100",
+    postTypes: [
+      { label: "Articles", desc: "Full-length posts in Markdown. Title, body, and tags — published straight to your profile.", tone: "bg-peach-100" },
+      { label: "Stories", desc: "Personal essays, how-tos, and opinion pieces. Medium's algorithm favours substance over flash.", tone: "bg-peach-200" },
+      { label: "Series", desc: "Multi-part articles that build a narrative over days or weeks. Schedule each part in your queue.", tone: "bg-peach-300" },
+    ],
+    supports: [
+      "Article publishing (Markdown)",
+      "Embedded images",
+      "Auto-generated titles from content",
+      "Public publish status",
+      "Cross-post from the same draft as social",
+    ],
+    missing: [
+      "Publication submissions (manual for now)",
+      "Draft-only publishing",
+      "Tags via API (Medium deprecated this)",
+    ],
+    voiceNote:
+      "Medium readers expect depth. Lead with insight, not hooks. A 4-minute read that teaches something will always outperform a 12-minute ramble.",
+    bestTimes: [
+      6, 4, 3, 2, 3, 6, 12, 22, 38, 52, 60, 58,
+      54, 48, 44, 42, 44, 50, 58, 62, 56, 42, 24, 12,
+    ],
+    peakInsight:
+      "Medium readers peak mid-morning (9–11am) on weekdays. Tuesday and Wednesday see the most engagement — publish your best pieces then.",
+    templates: [
+      { name: "Weekly essay", desc: "One long-form article published every Tuesday morning.", count: "1 article" },
+      { name: "How-to guide", desc: "Step-by-step tutorial with code snippets or screenshots.", count: "1 article" },
+      { name: "Cross-post bundle", desc: "Repurpose a LinkedIn post into a full Medium article.", count: "1 article" },
+    ],
+    testimonial: {
+      q: "I used to spend 30 minutes reformatting every blog post. Now I write once in Aloha and it goes to Medium and LinkedIn in the same click.",
+      n: "Jamie R.",
+      r: "Developer advocate · 8K followers",
+      ini: "J",
+      tone: "bg-peach-100",
+    },
+    cta: { line1: "Write once.", line2: "Publish everywhere." },
+  },
 };
 
 export const CHANNEL_SLUGS = Object.keys(CHANNELS);

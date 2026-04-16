@@ -7,6 +7,7 @@ import {
 	FacebookIcon,
 	InstagramIcon,
 	LinkedInIcon,
+	MediumIcon,
 	ThreadsIcon,
 	TikTokIcon,
 	XIcon as XBrandIcon,
@@ -40,6 +41,7 @@ const PLATFORM_ICONS: Record<
 	tiktok: TikTokIcon,
 	threads: ThreadsIcon,
 	bluesky: BlueskyIcon,
+	medium: MediumIcon,
 };
 
 const MAX_MEDIA = 4;
@@ -110,6 +112,13 @@ const PLATFORMS: Platform[] = [
 		handle: "@handle",
 		limit: 300,
 		accent: "bg-[#0085ff] text-white",
+	},
+	{
+		id: "medium",
+		name: "Medium",
+		handle: "@username",
+		limit: 100000,
+		accent: "bg-ink text-background",
 	},
 ];
 

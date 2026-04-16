@@ -212,6 +212,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 	instagram: "Instagram",
 	tiktok: "TikTok",
 	bluesky: "Bluesky",
+	medium: "Medium",
 };
 
 function formatDate(date: Date, tz: string) {

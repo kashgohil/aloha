@@ -57,7 +57,7 @@ export default function LandingPage() {
 						name: "Aloha",
 						path: routes.home,
 						description:
-							"Aloha is a calm social media OS for creators and communities. Schedule across Instagram, LinkedIn, X, TikTok, Threads, Facebook, Pinterest, and YouTube from one draft; automate first-follower DMs with the Logic Matrix; see analytics that tell you what to do next.",
+							"Aloha is a calm social media OS for creators and communities. Schedule across Instagram, LinkedIn, X, TikTok, Threads, Facebook, Pinterest, YouTube, and Medium from one draft; automate first-follower DMs with the Logic Matrix; see analytics that tell you what to do next.",
 						applicationCategory: "BusinessApplication",
 					}),
 					faqJsonLd(FAQ.map((f) => ({ q: f.q, a: f.a }))),
@@ -869,7 +869,7 @@ export default function LandingPage() {
 							</h2>
 						</div>
 						<p className="text-[14px] text-ink/60 max-w-sm">
-							Eight platforms today, three more shipping this quarter. We build
+							Nine platforms today, more shipping this quarter. We build
 							for the API, not the marketing page — if it breaks, we tell you
 							before the audience notices.
 						</p>
@@ -889,6 +889,7 @@ export default function LandingPage() {
 							{ n: "Facebook", tag: "Pages · Groups", dot: "bg-primary" },
 							{ n: "Pinterest", tag: "Pins · Boards", dot: "bg-peach-400" },
 							{ n: "YouTube", tag: "Shorts · Community", dot: "bg-peach-400" },
+							{ n: "Medium", tag: "Articles · Stories", dot: "bg-ink" },
 						].map((c) => {
 							const icon = SOCIAL_ICONS.find((i) => i.n === c.n);
 							return (

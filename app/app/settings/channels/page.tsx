@@ -18,6 +18,7 @@ import {
   ThreadsIcon,
   PinterestIcon,
   YouTubeIcon,
+  MediumIcon,
 } from "@/app/auth/_components/provider-icons";
 
 export const dynamic = "force-dynamic";
@@ -79,6 +80,14 @@ const PROVIDERS: ProviderConfig[] = [
     Icon: BlueskyIcon,
     mono: true,
     status: "available",
+  },
+  {
+    id: "medium",
+    name: "Medium",
+    purpose: "Publish articles and stories.",
+    Icon: MediumIcon,
+    mono: true,
+    status: "soon",
   },
   {
     id: "threads",

@@ -3,6 +3,7 @@ import {
 	FacebookIcon,
 	InstagramIcon,
 	LinkedInIcon,
+	MediumIcon,
 	TikTokIcon,
 	XIcon,
 } from "@/app/auth/_components/provider-icons";
@@ -31,6 +32,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 	instagram: "Instagram",
 	tiktok: "TikTok",
 	bluesky: "Bluesky",
+	medium: "Medium",
 };
 
 const PROVIDER_ICONS: Record<
@@ -43,6 +45,7 @@ const PROVIDER_ICONS: Record<
 	instagram: InstagramIcon,
 	tiktok: TikTokIcon,
 	bluesky: BlueskyIcon,
+	medium: MediumIcon,
 };
 
 export default async function DashboardPage() {

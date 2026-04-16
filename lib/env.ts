@@ -27,6 +27,8 @@ const envSchema = z.object({
   AUTH_INSTAGRAM_SECRET: z.string().optional(),
   AUTH_TIKTOK_ID: z.string().optional(),
   AUTH_TIKTOK_SECRET: z.string().optional(),
+  AUTH_MEDIUM_ID: z.string().optional(),
+  AUTH_MEDIUM_SECRET: z.string().optional(),
   
   // Email
   RESEND_API_KEY: z.string().min(1),

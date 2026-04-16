@@ -13,8 +13,9 @@ import { PublishError } from "./errors";
 import { publishToLinkedIn } from "./linkedin";
 import { publishToX } from "./x";
 import { publishToBluesky } from "./bluesky";
+import { publishToMedium } from "./medium";
 
-type PlatformKey = "linkedin" | "twitter" | "bluesky";
+type PlatformKey = "linkedin" | "twitter" | "bluesky" | "medium";
 
 const PUBLISHERS: Record<
 	PlatformKey,
@@ -27,10 +28,11 @@ const PUBLISHERS: Record<
 	linkedin: publishToLinkedIn,
 	twitter: publishToX,
 	bluesky: publishToBluesky,
+	medium: publishToMedium,
 };
 
 function isSupportedPlatform(p: string): p is PlatformKey {
-	return p === "linkedin" || p === "twitter" || p === "bluesky";
+	return p === "linkedin" || p === "twitter" || p === "bluesky" || p === "medium";
 }
 
 export type PublishSummary = {

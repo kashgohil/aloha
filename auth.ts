@@ -24,6 +24,7 @@ import Google from "next-auth/providers/google";
 import Facebook from "next-auth/providers/facebook";
 import Instagram from "next-auth/providers/instagram";
 import TikTok from "next-auth/providers/tiktok";
+import Medium from "next-auth/providers/medium";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -112,6 +113,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     TikTok({
       clientId: env.AUTH_TIKTOK_ID,
       clientSecret: env.AUTH_TIKTOK_SECRET,
+    }),
+    Medium({
+      clientId: env.AUTH_MEDIUM_ID!,
+      clientSecret: env.AUTH_MEDIUM_SECRET!,
     }),
   ],
   pages: {

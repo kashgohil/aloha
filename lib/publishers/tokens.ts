@@ -139,12 +139,49 @@ async function refreshX(userId: string, refreshToken: string) {
 	return json.access_token;
 }
 
+async function refreshMedium(userId: string, refreshToken: string) {
+	if (!env.AUTH_MEDIUM_ID || !env.AUTH_MEDIUM_SECRET) {
+		throw new PublishError(
+			"needs_reauth",
+			"Medium client credentials missing",
+		);
+	}
+	const body = new URLSearchParams({
+		grant_type: "refresh_token",
+		refresh_token: refreshToken,
+		client_id: env.AUTH_MEDIUM_ID,
+		client_secret: env.AUTH_MEDIUM_SECRET,
+	});
+	const res = await fetch("https://api.medium.com/v1/tokens", {
+		method: "POST",
+		headers: { "Content-Type": "application/x-www-form-urlencoded" },
+		body,
+	});
+	if (!res.ok) {
+		throw new PublishError(
+			"needs_reauth",
+			`Medium token refresh failed: ${res.status} ${await res.text().catch(() => "")}`,
+		);
+	}
+	const json = (await res.json()) as {
+		access_token: string;
+		refresh_token?: string;
+		expires_at: number;
+	};
+	await writeRefreshedTokens(userId, "medium", {
+		access_token: json.access_token,
+		refresh_token: json.refresh_token,
+		expires_in: json.expires_at - Math.floor(Date.now() / 1000),
+	});
+	return json.access_token;
+}
+
 // Returns a valid access token, refreshing if needed. Throws PublishError
 // with category "needs_reauth" if the account is missing, has no refresh
 // token, or the refresh call fails.
 export async function getFreshToken(
 	userId: string,
-	provider: "linkedin" | "twitter" | "bluesky",
+	provider: "linkedin" | "twitter" | "medium" | "bluesky",
 ): Promise<ProviderAccount> {
 	if (provider === "bluesky") {
 		throw new PublishError(
@@ -171,7 +208,9 @@ export async function getFreshToken(
 	const fresh =
 		provider === "linkedin"
 			? await refreshLinkedIn(userId, account.refreshToken)
-			: await refreshX(userId, account.refreshToken);
+			: provider === "medium"
+				? await refreshMedium(userId, account.refreshToken)
+				: await refreshX(userId, account.refreshToken);
 
 	return { ...account, accessToken: fresh };
 }
@@ -180,7 +219,7 @@ export async function getFreshToken(
 // when the stored expires_at says "still valid" but the provider disagrees.
 export async function forceRefresh(
 	userId: string,
-	provider: "linkedin" | "twitter" | "bluesky",
+	provider: "linkedin" | "twitter" | "medium" | "bluesky",
 ): Promise<ProviderAccount> {
 	if (provider === "bluesky") {
 		throw new PublishError(
@@ -198,6 +237,8 @@ export async function forceRefresh(
 	const fresh =
 		provider === "linkedin"
 			? await refreshLinkedIn(userId, account.refreshToken)
-			: await refreshX(userId, account.refreshToken);
+			: provider === "medium"
+				? await refreshMedium(userId, account.refreshToken)
+				: await refreshX(userId, account.refreshToken);
 	return { ...account, accessToken: fresh };
 }
