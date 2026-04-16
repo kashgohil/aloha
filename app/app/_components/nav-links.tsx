@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import {
   CalendarDays,
+  FileText,
+  Inbox,
   LayoutDashboard,
   PenSquare,
   Sparkles,
@@ -25,8 +27,10 @@ type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
+  { label: "Posts", href: "/app/posts", icon: FileText },
   { label: "Calendar", href: "/app/calendar", icon: CalendarDays },
   { label: "Composer", href: "/app/composer", icon: PenSquare },
+  { label: "Inbox", href: "/app/inbox", icon: Inbox },
   { label: "Audience", href: "/app/audience", icon: Users },
   { label: "Automations", href: "/app/automations", icon: Sparkles },
 ];

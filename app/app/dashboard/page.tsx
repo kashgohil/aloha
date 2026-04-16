@@ -1,8 +1,6 @@
 import {
 	BlueskyIcon,
 	FacebookIcon,
-	GitHubIcon,
-	GoogleIcon,
 	InstagramIcon,
 	LinkedInIcon,
 	TikTokIcon,
@@ -10,9 +8,10 @@ import {
 } from "@/app/auth/_components/provider-icons";
 import { db } from "@/db";
 import { accounts, blueskyCredentials, posts } from "@/db/schema";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
-import { and, count, desc, eq, gte, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, notInArray, sql } from "drizzle-orm";
 import {
 	ArrowUpRight,
 	CalendarDays,
@@ -26,8 +25,6 @@ import Link from "next/link";
 export const dynamic = "force-dynamic";
 
 const PROVIDER_LABELS: Record<string, string> = {
-	google: "Google",
-	github: "GitHub",
 	twitter: "X",
 	linkedin: "LinkedIn",
 	facebook: "Facebook",
@@ -40,8 +37,6 @@ const PROVIDER_ICONS: Record<
 	string,
 	React.ComponentType<{ className?: string }>
 > = {
-	google: GoogleIcon,
-	github: GitHubIcon,
 	twitter: XIcon,
 	linkedin: LinkedInIcon,
 	facebook: FacebookIcon,
@@ -79,14 +74,19 @@ export default async function DashboardPage() {
 			value: sql<number>`count(distinct ${accounts.provider})`,
 		})
 		.from(accounts)
-		.where(eq(accounts.userId, user.id));
+		.where(
+			and(
+				eq(accounts.userId, user.id),
+				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			),
+		);
 
 	const [hasBlueskyCount] = await db
 		.select({ value: count() })
 		.from(blueskyCredentials)
 		.where(eq(blueskyCredentials.userId, user.id));
 
-	const connectedChannels = (channelsCount.value ?? 0) + (hasBlueskyCount.value ?? 0);
+	const connectedChannels = Number(channelsCount.value ?? 0) + Number(hasBlueskyCount.value ?? 0);
 
 	const upcoming = await db
 		.select({
@@ -121,7 +121,12 @@ export default async function DashboardPage() {
 	const [{ value: totalAccounts }] = await db
 		.select({ value: count() })
 		.from(accounts)
-		.where(eq(accounts.userId, user.id));
+		.where(
+			and(
+				eq(accounts.userId, user.id),
+				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			),
+		);
 
 	const [hasBluesky] = await db
 		.select({ value: sql<number>`1` })
@@ -132,7 +137,12 @@ export default async function DashboardPage() {
 	const channelProviders = await db
 		.selectDistinct({ provider: accounts.provider })
 		.from(accounts)
-		.where(eq(accounts.userId, user.id));
+		.where(
+			and(
+				eq(accounts.userId, user.id),
+				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			),
+		);
 
 	const allProviders = [
 		...channelProviders.map((c) => c.provider),
@@ -143,24 +153,29 @@ export default async function DashboardPage() {
 	const firstName = (user.name ?? user.email).split(/\s|@/)[0];
 	const greeting = greet(new Date(), tz);
 	const stats = [
-		{ label: "Drafts", value: counts.drafts ?? 0, hint: "in the writing room" },
+		{ label: "Drafts", value: counts.drafts ?? 0, hint: "in the writing room", href: "/app/posts?status=draft" },
 		{
 			label: "Scheduled",
 			value: counts.scheduled ?? 0,
 			hint: "across all channels",
+			href: "/app/posts?status=scheduled",
 		},
 		{
 			label: "Published this week",
 			value: counts.publishedThisWeek ?? 0,
 			hint: "since Monday",
+			href: "/app/posts?status=published",
 		},
 		{
 			label: "Connected channels",
 			value: connectedChannels ?? 0,
-			hint:
-				totalAccounts > 0
-					? `${totalAccounts} account${totalAccounts > 1 ? "s" : ""}`
-					: "none yet",
+			hint: (() => {
+				const total = Number(totalAccounts) + (hasBluesky ? 1 : 0);
+				return total > 0
+					? `${total} account${total > 1 ? "s" : ""}`
+					: "none yet";
+			})(),
+			href: "/app/settings/channels",
 		},
 	];
 
@@ -203,9 +218,10 @@ export default async function DashboardPage() {
 			{/* Stats */}
 			<section className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 				{stats.map((s) => (
-					<article
+					<Link
 						key={s.label}
-						className="rounded-2xl border border-border bg-background-elev p-5"
+						href={s.href}
+						className="group rounded-2xl border border-border bg-background-elev p-5 transition-colors hover:bg-muted/40"
 					>
 						<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/55">
 							{s.label}
@@ -214,7 +230,7 @@ export default async function DashboardPage() {
 							{s.value}
 						</p>
 						<p className="mt-2 text-[12px] text-ink/55">{s.hint}</p>
-					</article>
+					</Link>
 				))}
 			</section>
 
@@ -226,7 +242,7 @@ export default async function DashboardPage() {
 						eyebrow="Up next"
 						title="Scheduled to go out"
 						actionLabel="See all"
-						actionHref="/app/calendar"
+						actionHref="/app/posts?status=scheduled"
 					/>
 
 					{upcoming.length === 0 ? (
@@ -278,8 +294,8 @@ export default async function DashboardPage() {
 							<SectionHeader
 								eyebrow="Recently out the door"
 								title="Published"
-								actionLabel="Open analytics"
-								actionHref="/analytics"
+								actionLabel="See all"
+								actionHref="/app/posts?status=published"
 							/>
 							<ul className="rounded-2xl border border-border bg-background-elev divide-y divide-border overflow-hidden">
 								{recentPublished.map((p) => (
@@ -337,7 +353,7 @@ export default async function DashboardPage() {
 							</div>
 						</div>
 						<Link
-							href="/inbox"
+							href="/app/inbox"
 							className="mt-5 inline-flex items-center justify-center w-full h-10 rounded-full border border-border-strong text-[13px] text-ink hover:border-ink transition-colors"
 						>
 							Open Inbox
@@ -463,7 +479,7 @@ function ChannelsCard({ providers }: { providers: string[] }) {
 				</p>
 			)}
 			<Link
-				href="/app/settings"
+				href="/app/settings/channels"
 				className="mt-5 inline-flex items-center justify-center w-full h-10 rounded-full border border-border-strong text-[13px] text-ink hover:border-ink transition-colors"
 			>
 				<Plug className="w-3.5 h-3.5 mr-1.5" />
