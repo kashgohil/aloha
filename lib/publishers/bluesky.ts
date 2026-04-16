@@ -16,7 +16,7 @@ type BlueskyCredentials = {
 	did?: string | null;
 };
 
-async function getBlueskyCredentials(userId: string): Promise<BlueskyCredentials> {
+export async function getBlueskyCredentials(userId: string): Promise<BlueskyCredentials> {
 	const [row] = await db
 		.select({
 			handle: blueskyCredentials.handle,
@@ -41,7 +41,7 @@ async function getBlueskyCredentials(userId: string): Promise<BlueskyCredentials
 	};
 }
 
-async function createSession(credentials: BlueskyCredentials) {
+export async function createSession(credentials: BlueskyCredentials) {
 	const agent = new AtpAgent({ service: "https://bsky.social" });
 	await agent.login({
 		identifier: credentials.handle,
