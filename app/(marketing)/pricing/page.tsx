@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { FaqList } from "../faq-list";
 import { PricingCalculator } from "./_components/pricing-calculator";
+import { PricingComingSoon } from "./_components/pricing-coming-soon";
 
 export const metadata = makeMetadata({
 	title: "Pricing — Basic $5/channel, add Muse for AI that sounds like you",
@@ -408,6 +409,10 @@ const PRICING_SOFTWARE_APP = {
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function PricingPage() {
+	if (process.env.NODE_ENV !== "development") {
+		return <PricingComingSoon />;
+	}
+
 	return (
 		<>
 			<JsonLd

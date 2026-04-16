@@ -83,8 +83,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // Trust.
   entries.push(entry(routes.trust, 0.6, "monthly"));
 
-  // Pricing.
-  entries.push(entry(routes.pricing, 0.95, "weekly"));
+  // Pricing — coming-soon page in production, lower priority + slower crawl.
+  entries.push(entry(routes.pricing, 0.6, "monthly"));
 
   // Human-readable utility pages (footer).
   entries.push(entry(routes.misc.sitemap, 0.3, "monthly"));

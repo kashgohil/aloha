@@ -1,11 +1,13 @@
 import { PricingCalculator } from "@/app/(marketing)/pricing/_components/pricing-calculator";
+import { WishlistForm } from "@/app/(marketing)/pricing/_components/wishlist-form";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
 import { effectivePrice, FREE_TIER_CHANNELS } from "@/lib/billing/pricing";
 import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { routes } from "@/lib/routes";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { CheckCircle2, Sparkle } from "lucide-react";
 import { redirect } from "next/navigation";
 import { ChannelAdjuster } from "./_components/channel-adjuster";
@@ -14,6 +16,8 @@ import { IntervalSwitch } from "./_components/interval-switch";
 import { InvoicesList } from "./_components/invoices";
 import { MuseToggleSection } from "./_components/muse-toggle-section";
 import { PastDueBanner } from "./_components/past-due-banner";
+
+const IS_DEV = process.env.NODE_ENV === "development";
 
 export const dynamic = "force-dynamic";
 
@@ -54,8 +58,22 @@ export default async function BillingPage({
 	const channelRows = await db
 		.select({ provider: accounts.provider })
 		.from(accounts)
-		.where(eq(accounts.userId, userId));
+		.where(
+			and(
+				eq(accounts.userId, userId),
+				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			),
+		);
 	const connectedChannels = channelRows.length;
+
+	if (!IS_DEV) {
+		return (
+			<div className="space-y-8">
+				<FreePlanHero connectedChannels={connectedChannels} />
+				<BillingComingSoon />
+			</div>
+		);
+	}
 
 	if (sub.plan === "free") {
 		return (
@@ -271,6 +289,50 @@ function PlanSummary({
 					</div>
 				</div>
 			</div>
+		</div>
+	);
+}
+
+function BillingComingSoon() {
+	return (
+		<div className="space-y-8">
+			<section className="rounded-3xl bg-background-elev border border-border p-8 lg:p-10">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+					Paid plans
+				</p>
+				<h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.015em] text-ink">
+					Pricing is coming soon.
+				</h2>
+				<p className="mt-3 text-[14.5px] text-ink/65 leading-[1.55] max-w-2xl">
+					You're on the free tier — 3 channels, scheduling, calendar, and 50 AI
+					generations a month. Enjoy it while we finalize paid plans.
+				</p>
+			</section>
+
+			<section className="rounded-3xl bg-peach-100 border border-border p-8 lg:p-10">
+				<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-primary mb-4">
+					Coming soon
+				</p>
+				<h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.015em] text-ink">
+					Muse — AI that sounds like you.
+				</h2>
+				<p className="mt-3 text-[14.5px] text-ink/65 leading-[1.55] max-w-2xl">
+					Style-trained writing, per-channel variants, fan-out, advanced
+					campaigns. We're opening beta access to a small group. Sign up
+					and we'll be in touch.
+				</p>
+				<div className="mt-8 pt-6 border-t border-ink/10">
+					<p className="text-[12.5px] text-ink/65 mb-4">
+						<span className="font-medium text-ink">
+							Join the Muse beta wishlist
+						</span>
+						<span className="text-ink/45">
+							{" "}· we'll pick select participants
+						</span>
+					</p>
+					<WishlistForm />
+				</div>
+			</section>
 		</div>
 	);
 }
