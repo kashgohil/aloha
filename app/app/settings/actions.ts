@@ -1,11 +1,12 @@
 "use server";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn } from "@/auth";
 import { db } from "@/db";
 import { accounts, users, blueskyCredentials } from "@/db/schema";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
 import { syncChannelQuantity } from "@/lib/billing/service";
 import { AtpAgent } from "@atproto/api";
@@ -118,7 +119,12 @@ async function currentChannelCount(userId: string): Promise<number> {
     db
       .select({ provider: accounts.provider })
       .from(accounts)
-      .where(eq(accounts.userId, userId)),
+      .where(
+        and(
+          eq(accounts.userId, userId),
+          notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+        ),
+      ),
     db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)

@@ -1,16 +1,15 @@
 import Link from "next/link";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { ArrowUpRight, Lock, Plus, ShieldCheck, Sparkle, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import { accounts, blueskyCredentials } from "@/db/schema";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { getCurrentUser } from "@/lib/current-user";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
 import { connectChannel, disconnectChannel } from "../actions";
 import {
-  GoogleIcon,
   LinkedInIcon,
-  GitHubIcon,
   XIcon,
   BlueskyIcon,
   FacebookIcon,
@@ -34,16 +33,9 @@ type ProviderConfig = {
 
 const PROVIDERS: ProviderConfig[] = [
   {
-    id: "google",
-    name: "Google",
-    purpose: "Sign in with your Google account.",
-    Icon: GoogleIcon,
-    status: "available",
-  },
-  {
     id: "linkedin",
     name: "LinkedIn",
-    purpose: "Sign in + publish to your profile.",
+    purpose: "Publish to your profile.",
     Icon: LinkedInIcon,
     mono: true,
     status: "available",
@@ -51,16 +43,8 @@ const PROVIDERS: ProviderConfig[] = [
   {
     id: "twitter",
     name: "X",
-    purpose: "Sign in + publish posts and threads.",
+    purpose: "Publish posts and threads.",
     Icon: XIcon,
-    mono: true,
-    status: "available",
-  },
-  {
-    id: "github",
-    name: "GitHub",
-    purpose: "Sign in with your developer identity.",
-    Icon: GitHubIcon,
     mono: true,
     status: "available",
   },
@@ -232,7 +216,12 @@ export default async function ChannelsSettingsPage({
         reauthRequired: accounts.reauthRequired,
       })
       .from(accounts)
-      .where(eq(accounts.userId, user.id)),
+      .where(
+        and(
+          eq(accounts.userId, user.id),
+          notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+        ),
+      ),
     db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)
@@ -280,7 +269,11 @@ export default async function ChannelsSettingsPage({
       ) : null}
 
       <ul className="rounded-3xl border border-border bg-background-elev divide-y divide-border overflow-hidden">
-        {PROVIDERS.map((p) => {
+        {[...PROVIDERS].sort((a, b) => {
+          const ac = connected.has(a.id) ? 0 : 1;
+          const bc = connected.has(b.id) ? 0 : 1;
+          return ac - bc;
+        }).map((p) => {
           const isConnected = connected.has(p.id);
           const isSoon = p.status === "soon";
           const isLocked = !isConnected && !isSoon && atLimit;

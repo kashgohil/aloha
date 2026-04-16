@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import {
 	cancelSubscription,
 	createCheckout,
@@ -27,7 +28,12 @@ async function currentChannelCount(userId: string): Promise<number> {
 	const rows = await db
 		.select({ provider: accounts.provider })
 		.from(accounts)
-		.where(eq(accounts.userId, userId));
+		.where(
+			and(
+				eq(accounts.userId, userId),
+				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			),
+		);
 	return rows.length;
 }
 

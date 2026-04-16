@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
 import { Composer } from "./_components/composer";
@@ -12,7 +13,12 @@ export default async function ComposerPage() {
   const connected = await db
     .selectDistinct({ provider: accounts.provider })
     .from(accounts)
-    .where(eq(accounts.userId, user.id));
+    .where(
+      and(
+        eq(accounts.userId, user.id),
+        notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+      ),
+    );
 
   const connectedProviders = connected.map((c) => c.provider);
 
