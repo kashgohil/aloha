@@ -373,6 +373,115 @@ export const assets = pgTable("assets", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
+// Generated content plans. A plan wraps the user's brief + the model's
+// structured output (see `PlanIdea` in lib/ai/plan.ts). `status` tracks the
+// review lifecycle; `ideas` is the authoritative list — user acceptance
+// flips entries in place and back-refs the draft post id.
+export const contentPlans = pgTable("content_plans", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  goal: text("goal").notNull(),
+  themes: text("themes").array().default([]).notNull(),
+  channels: text("channels").array().default([]).notNull(),
+  frequency: integer("frequency").notNull(),
+  rangeStart: timestamp("rangeStart", { mode: "date" }).notNull(),
+  rangeEnd: timestamp("rangeEnd", { mode: "date" }).notNull(),
+  status: text("status", { enum: ["draft", "ready", "accepted", "archived"] })
+    .default("draft")
+    .notNull(),
+  ideas: jsonb("ideas")
+    .$type<Array<Record<string, unknown>>>()
+    .default([])
+    .notNull(),
+  generationId: uuid("generationId").references(() => generations.id, {
+    onDelete: "set null",
+  }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// RSS / Atom subscriptions. `category` is populated when the feed was
+// subscribed via the curated catalog; user-added feeds leave it null. HTTP
+// conditional GET cursors (`etag`, `lastModified`) keep the fetch cheap on
+// the daily sync.
+export const feeds = pgTable(
+  "feeds",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    siteUrl: text("siteUrl"),
+    title: text("title").notNull(),
+    description: text("description"),
+    iconUrl: text("iconUrl"),
+    category: text("category"),
+    lastFetchedAt: timestamp("lastFetchedAt", { mode: "date" }),
+    etag: text("etag"),
+    lastModified: text("lastModified"),
+    errorCount: integer("errorCount").default(0).notNull(),
+    lastError: text("lastError"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("feeds_user_url").on(table.userId, table.url)],
+);
+
+// One row per item pulled from a feed. Dedupe on (feedId, guid) — guid
+// falls back to the item URL when the feed doesn't emit one. Items don't
+// have their own userId — ownership flows through the feed.
+export const feedItems = pgTable(
+  "feed_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    feedId: uuid("feedId")
+      .notNull()
+      .references(() => feeds.id, { onDelete: "cascade" }),
+    guid: text("guid").notNull(),
+    title: text("title").notNull(),
+    summary: text("summary"),
+    url: text("url"),
+    author: text("author"),
+    imageUrl: text("imageUrl"),
+    publishedAt: timestamp("publishedAt", { mode: "date" }),
+    isRead: boolean("isRead").default(false).notNull(),
+    // When an item is saved to the swipe file, link back so we can show
+    // "already saved" state + navigate to the idea.
+    savedAsIdeaId: uuid("savedAsIdeaId"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex("feed_items_feed_guid").on(table.feedId, table.guid)],
+);
+
+// Swipe file — captured ideas, hooks, reference posts, half-formed thoughts.
+// Rows arrive from: manual capture, URL clip, feed save, Notion sync, inbox
+// mark-as-idea. A minimal schema — richer metadata (embeddings, channel
+// suggestions) lands later.
+export const ideas = pgTable("ideas", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  source: text("source", {
+    enum: ["manual", "url_clip", "feed", "notion", "inbox"],
+  }).notNull(),
+  sourceId: text("sourceId"),
+  sourceUrl: text("sourceUrl"),
+  title: text("title"),
+  body: text("body").notNull(),
+  tags: text("tags").array().default([]).notNull(),
+  channelFit: text("channelFit").array().default([]).notNull(),
+  status: text("status", { enum: ["new", "drafted", "archived"] })
+    .default("new")
+    .notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
 export const mastodonCredentials = pgTable("mastodon_credentials", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("userId")

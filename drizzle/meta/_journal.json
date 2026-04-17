@@ -92,6 +92,20 @@
       "when": 1776431531985,
       "tag": "0012_long_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1776443274242,
+      "tag": "0013_shocking_omega_red",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1776444536778,
+      "tag": "0014_green_scrambler",
+      "breakpoints": true
     }
   ]
 }
