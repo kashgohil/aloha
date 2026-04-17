@@ -9,7 +9,17 @@ import { accounts, users, blueskyCredentials, mastodonCredentials } from "@/db/s
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
 import { syncChannelQuantity } from "@/lib/billing/service";
+import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
+
+const VALID_PUBLISH_MODES: readonly PublishMode[] = [
+  "auto",
+  "review_pending",
+  "manual_assist",
+] as const;
+const isPublishMode = (v: unknown): v is PublishMode =>
+  typeof v === "string" &&
+  (VALID_PUBLISH_MODES as readonly string[]).includes(v);
 
 const VALID_ROLES = [
   "solo",
@@ -298,4 +308,19 @@ export async function disconnectMastodon() {
 
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
+}
+
+// Channel state machine (§8). Lets a user pick how a gated platform behaves —
+// silent queue (`review_pending`) vs. reminder-me mode (`manual_assist`) —
+// or leave it on `auto` which defers to the platform's current gating status.
+export async function updateChannelPublishMode(formData: FormData) {
+  const userId = await requireUserId();
+  const channel = String(formData.get("channel") ?? "");
+  const mode = formData.get("mode");
+
+  if (!channel) throw new Error("channel is required");
+  if (!isPublishMode(mode)) throw new Error("invalid publish mode");
+
+  await setChannelPublishMode(userId, channel, mode);
+  revalidatePath("/app/settings/channels");
 }
