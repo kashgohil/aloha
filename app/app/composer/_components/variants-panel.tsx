@@ -70,6 +70,12 @@ export function VariantsPanel({
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
+        // 402 is our cost-cap-exceeded status. Surface the server's message
+        // verbatim so the user sees the real reason.
+        if (res.status === 402) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || "AI usage cap reached for this billing period.");
+        }
         throw new Error(`Request failed (${res.status})`);
       }
 
@@ -101,7 +107,12 @@ export function VariantsPanel({
       }
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
-        setError("Generation failed. Try again in a moment.");
+        const msg = err instanceof Error ? err.message : "";
+        setError(
+          msg.startsWith("AI usage cap reached")
+            ? msg
+            : "Generation failed. Try again in a moment.",
+        );
       }
     } finally {
       setRunning(false);
