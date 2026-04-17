@@ -18,6 +18,7 @@ import { generateStream } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
+import { assertCostCap, CostCapExceededError } from "@/lib/ai/cost-cap";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -43,6 +44,18 @@ export async function POST(req: NextRequest) {
   }
   if (platforms.length === 0) {
     return new Response("At least one platform is required", { status: 400 });
+  }
+
+  // Single gate up front: if the user is over their cap, don't open the
+  // stream at all. Each per-platform `generateStream` also checks, which
+  // catches the (rare) case where we cross the cap mid-fanout.
+  try {
+    await assertCostCap(user.id);
+  } catch (err) {
+    if (err instanceof CostCapExceededError) {
+      return new Response(err.message, { status: 402 });
+    }
+    throw err;
   }
 
   await registerPrompts();
