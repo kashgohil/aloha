@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Check,
   Calendar as CalendarIcon,
+  RefreshCw,
   Sparkles,
   Wand2,
 } from "lucide-react";
@@ -12,6 +13,7 @@ import { accounts } from "@/db/schema";
 import {
   acceptPlanIdeasAction,
   createPlanAction,
+  regeneratePlanDayAction,
 } from "@/app/actions/plan";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { loadPlan, type PlanIdea } from "@/lib/ai/plan";
@@ -301,26 +303,45 @@ function PlanReview({
         </div>
       ) : null}
 
-      <form action={acceptPlanIdeasAction} className="space-y-6">
+      {/* The accept form is declared up top with an id; checkboxes + the
+          submit button reference it via the `form` attribute. This lets the
+          regen-day forms live as DOM siblings (nested forms would be
+          invalid HTML). */}
+      <form
+        id="plan-accept-form"
+        action={acceptPlanIdeasAction}
+        className="contents"
+      >
         <input type="hidden" name="planId" value={plan.id} />
+      </form>
 
-        {dates.map((date) => (
-          <section key={date} className="space-y-2">
-            <header className="flex items-center gap-2 text-[11.5px] uppercase tracking-[0.18em] text-ink/55">
-              <CalendarIcon className="w-3 h-3" />
-              {new Intl.DateTimeFormat("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              }).format(new Date(`${date}T12:00:00Z`))}
-            </header>
-            <ul className="space-y-2">
-              {(byDate.get(date) ?? []).map((idea) => (
-                <IdeaRow key={idea.id} idea={idea} />
-              ))}
-            </ul>
-          </section>
-        ))}
+      <div className="space-y-6">
+        {dates.map((date) => {
+          const dayIdeas = byDate.get(date) ?? [];
+          const pendingOnDay = dayIdeas.filter((i) => !i.accepted).length;
+          return (
+            <section key={date} className="space-y-2">
+              <header className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 text-[11.5px] uppercase tracking-[0.18em] text-ink/55">
+                  <CalendarIcon className="w-3 h-3" />
+                  {new Intl.DateTimeFormat("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  }).format(new Date(`${date}T12:00:00Z`))}
+                </div>
+                {pendingOnDay > 0 ? (
+                  <RegenDayButton planId={plan.id} date={date} />
+                ) : null}
+              </header>
+              <ul className="space-y-2">
+                {dayIdeas.map((idea) => (
+                  <IdeaRow key={idea.id} idea={idea} />
+                ))}
+              </ul>
+            </section>
+          );
+        })}
 
         <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
           <p className="text-[12.5px] text-ink/55">
@@ -329,13 +350,14 @@ function PlanReview({
           </p>
           <button
             type="submit"
+            form="plan-accept-form"
             className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
           >
             <Sparkles className="w-4 h-4" />
             Create drafts
           </button>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
@@ -355,6 +377,7 @@ function IdeaRow({ idea }: { idea: PlanIdea }) {
         type="checkbox"
         name="ideaIds"
         value={idea.id}
+        form="plan-accept-form"
         disabled={accepted}
         defaultChecked={!accepted}
         className="mt-1 accent-ink"
@@ -389,5 +412,22 @@ function IdeaRow({ idea }: { idea: PlanIdea }) {
         ) : null}
       </div>
     </li>
+  );
+}
+
+function RegenDayButton({ planId, date }: { planId: string; date: string }) {
+  return (
+    <form action={regeneratePlanDayAction}>
+      <input type="hidden" name="planId" value={planId} />
+      <input type="hidden" name="date" value={date} />
+      <button
+        type="submit"
+        title="Regenerate this day's pending ideas"
+        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full border border-border-strong text-[11.5px] font-medium text-ink/70 hover:text-ink hover:border-ink transition-colors"
+      >
+        <RefreshCw className="w-3 h-3" />
+        Regenerate
+      </button>
+    </form>
   );
 }
