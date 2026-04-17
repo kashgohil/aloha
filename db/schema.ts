@@ -8,6 +8,7 @@ import {
   boolean,
   jsonb,
   uniqueIndex,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
@@ -170,6 +171,12 @@ export const posts = pgTable("posts", {
     .notNull(),
   scheduledAt: timestamp("scheduledAt"),
   publishedAt: timestamp("publishedAt"),
+  // When the composer was seeded from an idea (via ?idea= URL), we stamp
+  // the source here so the idea can be flipped to `drafted` + we keep
+  // provenance. Set-null on idea delete so orphaned posts survive.
+  sourceIdeaId: uuid("sourceIdeaId").references((): AnyPgColumn => ideas.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
