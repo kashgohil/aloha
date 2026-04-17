@@ -183,8 +183,21 @@ export const postDeliveries = pgTable("post_deliveries", {
     .notNull()
     .references(() => posts.id, { onDelete: "cascade" }),
   platform: text("platform").notNull(),
+  // Delivery lifecycle. `pending_review` = channel is gated behind platform
+  // approval and publishing is suppressed; `manual_assist` = channel is in
+  // reminder-only mode and the user will publish themselves. Both are
+  // terminal-for-this-run but recoverable: when the channel's state changes
+  // (approval lands, or user flips back to auto), scheduled posts can be
+  // re-queued without losing their delivery row.
   status: text("status", {
-    enum: ["pending", "published", "failed", "needs_reauth"],
+    enum: [
+      "pending",
+      "published",
+      "failed",
+      "needs_reauth",
+      "pending_review",
+      "manual_assist",
+    ],
   })
     .default("pending")
     .notNull(),
@@ -315,6 +328,257 @@ export const inboxMessages = pgTable(
       table.userId,
       table.platform,
       table.remoteId,
+    ),
+  ],
+);
+
+// Per-user voice profile. Trained from past posts + uploaded corpus + slider
+// input; consumed by every Muse generation call. Basic companion ignores it.
+// `tone` holds the slider state and any structured descriptors; `features`
+// holds derived stats from the training corpus (avg sentence length, emoji
+// rate, hook patterns) so prompts don't have to re-derive each call.
+export const brandVoice = pgTable("brand_voice", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tone: jsonb("tone").$type<Record<string, unknown>>().default({}).notNull(),
+  features: jsonb("features")
+    .$type<Record<string, unknown>>()
+    .default({})
+    .notNull(),
+  bannedPhrases: text("bannedPhrases").array().default([]).notNull(),
+  ctaStyle: text("ctaStyle"),
+  emojiRate: text("emojiRate", { enum: ["none", "low", "medium", "high"] }),
+  sampleSourceIds: text("sampleSourceIds").array().default([]).notNull(),
+  version: integer("version").default(1).notNull(),
+  trainedAt: timestamp("trainedAt", { mode: "date" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// Per-channel overrides on top of `brand_voice`. Training produces both in one
+// pass. If overrides end up doing most of the work in practice, revisit
+// flattening into independent per-channel profiles (see ai-grand-plan §11).
+export const brandVoiceChannels = pgTable(
+  "brand_voice_channels",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    overrides: jsonb("overrides")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    version: integer("version").default(1).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("brand_voice_channels_user_channel").on(
+      table.userId,
+      table.channel,
+    ),
+  ],
+);
+
+// Per-user × per-channel publish-mode override. Only meaningful when the
+// channel is in a gated platform state (e.g. Meta app review pending) —
+// otherwise the effective state is `published` regardless of what's stored
+// here. `auto` defers to the platform's current gating config; users pick
+// between `review_pending` (silent queue) and `manual_assist` (reminders).
+// See ai-grand-plan §8 for the full state machine.
+export const channelStates = pgTable(
+  "channel_states",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    publishMode: text("publishMode", {
+      enum: ["auto", "review_pending", "manual_assist"],
+    })
+      .default("auto")
+      .notNull(),
+    // Set when the channel entered a gated state — drives the 14-day
+    // auto-flip from review_pending to manual_assist.
+    reviewStartedAt: timestamp("reviewStartedAt", { mode: "date" }),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("channel_states_user_channel").on(table.userId, table.channel),
+  ],
+);
+
+// Per-user × per-channel flag: is Muse turned on for this channel? Drives
+// both the entitlement check in the router and per-channel billing.
+export const museEnabledChannels = pgTable(
+  "muse_enabled_channels",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    enabledAt: timestamp("enabledAt", { mode: "date" }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("muse_enabled_channels_user_channel").on(
+      table.userId,
+      table.channel,
+    ),
+  ],
+);
+
+// Named, versioned system prompts. Rolling a new template version is a
+// deploy, not a config change — feature code pins (name, version).
+export const promptTemplates = pgTable(
+  "prompt_templates",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: text("name").notNull(),
+    version: integer("version").notNull(),
+    systemPrompt: text("systemPrompt").notNull(),
+    inputSchema: jsonb("inputSchema")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    modelHint: text("modelHint"),
+    notes: text("notes"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("prompt_templates_name_version").on(table.name, table.version),
+  ],
+);
+
+// Log of every LLM call. Powers cost dashboards, router evaluation, and
+// fine-tune candidate selection. `costMicros` is USD × 1e6 to keep integer
+// math; divide at render time.
+export const generations = pgTable("generations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  feature: text("feature").notNull(),
+  templateName: text("templateName"),
+  templateVersion: integer("templateVersion"),
+  model: text("model").notNull(),
+  input: jsonb("input").$type<Record<string, unknown>>().default({}).notNull(),
+  output: jsonb("output")
+    .$type<Record<string, unknown>>()
+    .default({})
+    .notNull(),
+  tokensIn: integer("tokensIn").default(0).notNull(),
+  tokensOut: integer("tokensOut").default(0).notNull(),
+  costMicros: integer("costMicros").default(0).notNull(),
+  latencyMs: integer("latencyMs").default(0).notNull(),
+  status: text("status", {
+    enum: ["pending", "ok", "error", "moderated"],
+  })
+    .default("pending")
+    .notNull(),
+  errorCode: text("errorCode"),
+  errorMessage: text("errorMessage"),
+  feedback: text("feedback", {
+    enum: ["accepted", "edited", "rejected"],
+  }),
+  feedbackAt: timestamp("feedbackAt", { mode: "date" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+// QStash-backed queue for long-running AI work: batch generation, nightly
+// insights pulls, voice training, weekly digests. `qstashMessageId` lets the
+// worker dedupe and cancel.
+export const aiJobs = pgTable("ai_jobs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId").references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind").notNull(),
+  payload: jsonb("payload")
+    .$type<Record<string, unknown>>()
+    .default({})
+    .notNull(),
+  status: text("status", {
+    enum: ["queued", "running", "done", "failed"],
+  })
+    .default("queued")
+    .notNull(),
+  scheduledAt: timestamp("scheduledAt", { mode: "date" }),
+  startedAt: timestamp("startedAt", { mode: "date" }),
+  completedAt: timestamp("completedAt", { mode: "date" }),
+  attempts: integer("attempts").default(0).notNull(),
+  lastError: text("lastError"),
+  qstashMessageId: text("qstashMessageId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// Cached per-post analytics pulled from each connected platform. One row per
+// (user, platform, remotePostId). `postId` links back to our own `posts` when
+// the post was published through Aloha; null for pre-Aloha history.
+export const platformInsights = pgTable(
+  "platform_insights",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    remotePostId: text("remotePostId").notNull(),
+    postId: uuid("postId").references(() => posts.id, { onDelete: "set null" }),
+    metrics: jsonb("metrics")
+      .$type<Record<string, number | null>>()
+      .default({})
+      .notNull(),
+    platformPostedAt: timestamp("platformPostedAt", { mode: "date" }),
+    fetchedAt: timestamp("fetchedAt", { mode: "date" }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("platform_insights_user_platform_remote").on(
+      table.userId,
+      table.platform,
+      table.remotePostId,
+    ),
+  ],
+);
+
+// Cached read-back of the user's own past posts per platform. Feeds voice
+// training, repurposing, and de-dupe. Separate from `platform_insights` so a
+// post can have its content cached even before metrics land.
+export const platformContentCache = pgTable(
+  "platform_content_cache",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    remotePostId: text("remotePostId").notNull(),
+    content: text("content").notNull(),
+    media: jsonb("media").$type<PostMedia[]>().default([]).notNull(),
+    platformData: jsonb("platformData")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    platformPostedAt: timestamp("platformPostedAt", { mode: "date" }),
+    fetchedAt: timestamp("fetchedAt", { mode: "date" }).defaultNow().notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("platform_content_cache_user_platform_remote").on(
+      table.userId,
+      table.platform,
+      table.remotePostId,
     ),
   ],
 );
