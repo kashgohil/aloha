@@ -11,6 +11,8 @@ export type FeatureKey =
   | "composer.variants"
   | "composer.fanout"
   | "composer.hashtags"
+  | "composer.score"
+  | "composer.improve"
   | "composer.image"
   | "voice.train"
   | "voice.sample"
@@ -36,6 +38,8 @@ const FEATURE_TIER: Record<FeatureKey, Tier> = {
   "composer.variants": "flash",
   "composer.fanout": "flash",
   "composer.hashtags": "flash",
+  "composer.score": "flash",
+  "composer.improve": "flash",
   "composer.image": "pro",
   "voice.train": "pro",
   "voice.sample": "flash",
