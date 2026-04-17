@@ -3,6 +3,7 @@
 import {
 	generateAltText,
 	generateDraft,
+	generateImageAction,
 	refineContent,
 	suggestHashtags,
 } from "@/app/actions/ai";
@@ -23,20 +24,35 @@ import { cn } from "@/lib/utils";
 import {
 	AlertCircle,
 	CalendarClock,
+	Clock,
+	FileText,
+	GitBranch,
 	Hash,
-	Image as ImageIcon,
+	Layers,
 	Loader2,
+	Palette,
 	Paperclip,
 	Plug,
 	RotateCcw,
 	Send,
 	Sparkles,
 	Type,
+	Upload,
 	Wand2,
 	X as XIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import type { BestWindow } from "@/lib/best-time-format";
+import { formatWindow } from "@/lib/best-time-format";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { FanoutPanel } from "./fanout-panel";
+import { ImportPanel } from "./import-panel";
 import { PreviewCard } from "./preview-card";
 import { VariantsPanel, type VariantPlatform } from "./variants-panel";
 
@@ -145,9 +161,11 @@ type TabId = "all" | string;
 export function Composer({
 	author,
 	connectedProviders,
+	bestWindows,
 }: {
 	author: Author;
 	connectedProviders: string[];
+	bestWindows: Record<string, BestWindow[]>;
 }) {
 	const router = useRouter();
 	const [baseContent, setBaseContent] = useState("");
@@ -167,12 +185,29 @@ export function Composer({
 	const [isSaving, startSaving] = useTransition();
 	const [isPublishing, startPublishing] = useTransition();
 	const [formError, setFormError] = useState<string | null>(null);
+
+	// Cap-exceeded server errors carry a specific message; preserve it so the
+	// user sees the real reason instead of a generic "failed" toast.
+	const messageFromErr = (err: unknown, fallback: string): string => {
+		if (err instanceof Error && err.message.startsWith("AI usage cap reached")) {
+			return err.message;
+		}
+		return fallback;
+	};
 	const [showGenerate, setShowGenerate] = useState(false);
 	const [generateTopic, setGenerateTopic] = useState("");
 	const [showVariants, setShowVariants] = useState(false);
+	const [showFanout, setShowFanout] = useState(false);
+	const [showImport, setShowImport] = useState(false);
 	const [isHashing, startHashing] = useTransition();
 	const [hashSuggestions, setHashSuggestions] = useState<string[]>([]);
 	const [altTextLoading, setAltTextLoading] = useState<string | null>(null);
+	const [showImageGen, setShowImageGen] = useState(false);
+	const [imagePrompt, setImagePrompt] = useState("");
+	const [imageAspect, setImageAspect] = useState<"1:1" | "4:5" | "16:9" | "9:16">(
+		"1:1",
+	);
+	const [isImaging, startImaging] = useTransition();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	// If the active tab's platform gets deselected, fall back to "all".
@@ -294,8 +329,8 @@ export function Composer({
 				const context = activePlatform?.id ?? selected[0] ?? "general";
 				const refined = await refineContent(editorValue, context);
 				handleEditorChange(refined);
-			} catch {
-				setFormError("Refine failed. Try again in a moment.");
+			} catch (err) {
+				setFormError(messageFromErr(err, "Refine failed. Try again in a moment."));
 			}
 		});
 	};
@@ -308,8 +343,8 @@ export function Composer({
 				const context = activePlatform?.id ?? selected[0] ?? "general";
 				const tags = await suggestHashtags(editorValue, context);
 				setHashSuggestions(tags);
-			} catch {
-				setFormError("Hashtag suggest failed. Try again in a moment.");
+			} catch (err) {
+				setFormError(messageFromErr(err, "Hashtag suggest failed. Try again in a moment."));
 			}
 		});
 	};
@@ -344,6 +379,46 @@ export function Composer({
 		Icon: PLATFORM_ICONS[p.id],
 	}));
 
+	// Fan-out needs a source channel (active tab ≠ "all"), non-empty content
+	// on that channel, and at least one other selected channel to target.
+	const fanoutSourcePlatform =
+		activeTab !== "all"
+			? (PLATFORMS.find((p) => p.id === activeTab) ?? null)
+			: null;
+	const fanoutTargets: VariantPlatform[] = fanoutSourcePlatform
+		? selectedPlatforms
+				.filter((p) => p.id !== fanoutSourcePlatform.id)
+				.map((p) => ({ id: p.id, name: p.name, Icon: PLATFORM_ICONS[p.id] }))
+		: [];
+	const canFanout =
+		fanoutSourcePlatform !== null &&
+		fanoutTargets.length > 0 &&
+		effectiveContent(fanoutSourcePlatform.id).trim().length > 0;
+
+	const handleGenerateImage = () => {
+		if (!imagePrompt.trim() || baseMedia.length >= MAX_MEDIA) return;
+		setFormError(null);
+		startImaging(async () => {
+			try {
+				const img = await generateImageAction(imagePrompt, imageAspect);
+				setBaseMedia((prev) => [
+					...prev,
+					{
+						url: img.url,
+						mimeType: img.mimeType,
+						width: img.width,
+						height: img.height,
+						alt: img.alt ?? undefined,
+					},
+				]);
+				setImagePrompt("");
+				setShowImageGen(false);
+			} catch (err) {
+				setFormError(messageFromErr(err, "Image generation failed. Try again in a moment."));
+			}
+		});
+	};
+
 	const handleGenerateAltText = async (m: PostMedia) => {
 		setAltTextLoading(m.url);
 		setFormError(null);
@@ -352,8 +427,8 @@ export function Composer({
 			setBaseMedia((prev) =>
 				prev.map((x) => (x.url === m.url ? { ...x, alt: text } : x)),
 			);
-		} catch {
-			setFormError("Alt text failed. Try again in a moment.");
+		} catch (err) {
+			setFormError(messageFromErr(err, "Alt text failed. Try again in a moment."));
 		} finally {
 			setAltTextLoading(null);
 		}
@@ -369,8 +444,8 @@ export function Composer({
 				handleEditorChange(draft);
 				setGenerateTopic("");
 				setShowGenerate(false);
-			} catch {
-				setFormError("Generate failed. Try again in a moment.");
+			} catch (err) {
+				setFormError(messageFromErr(err, "Generate failed. Try again in a moment."));
 			}
 		});
 	};
@@ -540,6 +615,27 @@ export function Composer({
 							/>
 						</div>
 					) : null}
+					{showFanout && fanoutSourcePlatform ? (
+						<div className="mb-6">
+							<FanoutPanel
+								sourcePlatform={fanoutSourcePlatform.id}
+								sourcePlatformName={fanoutSourcePlatform.name}
+								sourceContent={effectiveContent(fanoutSourcePlatform.id)}
+								targets={fanoutTargets}
+								onAccept={applyVariantToChannel}
+								onClose={() => setShowFanout(false)}
+							/>
+						</div>
+					) : null}
+					{showImport ? (
+						<div className="mb-6">
+							<ImportPanel
+								targets={variantPlatforms}
+								onAccept={applyVariantToChannel}
+								onClose={() => setShowImport(false)}
+							/>
+						</div>
+					) : null}
 					{/* Tab strip */}
 					<div
 						role="tablist"
@@ -569,6 +665,13 @@ export function Composer({
 							);
 						})}
 					</div>
+
+					{activePlatform && bestWindows[activePlatform.id]?.length ? (
+						<BestWindowHint
+							platformName={activePlatform.name}
+							window={bestWindows[activePlatform.id][0]}
+						/>
+					) : null}
 
 					<div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
 						{showGenerate ? (
@@ -713,6 +816,81 @@ export function Composer({
 							</div>
 						) : null}
 
+						{showImageGen ? (
+							<div className="px-5 py-4 border-t border-border bg-peach-100/40 space-y-3">
+								<div className="flex items-center gap-2 text-[12px] text-ink/65">
+									<Palette className="w-3.5 h-3.5 text-primary" />
+									<span>Describe the image you want — Muse generates it in your chosen aspect.</span>
+								</div>
+								<input
+									value={imagePrompt}
+									onChange={(e) => setImagePrompt(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && !isImaging) {
+											e.preventDefault();
+											handleGenerateImage();
+										}
+										if (e.key === "Escape") {
+											setShowImageGen(false);
+											setImagePrompt("");
+										}
+									}}
+									placeholder="e.g. a warm editorial shot of a reading nook, soft morning light"
+									autoFocus
+									className="w-full h-10 px-3 rounded-full border border-border bg-background text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
+								/>
+								<div className="flex items-center justify-between gap-2 flex-wrap">
+									<div className="flex items-center gap-1.5">
+										{(["1:1", "4:5", "16:9", "9:16"] as const).map((a) => {
+											const active = imageAspect === a;
+											return (
+												<button
+													key={a}
+													type="button"
+													onClick={() => setImageAspect(a)}
+													aria-pressed={active}
+													className={cn(
+														"inline-flex items-center h-8 px-3 rounded-full text-[12px] font-medium transition-colors",
+														active
+															? "bg-ink text-background"
+															: "bg-background text-ink/65 border border-border hover:text-ink",
+													)}
+												>
+													{a}
+												</button>
+											);
+										})}
+									</div>
+									<div className="flex items-center gap-2">
+										<button
+											type="button"
+											onClick={() => {
+												setShowImageGen(false);
+												setImagePrompt("");
+											}}
+											disabled={isImaging}
+											className="inline-flex items-center h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-ink transition-colors"
+										>
+											Cancel
+										</button>
+										<button
+											type="button"
+											onClick={handleGenerateImage}
+											disabled={isImaging || !imagePrompt.trim()}
+											className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
+										>
+											{isImaging ? (
+												<Loader2 className="w-3.5 h-3.5 animate-spin" />
+											) : (
+												<Palette className="w-3.5 h-3.5" />
+											)}
+											Generate
+										</button>
+									</div>
+								</div>
+							</div>
+						) : null}
+
 						{hashSuggestions.length > 0 ? (
 							<div className="px-5 pt-3 pb-1 border-t border-border flex flex-wrap items-center gap-1.5">
 								<span className="text-[11px] uppercase tracking-[0.18em] text-ink/45 mr-1">
@@ -739,35 +917,49 @@ export function Composer({
 							</div>
 						) : null}
 
-						<div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-border">
-							<div className="flex items-center gap-1">
-								<input
-									ref={fileInputRef}
-									type="file"
-									accept="image/jpeg,image/png,image/webp,image/gif"
-									multiple
-									hidden
-									onChange={(e) => handleFilesSelected(e.target.files)}
-								/>
-								<button
-									type="button"
-									onClick={() => fileInputRef.current?.click()}
-									disabled={isUploading || baseMedia.length >= MAX_MEDIA}
-									className="inline-flex items-center justify-center w-9 h-9 rounded-full text-ink/60 hover:text-ink hover:bg-muted/60 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
-									aria-label="Attach image"
-									title={
-										baseMedia.length >= MAX_MEDIA
-											? `Up to ${MAX_MEDIA} images`
-											: "Attach image"
-									}
-								>
-									{isUploading ? (
+						<TooltipProvider delay={250}>
+						<div className="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-border">
+							<input
+								ref={fileInputRef}
+								type="file"
+								accept="image/jpeg,image/png,image/webp,image/gif"
+								multiple
+								hidden
+								onChange={(e) => handleFilesSelected(e.target.files)}
+							/>
+
+							{/* Media */}
+							<ToolButton
+								onClick={() => fileInputRef.current?.click()}
+								disabled={isUploading || baseMedia.length >= MAX_MEDIA}
+								label={
+									baseMedia.length >= MAX_MEDIA
+										? `Up to ${MAX_MEDIA} images`
+										: "Attach image"
+								}
+								icon={
+									isUploading ? (
 										<Loader2 className="w-4 h-4 animate-spin" />
 									) : (
-										<ImageIcon className="w-4 h-4" />
-									)}
-								</button>
-								<div className="w-px h-5 bg-border mx-2" />
+										<Upload className="w-4 h-4" />
+									)
+								}
+							/>
+							<ToolButton
+								onClick={() => setShowImageGen((v) => !v)}
+								disabled={baseMedia.length >= MAX_MEDIA}
+								active={showImageGen}
+								label={
+									baseMedia.length >= MAX_MEDIA
+										? `Up to ${MAX_MEDIA} images`
+										: "Generate image"
+								}
+								icon={<Palette className="w-4 h-4" />}
+							/>
+
+							<ToolDivider />
+
+							<div className="px-1">
 								<CharCounter
 									length={editorValue.length}
 									limit={activeLimit}
@@ -780,77 +972,111 @@ export function Composer({
 									}
 								/>
 							</div>
-							<div className="flex items-center gap-1.5">
-								<button
-									type="button"
-									onClick={() => {
-										setShowGenerate((v) => !v);
-										if (!showGenerate) setShowVariants(false);
-									}}
-									aria-pressed={showGenerate}
-									className={cn(
-										"inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border text-[12.5px] font-medium transition-colors",
-										showGenerate
-											? "bg-ink text-background border-ink"
-											: "border-border-strong text-ink hover:border-ink",
-									)}
-								>
-									<Wand2 className="w-3.5 h-3.5 text-primary" />
-									Generate
-								</button>
-								<button
-									type="button"
-									onClick={() => {
-										setShowVariants((v) => !v);
-										if (!showVariants) setShowGenerate(false);
-									}}
-									disabled={selectedPlatforms.length === 0}
-									aria-pressed={showVariants}
-									title={
-										selectedPlatforms.length === 0
-											? "Select a channel first"
-											: "Draft one version per selected channel"
+
+							<ToolDivider />
+
+							{/* Compose */}
+							<ToolButton
+								onClick={() => {
+									setShowGenerate((v) => !v);
+									if (!showGenerate) {
+										setShowVariants(false);
+										setShowFanout(false);
+										setShowImport(false);
 									}
-									className={cn(
-										"inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border text-[12.5px] font-medium transition-colors disabled:opacity-40",
-										showVariants
-											? "bg-ink text-background border-ink"
-											: "border-border-strong text-ink hover:border-ink disabled:hover:border-border-strong",
-									)}
-								>
-									<Wand2 className="w-3.5 h-3.5 text-primary" />
-									Variants
-								</button>
-								<button
-									type="button"
-									onClick={handleRefine}
-									disabled={isRefining || !editorValue.trim()}
-									className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors"
-								>
-									{isRefining ? (
-										<Loader2 className="w-3.5 h-3.5 animate-spin" />
+								}}
+								active={showGenerate}
+								label="Draft from a topic"
+								icon={<Wand2 className="w-4 h-4" />}
+							/>
+							<ToolButton
+								onClick={() => {
+									setShowVariants((v) => !v);
+									if (!showVariants) {
+										setShowGenerate(false);
+										setShowFanout(false);
+										setShowImport(false);
+									}
+								}}
+								disabled={selectedPlatforms.length === 0}
+								active={showVariants}
+								label={
+									selectedPlatforms.length === 0
+										? "Select a channel first"
+										: "Draft one version per selected channel"
+								}
+								icon={<Layers className="w-4 h-4" />}
+							/>
+							<ToolButton
+								onClick={() => {
+									setShowFanout((v) => !v);
+									if (!showFanout) {
+										setShowGenerate(false);
+										setShowVariants(false);
+										setShowImport(false);
+									}
+								}}
+								disabled={!canFanout}
+								active={showFanout}
+								label={
+									!fanoutSourcePlatform
+										? "Open a channel tab to fan out from"
+										: fanoutTargets.length === 0
+											? "Select another channel to fan out to"
+											: effectiveContent(fanoutSourcePlatform.id).trim().length === 0
+												? "Write something on this channel first"
+												: `Fan out this ${fanoutSourcePlatform.name} post to the other channels`
+								}
+								icon={<GitBranch className="w-4 h-4" />}
+							/>
+							<ToolButton
+								onClick={() => {
+									setShowImport((v) => !v);
+									if (!showImport) {
+										setShowGenerate(false);
+										setShowVariants(false);
+										setShowFanout(false);
+									}
+								}}
+								disabled={selectedPlatforms.length === 0}
+								active={showImport}
+								label={
+									selectedPlatforms.length === 0
+										? "Select a channel first"
+										: "Import from a URL"
+								}
+								icon={<FileText className="w-4 h-4" />}
+							/>
+
+							<ToolDivider />
+
+							{/* Polish */}
+							<ToolButton
+								onClick={handleRefine}
+								disabled={isRefining || !editorValue.trim()}
+								label="Refine the current draft"
+								icon={
+									isRefining ? (
+										<Loader2 className="w-4 h-4 animate-spin" />
 									) : (
-										<Sparkles className="w-3.5 h-3.5 text-primary" />
-									)}
-									Refine
-								</button>
-								<button
-									type="button"
-									onClick={handleSuggestHashtags}
-									disabled={isHashing || !editorValue.trim()}
-									aria-label="Suggest hashtags"
-									title="Suggest hashtags"
-									className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors"
-								>
-									{isHashing ? (
-										<Loader2 className="w-3.5 h-3.5 animate-spin" />
+										<Sparkles className="w-4 h-4" />
+									)
+								}
+							/>
+							<ToolButton
+								onClick={handleSuggestHashtags}
+								disabled={isHashing || !editorValue.trim()}
+								label="Suggest hashtags"
+								icon={
+									isHashing ? (
+										<Loader2 className="w-4 h-4 animate-spin" />
 									) : (
-										<Hash className="w-3.5 h-3.5 text-primary" />
-									)}
-									Hashtags
-								</button>
-							</div>
+										<Hash className="w-4 h-4" />
+									)
+								}
+							/>
 						</div>
+						</TooltipProvider>
 					</div>
 
 					<p className="mt-4 text-[12px] text-ink/50 leading-normal">
@@ -936,6 +1162,49 @@ function TabButton({
 			) : null}
 		</button>
 	);
+}
+
+function ToolButton({
+	icon,
+	label,
+	onClick,
+	active,
+	disabled,
+}: {
+	icon: React.ReactNode;
+	label: string;
+	onClick: () => void;
+	active?: boolean;
+	disabled?: boolean;
+}) {
+	const button = (
+		<button
+			type="button"
+			onClick={onClick}
+			disabled={disabled}
+			aria-label={label}
+			aria-pressed={active}
+			className={cn(
+				"inline-flex items-center justify-center w-9 h-9 rounded-full transition-colors shrink-0",
+				active
+					? "bg-ink text-background"
+					: "text-ink/60 hover:text-ink hover:bg-muted/60",
+				"disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-ink/60",
+			)}
+		>
+			{icon}
+		</button>
+	);
+	return (
+		<Tooltip>
+			<TooltipTrigger render={button} />
+			<TooltipContent>{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function ToolDivider() {
+	return <span aria-hidden className="w-px h-5 bg-border mx-1 shrink-0" />;
 }
 
 function CharCounter({
@@ -1068,6 +1337,31 @@ function SchedulePopover({
 					</div>
 				</div>
 			) : null}
+		</div>
+	);
+}
+
+function BestWindowHint({
+	platformName,
+	window,
+}: {
+	platformName: string;
+	window: BestWindow;
+}) {
+	const sampleLabel =
+		window.samples === 1 ? "post" : "posts";
+	return (
+		<div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-peach-100/60 px-3 py-1.5 text-[12px] text-ink/75">
+			<Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+			<span>
+				Best window for {platformName}:{" "}
+				<span className="font-medium text-ink">{formatWindow(window)}</span>
+				{" "}
+				<span className="text-ink/60">
+					(+{window.deltaPct}% vs your average, based on {window.samples}{" "}
+					{sampleLabel})
+				</span>
+			</span>
 		</div>
 	);
 }
