@@ -9,6 +9,7 @@ import { costMicrosFor, defaultModelFor, type FeatureKey } from "./models";
 import { openRouterChat, openRouterChatStream } from "./openrouter";
 import { loadTemplate } from "./templates";
 import { logGeneration } from "./generations";
+import { assertCostCap } from "./cost-cap";
 
 export type GenerateInput = {
   userId: string;
@@ -37,6 +38,7 @@ export type GenerateResult = {
 };
 
 export async function generate(input: GenerateInput): Promise<GenerateResult> {
+  await assertCostCap(input.userId);
   const model = input.model ?? defaultModelFor(input.feature);
   const template = await loadTemplate(input.template.name, input.template.version);
   const systemPrompt = interpolate(template.systemPrompt, input.vars ?? {});
@@ -134,6 +136,7 @@ export type GenerateStreamResult = {
 export async function generateStream(
   input: GenerateInput,
 ): Promise<GenerateStreamResult> {
+  await assertCostCap(input.userId);
   const model = input.model ?? defaultModelFor(input.feature);
   const template = await loadTemplate(input.template.name, input.template.version);
   const systemPrompt = interpolate(template.systemPrompt, input.vars ?? {});
