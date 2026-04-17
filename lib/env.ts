@@ -31,13 +31,18 @@ const envSchema = z.object({
   AUTH_TIKTOK_SECRET: z.string().optional(),
   AUTH_MEDIUM_ID: z.string().optional(),
   AUTH_MEDIUM_SECRET: z.string().optional(),
-  
+  AUTH_REDDIT_ID: z.string().optional(),
+  AUTH_REDDIT_SECRET: z.string().optional(),
+  AUTH_PINTEREST_ID: z.string().optional(),
+  AUTH_PINTEREST_SECRET: z.string().optional(),
+
   // Email
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().default("Aloha <hey@usealoha.app>"),
 
   // AI
   GEMINI_API_KEY: z.string().min(1),
+  OPENROUTER_API_KEY: z.string().min(1),
   
   // QStash
   QSTASH_URL: z.string().url().optional(),
