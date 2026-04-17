@@ -8,7 +8,9 @@ import {
   FileText,
   Inbox,
   LayoutDashboard,
+  Lightbulb,
   PenSquare,
+  Rss,
   Sparkles,
   Users,
 } from "lucide-react";
@@ -30,6 +32,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Posts", href: "/app/posts", icon: FileText },
   { label: "Calendar", href: "/app/calendar", icon: CalendarDays },
   { label: "Composer", href: "/app/composer", icon: PenSquare },
+  { label: "Ideas", href: "/app/ideas", icon: Lightbulb },
+  { label: "Feeds", href: "/app/feeds", icon: Rss },
   { label: "Inbox", href: "/app/inbox", icon: Inbox },
   { label: "Audience", href: "/app/audience", icon: Users },
   { label: "Automations", href: "/app/automations", icon: Sparkles },
