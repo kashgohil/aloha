@@ -40,6 +40,7 @@ export const routes = {
 		bluesky: "/channels/bluesky",
 		mastodon: "/channels/mastodon",
 		medium: "/channels/medium",
+		reddit: "/channels/reddit",
 	},
 
 	// Phase 3 — Compare + positioning
@@ -157,6 +158,7 @@ export const footerLinks = {
 				{ label: "Bluesky", href: routes.channels.bluesky },
 				{ label: "Mastodon", href: routes.channels.mastodon },
 				{ label: "Medium", href: routes.channels.medium },
+				{ label: "Reddit", href: routes.channels.reddit },
 			],
 		},
 		{
