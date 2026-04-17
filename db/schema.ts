@@ -480,6 +480,7 @@ export const ideas = pgTable("ideas", {
   sourceUrl: text("sourceUrl"),
   title: text("title"),
   body: text("body").notNull(),
+  media: jsonb("media").$type<PostMedia[]>(),
   tags: text("tags").array().default([]).notNull(),
   channelFit: text("channelFit").array().default([]).notNull(),
   status: text("status", { enum: ["new", "drafted", "archived"] })
