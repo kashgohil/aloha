@@ -46,6 +46,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import type { BestWindow } from "@/lib/best-time-format";
 import { formatWindow } from "@/lib/best-time-format";
+import type { EffectiveState } from "@/lib/channel-state-format";
+import { stateOr, stateStyles } from "@/lib/channel-state-format";
 import {
 	Tooltip,
 	TooltipContent,
@@ -164,13 +166,17 @@ export function Composer({
 	author,
 	connectedProviders,
 	bestWindows,
+	channelStates,
+	initialContent = "",
 }: {
 	author: Author;
 	connectedProviders: string[];
 	bestWindows: Record<string, BestWindow[]>;
+	channelStates: Record<string, EffectiveState>;
+	initialContent?: string;
 }) {
 	const router = useRouter();
-	const [baseContent, setBaseContent] = useState("");
+	const [baseContent, setBaseContent] = useState(initialContent);
 	const [baseMedia, setBaseMedia] = useState<PostMedia[]>([]);
 	const [overrides, setOverrides] = useState<Record<string, ChannelOverride>>(
 		{},
@@ -683,6 +689,8 @@ export function Composer({
 						{selectedPlatforms.map((p) => {
 							const Icon = PLATFORM_ICONS[p.id];
 							const over = effectiveContent(p.id).length > p.limit;
+							const state = stateOr(channelStates, p.id);
+							const style = stateStyles(state);
 							return (
 								<TabButton
 									key={p.id}
@@ -693,6 +701,16 @@ export function Composer({
 								>
 									{Icon && <Icon className="w-3.5 h-3.5" />}
 									{p.name}
+									{state !== "connected_published" ? (
+										<span
+											aria-label={style.label}
+											title={style.tooltip}
+											className={cn(
+												"ml-1.5 inline-block w-1.5 h-1.5 rounded-full",
+												style.dotClass,
+											)}
+										/>
+									) : null}
 								</TabButton>
 							);
 						})}
