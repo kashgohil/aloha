@@ -7,19 +7,18 @@ import {
   Lightbulb,
   Link2,
   PenSquare,
-  Plus,
   Rss,
   Sparkles,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
-import { ideas } from "@/db/schema";
+import { ideas, type PostMedia } from "@/db/schema";
 import {
-  createIdeaAction,
   deleteIdeaAction,
   updateIdeaStatusAction,
 } from "@/app/actions/ideas";
+import { IdeaDialog } from "./_components/idea-dialog";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +49,7 @@ export default async function IdeasPage({
       sourceUrl: ideas.sourceUrl,
       title: ideas.title,
       body: ideas.body,
+      media: ideas.media,
       tags: ideas.tags,
       status: ideas.status,
       createdAt: ideas.createdAt,
@@ -83,9 +83,10 @@ export default async function IdeasPage({
             anything here; pull into a draft when it&apos;s time to write.
           </p>
         </div>
+        <div className="flex items-center">
+          <IdeaDialog />
+        </div>
       </header>
-
-      <CaptureForm />
 
       <FilterTabs
         filter={filter}
@@ -107,66 +108,6 @@ export default async function IdeasPage({
         </ul>
       )}
     </div>
-  );
-}
-
-function CaptureForm() {
-  return (
-    <form
-      action={createIdeaAction}
-      className="rounded-3xl border border-border bg-background-elev p-5 space-y-3"
-    >
-      <div className="flex items-start gap-3">
-        <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
-          <Lightbulb className="w-4 h-4 text-ink" />
-        </span>
-        <div className="flex-1">
-          <p className="text-[14px] text-ink font-medium">Capture an idea</p>
-          <p className="mt-0.5 text-[12.5px] text-ink/60 leading-[1.5]">
-            Anything worth coming back to — a hook, a story, a link, an
-            observation.
-          </p>
-        </div>
-      </div>
-
-      <textarea
-        name="body"
-        required
-        placeholder="The thought. Keep it rough — you can polish in the composer."
-        className="w-full min-h-[90px] rounded-2xl border border-border bg-background px-4 py-3 text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink resize-y"
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <input
-          name="title"
-          type="text"
-          placeholder="Title (optional)"
-          className="h-10 px-3.5 rounded-full border border-border bg-background text-[13px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-        />
-        <input
-          name="tags"
-          type="text"
-          placeholder="Tags, comma-separated (optional)"
-          className="h-10 px-3.5 rounded-full border border-border bg-background text-[13px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-        />
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap">
-        <input
-          name="url"
-          type="url"
-          placeholder="Related URL (optional)"
-          className="flex-1 h-10 px-3.5 rounded-full border border-border bg-background text-[13px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-        />
-        <button
-          type="submit"
-          className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Save idea
-        </button>
-      </div>
-    </form>
   );
 }
 
@@ -258,6 +199,7 @@ type IdeaRow = {
   sourceUrl: string | null;
   title: string | null;
   body: string;
+  media: PostMedia[] | null;
   tags: string[];
   status: string;
   createdAt: Date;
@@ -314,6 +256,38 @@ function IdeaCard({ idea }: { idea: IdeaRow }) {
       >
         {idea.body}
       </p>
+
+      {idea.media && idea.media.length > 0 ? (
+        <ul
+          className={cn(
+            "grid gap-1.5",
+            idea.media.length === 1
+              ? "grid-cols-1"
+              : idea.media.length === 2
+                ? "grid-cols-2"
+                : "grid-cols-3",
+          )}
+        >
+          {idea.media.slice(0, 3).map((m, i) => (
+            <li
+              key={m.url}
+              className="relative aspect-square rounded-xl overflow-hidden border border-border bg-background"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={m.url}
+                alt={m.alt ?? ""}
+                className="w-full h-full object-cover"
+              />
+              {i === 2 && idea.media!.length > 3 ? (
+                <span className="absolute inset-0 grid place-items-center bg-ink/55 text-background text-[13px] font-medium">
+                  +{idea.media!.length - 3}
+                </span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
 
       {idea.tags.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5">
