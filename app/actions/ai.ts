@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadCurrentVoice } from "@/lib/ai/voice";
+import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 
 export async function refineContent(
   content: string,
@@ -30,25 +31,6 @@ export async function refineContent(
   }
 }
 
-// Per-platform character limits the generator should honor. Kept in sync
-// with composer.tsx PLATFORMS. "general" = a safe 500-char fallback.
-const PLATFORM_CONSTRAINTS: Record<string, string> = {
-  twitter: "280 characters max. Single post (not a thread). Punchy hook.",
-  linkedin:
-    "Up to 3000 characters. Hook, 2-3 beats, optional question close. No theatrical line breaks unless the voice profile warrants them.",
-  facebook: "Long-form OK. Lead with the headline thought.",
-  instagram:
-    "Caption up to 2200 characters. Warm first line, line break after the hook.",
-  threads: "Up to 500 characters. Conversational, not performative.",
-  tiktok:
-    "Caption up to 2200 characters but prefer short. Pairs with a video — caption is footer, not message.",
-  bluesky: "300 characters recommended. Authentic, not performative.",
-  medium: "Long-form article OK. Start with insight, not a hook.",
-  reddit:
-    "Respect the community's norms. No marketing cadence. Short title if title post.",
-  general: "Keep under 500 characters. Neutral, platform-agnostic.",
-};
-
 export async function generateDraft(topic: string, platform: string = "general") {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
@@ -57,19 +39,17 @@ export async function generateDraft(topic: string, platform: string = "general")
   await registerPrompts();
 
   const voice = await loadCurrentVoice(user.id);
-  const voiceBlock = voice
-    ? buildVoiceBlock(voice)
-    : "(No voice profile trained yet. Write in a neutral, direct tone.)";
-
-  const constraints =
-    PLATFORM_CONSTRAINTS[platform] ?? PLATFORM_CONSTRAINTS.general;
 
   try {
     const result = await generate({
       userId: user.id,
       feature: "composer.generate",
       template: PROMPTS.composerGenerate,
-      vars: { platform, platformConstraints: constraints, voiceBlock },
+      vars: {
+        platform,
+        platformConstraints: constraintsFor(platform),
+        voiceBlock: buildVoiceBlock(voice),
+      },
       userMessage: `Topic / brief: ${topic.trim()}`,
       temperature: 0.8,
     });
@@ -80,53 +60,97 @@ export async function generateDraft(topic: string, platform: string = "general")
   }
 }
 
-// Voice row → prose block the generator consumes as system-prompt context.
-function buildVoiceBlock(voice: {
-  tone: unknown;
-  features: unknown;
-  bannedPhrases: string[];
-  ctaStyle: string | null;
-  emojiRate: string | null;
-}): string {
-  const tone = (voice.tone ?? {}) as {
-    summary?: string;
-    descriptors?: string[];
-  };
-  const features = (voice.features ?? {}) as {
-    hook_patterns?: string[];
-    cadence?: {
-      avg_sentence_length_words?: number;
-      sentence_variance?: string;
-      paragraph_breaks?: string;
-    };
-    positive_examples?: string[];
-  };
+// Per-platform hashtag norms. The trainer reads these as guidance and hits
+// the right count + tone for the network. Kept tight — model does the
+// heavy lifting from the content itself.
+const HASHTAG_NORMS: Record<string, string> = {
+  twitter: "0-2 hashtags max. Most posts use none. Only if clearly niche-relevant.",
+  linkedin:
+    "3-5 hashtags, at the end, lowercase. Professional topics, not emojis.",
+  facebook: "0-2 hashtags. Readers don't search by tag here.",
+  instagram:
+    "8-15 hashtags. Mix of broad (>1M posts), mid-tier (100K-1M), and niche (<100K). Place at end or in a first comment line.",
+  threads: "0-2 hashtags. Conversational platform, tags feel out of place.",
+  tiktok:
+    "3-5 hashtags. Include one category tag and one trending/topical tag when plausible. Avoid banned spam tags.",
+  bluesky: "0-1 hashtag. Ecosystem barely uses them.",
+  medium:
+    "3-5 tags (Medium uses tags, not hashtags — but format as hashtags in the array; the caller strips as needed).",
+  reddit: "No hashtags. Reddit doesn't use them.",
+  pinterest: "3-5 keywords-as-hashtags for SEO.",
+  general: "3-5 hashtags, lowercase, niche over generic.",
+};
 
-  const parts: string[] = [];
-  if (tone.summary) parts.push(`Summary: ${tone.summary}`);
-  if (tone.descriptors?.length)
-    parts.push(`Tone: ${tone.descriptors.join(", ")}`);
-  if (features.hook_patterns?.length)
-    parts.push(`Hook patterns: ${features.hook_patterns.join(" / ")}`);
-  if (features.cadence) {
-    const c = features.cadence;
-    const bits: string[] = [];
-    if (c.avg_sentence_length_words)
-      bits.push(`avg sentence ~${c.avg_sentence_length_words} words`);
-    if (c.sentence_variance) bits.push(`variance: ${c.sentence_variance}`);
-    if (c.paragraph_breaks) bits.push(`paragraph breaks: ${c.paragraph_breaks}`);
-    if (bits.length) parts.push(`Cadence: ${bits.join("; ")}`);
-  }
-  if (voice.ctaStyle) parts.push(`CTA style: ${voice.ctaStyle}`);
-  if (voice.emojiRate) parts.push(`Emoji rate: ${voice.emojiRate}`);
-  if (voice.bannedPhrases.length)
-    parts.push(`Never use: ${voice.bannedPhrases.join(", ")}`);
-  if (features.positive_examples?.length) {
-    parts.push("Positive examples (tone, not topics):");
-    for (const ex of features.positive_examples.slice(0, 3)) {
-      parts.push(`  - ${ex}`);
-    }
-  }
+export async function suggestHashtags(
+  content: string,
+  platform: string = "general",
+): Promise<string[]> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+  if (!content.trim()) return [];
 
-  return parts.join("\n");
+  await registerPrompts();
+
+  const norms = HASHTAG_NORMS[platform] ?? HASHTAG_NORMS.general;
+
+  try {
+    const result = await generate({
+      userId: user.id,
+      feature: "composer.hashtags",
+      template: PROMPTS.composerHashtags,
+      vars: { platform, platformNorms: norms },
+      userMessage: content.trim(),
+      temperature: 0.4,
+    });
+    return parseHashtagJson(result.text);
+  } catch (error) {
+    console.error("AI Hashtag Error:", error);
+    throw new Error("Failed to suggest hashtags");
+  }
 }
+
+function parseHashtagJson(text: string): string[] {
+  const cleaned = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+  try {
+    const parsed = JSON.parse(cleaned) as { hashtags?: unknown };
+    if (!Array.isArray(parsed.hashtags)) return [];
+    return parsed.hashtags
+      .filter((t): t is string => typeof t === "string")
+      .map((t) => (t.startsWith("#") ? t : `#${t}`))
+      .filter((t) => /^#[\w-]+$/.test(t));
+  } catch {
+    return [];
+  }
+}
+
+export async function generateAltText(
+  imageUrl: string,
+  postContext: string = "",
+): Promise<string> {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+  if (!imageUrl) throw new Error("Image URL is required");
+
+  await registerPrompts();
+
+  try {
+    const result = await generate({
+      userId: user.id,
+      feature: "vision.altText",
+      template: PROMPTS.visionAltText,
+      vars: { postContext: postContext.trim() || "(none)" },
+      userMessage: "Write alt text for the attached image.",
+      images: [imageUrl],
+      temperature: 0.2,
+    });
+    return result.text.trim().replace(/^["']|["']$/g, "");
+  } catch (error) {
+    console.error("AI Alt-Text Error:", error);
+    throw new Error("Failed to generate alt text");
+  }
+}
+
