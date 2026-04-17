@@ -1,5 +1,8 @@
 import { db } from "@/db";
 import { posts } from "@/db/schema";
+import { getEffectiveStatesForUser } from "@/lib/channel-state";
+import type { EffectiveState } from "@/lib/channel-state-format";
+import { stateOr, stateStyles } from "@/lib/channel-state-format";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { and, eq, gte, lt } from "drizzle-orm";
@@ -11,6 +14,7 @@ import {
 	ChevronRight,
 	Clock,
 	Sparkles,
+	Wand2,
 } from "lucide-react";
 import Link from "next/link";
 import { GridScroll } from "./grid-scroll";
@@ -60,23 +64,26 @@ export default async function CalendarPage({
 	const fetchTo = new Date(rangeTo);
 	fetchTo.setUTCDate(fetchTo.getUTCDate() + 2);
 
-	const rows: PostRow[] = await db
-		.select({
-			id: posts.id,
-			content: posts.content,
-			platforms: posts.platforms,
-			status: posts.status,
-			scheduledAt: posts.scheduledAt,
-			publishedAt: posts.publishedAt,
-		})
-		.from(posts)
-		.where(
-			and(
-				eq(posts.userId, user.id),
-				gte(posts.scheduledAt, fetchFrom),
-				lt(posts.scheduledAt, fetchTo),
-			),
-		);
+	const [rows, channelStates] = await Promise.all([
+		db
+			.select({
+				id: posts.id,
+				content: posts.content,
+				platforms: posts.platforms,
+				status: posts.status,
+				scheduledAt: posts.scheduledAt,
+				publishedAt: posts.publishedAt,
+			})
+			.from(posts)
+			.where(
+				and(
+					eq(posts.userId, user.id),
+					gte(posts.scheduledAt, fetchFrom),
+					lt(posts.scheduledAt, fetchTo),
+				),
+			) as Promise<PostRow[]>,
+		getEffectiveStatesForUser(user.id),
+	]);
 
 	const buckets = new Map<string, PostRow[]>();
 	for (const r of rows) {
@@ -136,6 +143,14 @@ export default async function CalendarPage({
 					<ViewSelect value={view} anchorKey={anchorKey} />
 
 					<Link
+						href="/app/calendar/plan"
+						className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13.5px] font-medium text-ink hover:border-ink transition-colors"
+					>
+						<Wand2 className="w-4 h-4 text-primary" />
+						Plan with AI
+					</Link>
+
+					<Link
 						href="/app/composer"
 						className="inline-flex items-center gap-1.5 h-10 px-5 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary transition-colors"
 					>
@@ -152,6 +167,7 @@ export default async function CalendarPage({
 					tz={tz}
 					buckets={buckets}
 					todayKey={todayKey}
+					channelStates={channelStates}
 				/>
 			) : (
 				<TimeGridView
@@ -164,6 +180,7 @@ export default async function CalendarPage({
 					buckets={buckets}
 					todayKey={todayKey}
 					compact={view === "week"}
+					channelStates={channelStates}
 				/>
 			)}
 
@@ -189,9 +206,11 @@ function MonthView({
 	tz,
 	buckets,
 	todayKey,
+	channelStates,
 }: {
 	anchor: Date;
 	tz: string;
+	channelStates: Record<string, EffectiveState>;
 	buckets: Map<string, PostRow[]>;
 	todayKey: string;
 }) {
@@ -278,6 +297,10 @@ function MonthView({
 											<p className="line-clamp-2 text-ink group-hover:text-ink/90">
 												{p.content}
 											</p>
+											<PlatformBadges
+												platforms={p.platforms}
+												channelStates={channelStates}
+											/>
 										</Link>
 									</li>
 								))}
@@ -305,8 +328,10 @@ function TimeGridView({
 	buckets,
 	todayKey,
 	compact,
+	channelStates,
 }: {
 	days: GridDay[];
+	channelStates: Record<string, EffectiveState>;
 	tz: string;
 	buckets: Map<string, PostRow[]>;
 	todayKey: string;
@@ -465,6 +490,10 @@ function TimeGridView({
 										>
 											{p.content}
 										</p>
+										<PlatformBadges
+											platforms={p.platforms}
+											channelStates={channelStates}
+										/>
 									</Link>
 								</div>
 							);
@@ -780,3 +809,59 @@ function tzWeekdayIndex(d: Date, tz: string) {
 	};
 	return map[name] ?? 0;
 }
+
+// Small badge row: one colored dot per target channel, tinted by that
+// channel's effective state. Gives the user an at-a-glance read on what
+// will actually happen when the post goes out.
+function PlatformBadges({
+	platforms,
+	channelStates,
+}: {
+	platforms: string[];
+	channelStates: Record<string, EffectiveState>;
+}) {
+	if (platforms.length === 0) return null;
+	return (
+		<ul className="mt-1 flex items-center flex-wrap gap-1">
+			{platforms.map((p) => {
+				const state = stateOr(channelStates, p);
+				const style = stateStyles(state);
+				const label = PROVIDER_LABELS[p] ?? p;
+				return (
+					<li
+						key={p}
+						title={`${label} · ${style.label}`}
+						className={cn(
+							"inline-flex items-center h-4 px-1.5 rounded-full text-[9.5px] font-medium leading-none tracking-wide gap-1",
+							style.chipClass,
+						)}
+					>
+						<span
+							aria-hidden
+							className={cn(
+								"inline-block w-1.5 h-1.5 rounded-full",
+								style.dotClass,
+							)}
+						/>
+						{label}
+					</li>
+				);
+			})}
+		</ul>
+	);
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+	twitter: "X",
+	linkedin: "LinkedIn",
+	facebook: "Facebook",
+	instagram: "IG",
+	tiktok: "TikTok",
+	threads: "Threads",
+	bluesky: "Bluesky",
+	medium: "Medium",
+	reddit: "Reddit",
+	youtube: "YouTube",
+	pinterest: "Pinterest",
+	mastodon: "Mastodon",
+};
