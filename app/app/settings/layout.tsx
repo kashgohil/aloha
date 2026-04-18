@@ -16,7 +16,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
 
 			<SettingsNav />
 
-			<div className="max-w-4xl">{children}</div>
+			{children}
 		</div>
 	);
 }
