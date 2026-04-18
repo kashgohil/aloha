@@ -19,6 +19,8 @@ import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { loadPlan, type PlanIdea } from "@/lib/ai/plan";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
+import { ChannelChip, ChannelToggle } from "@/components/channel-chip";
+import { DatePicker } from "@/components/ui/date-picker";
 
 export const dynamic = "force-dynamic";
 
@@ -65,20 +67,6 @@ export default async function PlanPage({
 }
 
 // ---- Form view ------------------------------------------------------------
-
-const CHANNEL_LABELS: Record<string, string> = {
-  twitter: "X",
-  linkedin: "LinkedIn",
-  facebook: "Facebook",
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  threads: "Threads",
-  bluesky: "Bluesky",
-  medium: "Medium",
-  reddit: "Reddit",
-  pinterest: "Pinterest",
-  mastodon: "Mastodon",
-};
 
 function PlanForm({
   channels,
@@ -163,21 +151,17 @@ function PlanForm({
               />
             </Field>
             <Field label="Start">
-              <input
+              <DatePicker
                 name="rangeStart"
-                type="date"
                 defaultValue={defaultStart}
                 required
-                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink focus:outline-none focus:border-ink"
               />
             </Field>
             <Field label="End">
-              <input
+              <DatePicker
                 name="rangeEnd"
-                type="date"
                 defaultValue={defaultEnd}
                 required
-                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink focus:outline-none focus:border-ink"
               />
             </Field>
           </div>
@@ -225,19 +209,7 @@ function ChannelPicker({ channels }: { channels: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {channels.map((c) => (
-        <label
-          key={c}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-border bg-background text-[13px] text-ink cursor-pointer has-[:checked]:bg-ink has-[:checked]:text-background has-[:checked]:border-ink"
-        >
-          <input
-            type="checkbox"
-            name="channels"
-            value={c}
-            defaultChecked
-            className="sr-only"
-          />
-          {CHANNEL_LABELS[c] ?? c}
-        </label>
+        <ChannelToggle key={c} channel={c} />
       ))}
     </div>
   );
@@ -384,7 +356,7 @@ function IdeaRow({ idea }: { idea: PlanIdea }) {
       />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-[0.16em] text-ink/55">
-          <span>{CHANNEL_LABELS[idea.channel] ?? idea.channel}</span>
+          <ChannelChip channel={idea.channel} />
           <span aria-hidden>·</span>
           <span>{idea.format}</span>
           {accepted ? (
