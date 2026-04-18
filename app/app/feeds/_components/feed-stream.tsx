@@ -166,7 +166,7 @@ function ItemRow({ item }: { item: StreamItem }) {
 					className="w-20 h-20 rounded-xl object-cover border border-border shrink-0 hidden sm:block"
 				/>
 			) : null}
-			<div className="flex-1 min-w-0">
+			<div className="min-w-0 flex-1">
 				<div className="flex items-center gap-2 text-[11px] text-ink/50 uppercase tracking-[0.16em]">
 					{!item.isRead ? (
 						<span

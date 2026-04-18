@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/feeds";
 import { cn } from "@/lib/utils";
 import { FeedAvatar } from "./feed-avatar";
+import { ConfirmDeleteForm } from "@/components/ui/confirm-dialog";
 
 export type SidebarFeed = {
   id: string;
@@ -29,6 +30,7 @@ export function FeedSidebar({
   unreadByFeed: Record<string, number>;
 }) {
   const [query, setQuery] = useState("");
+  const [refreshingId, setRefreshingId] = useState<string | null>(null);
 
   const visible = feeds.filter((f) => {
     if (query.trim()) {
@@ -116,28 +118,46 @@ export function FeedSidebar({
                       "items-center gap-0.5 hidden group-hover:flex group-focus-within:flex",
                     )}
                   >
-                    <form action={refreshFeedAction}>
+                    <form
+                      action={async (formData: FormData) => {
+                        setRefreshingId(f.id);
+                        try {
+                          await refreshFeedAction(formData);
+                        } finally {
+                          setRefreshingId(null);
+                        }
+                      }}
+                    >
                       <input type="hidden" name="feedId" value={f.id} />
                       <button
                         type="submit"
                         aria-label="Refresh"
                         title="Refresh"
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/55 hover:text-ink hover:bg-muted/80 transition-colors"
+                        disabled={refreshingId === f.id}
+                        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/55 hover:text-ink hover:bg-muted/80 transition-colors disabled:opacity-50"
                       >
-                        <RefreshCw className="w-3.5 h-3.5" />
+                        <RefreshCw
+                          className={cn(
+                            "w-3.5 h-3.5",
+                            refreshingId === f.id && "animate-spin",
+                          )}
+                        />
                       </button>
                     </form>
-                    <form action={unsubscribeFeedAction}>
-                      <input type="hidden" name="feedId" value={f.id} />
-                      <button
-                        type="submit"
-                        aria-label="Unsubscribe"
-                        title="Unsubscribe"
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/40 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </form>
+                    <ConfirmDeleteForm
+                      action={unsubscribeFeedAction}
+                      feedId={f.id}
+                      title="Unsubscribe from feed?"
+                      description={
+                        <>
+                          This will remove <span className="font-medium text-ink">{f.title}</span> and all its items. This action cannot be undone.
+                        </>
+                      }
+                      confirmText="Unsubscribe"
+                      className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/40 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </ConfirmDeleteForm>
                   </div>
                 </div>
               </li>
