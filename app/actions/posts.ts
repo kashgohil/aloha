@@ -118,6 +118,7 @@ export async function schedulePost(
       url: `${env.APP_URL}/api/qstash`,
       body: {
         postId: newPost.id,
+        intendedScheduledAt: payload.scheduledAt.toISOString(),
       },
       delay,
     });
@@ -130,6 +131,95 @@ export async function schedulePost(
   } catch (error) {
     console.error("Schedule Post Error:", error);
     throw new Error("Failed to schedule post");
+  }
+}
+
+// Updates an existing draft or scheduled post in place. Content / media /
+// platforms / overrides are always updatable. `scheduledAt` + status flips
+// handle the draft → scheduled conversion and reschedule paths:
+//
+//   - Draft + no scheduledAt arg           → stays a draft, fields updated.
+//   - Draft + scheduledAt arg              → flips to scheduled, QStash queued.
+//   - Scheduled + scheduledAt=null arg     → flips back to draft, old QStash
+//                                            message ignored on fire (handler
+//                                            checks status).
+//   - Scheduled + new scheduledAt arg      → reschedules. A new QStash message
+//                                            is queued for the new time; the
+//                                            old one still fires at the old
+//                                            time but no-ops because the
+//                                            handler re-reads status +
+//                                            scheduledAt and only publishes
+//                                            when they're both still valid.
+//
+// Published posts are not editable — caller is expected to gate that in the
+// UI; we reject it here as a belt-and-braces guard.
+export async function updatePost(
+  postId: string,
+  payload: ComposerPayload & { scheduledAt?: Date | null },
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const [existing] = await db
+    .select({
+      id: posts.id,
+      userId: posts.userId,
+      status: posts.status,
+    })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .limit(1);
+  if (!existing) throw new Error("Post not found");
+  if (existing.status === "published") {
+    throw new Error("Published posts are read-only.");
+  }
+
+  const scheduleRequested =
+    payload.scheduledAt !== undefined && payload.scheduledAt !== null;
+  const nextStatus: "draft" | "scheduled" = scheduleRequested
+    ? "scheduled"
+    : "draft";
+
+  try {
+    await db
+      .update(posts)
+      .set({
+        content: payload.content,
+        platforms: payload.platforms,
+        media: payload.media ?? [],
+        channelContent: sanitizeOverrides(
+          payload.channelContent,
+          payload.platforms,
+        ),
+        status: nextStatus,
+        scheduledAt: scheduleRequested ? payload.scheduledAt! : null,
+        updatedAt: new Date(),
+      })
+      .where(eq(posts.id, postId));
+
+    if (scheduleRequested && payload.scheduledAt) {
+      const delay = Math.max(
+        0,
+        Math.floor((payload.scheduledAt.getTime() - Date.now()) / 1000),
+      );
+      await qstashClient.publishJSON({
+        url: `${env.APP_URL}/api/qstash`,
+        body: {
+          postId,
+          intendedScheduledAt: payload.scheduledAt.toISOString(),
+        },
+        delay,
+      });
+    }
+
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/calendar");
+    revalidatePath("/app/ideas");
+
+    return { success: true, postId };
+  } catch (error) {
+    console.error("Update Post Error:", error);
+    throw new Error("Failed to update post");
   }
 }
 

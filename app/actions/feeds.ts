@@ -17,6 +17,35 @@ export async function subscribeToFeedAction(formData: FormData) {
   revalidatePath("/app/feeds");
 }
 
+export type SubscribeResult =
+  | { ok: true; feedId: string; title: string; itemsAdded: number }
+  | { ok: false; error: string };
+
+export async function subscribeToFeed(
+  url: string,
+  category?: string | null,
+): Promise<SubscribeResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Not authenticated" };
+  const trimmed = url.trim();
+  if (!trimmed) return { ok: false, error: "URL is required." };
+  try {
+    const res = await subscribe(user.id, trimmed, category ?? null);
+    revalidatePath("/app/feeds");
+    return {
+      ok: true,
+      feedId: res.feedId,
+      title: res.title,
+      itemsAdded: res.itemsAdded,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Could not subscribe.",
+    };
+  }
+}
+
 export async function unsubscribeFeedAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
