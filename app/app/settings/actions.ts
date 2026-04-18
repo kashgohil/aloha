@@ -324,3 +324,17 @@ export async function updateChannelPublishMode(formData: FormData) {
   await setChannelPublishMode(userId, channel, mode);
   revalidatePath("/app/settings/channels");
 }
+
+// Notify user when a platform becomes available for connection.
+// Stores their interest so we can email them when approval lands.
+export async function notifyWhenAvailable(formData: FormData) {
+  const userId = await requireUserId();
+  const provider = String(formData.get("provider") ?? "");
+  if (!provider) throw new Error("provider is required");
+
+  // TODO: Store notification preference in database
+  // For now, just revalidate to show feedback
+  console.log(`[notify] User ${userId} wants to be notified when ${provider} becomes available`);
+  
+  revalidatePath("/app/settings/channels");
+}

@@ -19,7 +19,7 @@ import {
 import { getCurrentUser } from "@/lib/current-user";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
-import { connectChannel, disconnectChannel, updateChannelPublishMode } from "../actions";
+import { connectChannel, disconnectChannel, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
 import {
   LinkedInIcon,
   XIcon,
@@ -43,9 +43,13 @@ type ProviderConfig = {
   purpose: string;
   Icon: React.ComponentType<{ className?: string }>;
   mono?: boolean;
-  status: "available" | "soon";
+  status: "available" | "approval_needed" | "soon";
 };
 
+// Platform availability:
+// - "available": Can connect and auto-publish
+// - "approval_needed": Can include in AI generation/campaigns, but cannot connect for auto-publish
+// - "soon": Coming soon
 const PROVIDERS: ProviderConfig[] = [
   {
     id: "linkedin",
@@ -66,26 +70,26 @@ const PROVIDERS: ProviderConfig[] = [
   {
     id: "facebook",
     name: "Facebook",
-    purpose: "Publish to your page.",
+    purpose: "Generate content for campaigns. Auto-publish coming after platform approval.",
     Icon: FacebookIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
   {
     id: "instagram",
     name: "Instagram",
-    purpose: "Schedule feed posts and reels.",
+    purpose: "Generate content for campaigns. Auto-publish coming after platform approval.",
     Icon: InstagramIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
   {
     id: "tiktok",
     name: "TikTok",
-    purpose: "Queue short-form video.",
+    purpose: "Generate content for campaigns. Auto-publish coming after platform approval.",
     Icon: TikTokIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
   {
     id: "bluesky",
@@ -106,42 +110,42 @@ const PROVIDERS: ProviderConfig[] = [
   {
     id: "medium",
     name: "Medium",
-    purpose: "Publish articles and stories.",
+    purpose: "Generate articles. Auto-publish coming after platform approval.",
     Icon: MediumIcon,
     mono: true,
-    status: "soon",
+    status: "approval_needed",
   },
   {
     id: "threads",
     name: "Threads",
-    purpose: "Text updates to the Threads network.",
+    purpose: "Generate content for campaigns. Auto-publish coming after platform approval.",
     Icon: ThreadsIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
   {
     id: "pinterest",
     name: "Pinterest",
-    purpose: "Pins and idea pins.",
+    purpose: "Generate pin ideas. Auto-publish coming after platform approval.",
     Icon: PinterestIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
   {
     id: "youtube",
     name: "YouTube",
-    purpose: "Shorts and community posts.",
+    purpose: "Generate content for campaigns. Auto-publish coming after platform approval.",
     Icon: YouTubeIcon,
     mono: true,
-    status: "soon",
+    status: "approval_needed",
   },
   {
     id: "reddit",
     name: "Reddit",
-    purpose: "Post to your profile and subreddits.",
+    purpose: "Generate post ideas. Auto-publish coming after platform approval.",
     Icon: RedditIcon,
     mono: true,
-    status: "available",
+    status: "approval_needed",
   },
 ];
 
@@ -345,8 +349,10 @@ export default async function ChannelsSettingsPage({
       <div className="space-y-8 min-w-0">
       <ul className="rounded-3xl border border-border bg-background-elev divide-y divide-border overflow-hidden">
         {[...PROVIDERS].sort((a, b) => {
-          if (a.status === "available" && b.status === "soon") return -1;
-          if (a.status === "soon" && b.status === "available") return 1;
+          // Sort: available > approval_needed > soon
+          const statusOrder = { available: 0, approval_needed: 1, soon: 2 };
+          const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+          if (statusDiff !== 0) return statusDiff;
           const ac = connected.has(a.id) ? 0 : 1;
           const bc = connected.has(b.id) ? 0 : 1;
           return ac - bc;
@@ -354,18 +360,21 @@ export default async function ChannelsSettingsPage({
           if (p.id === "mastodon") {
             const isConnectedMastodon = connected.has("mastodon");
             const isSoon = p.status === "soon";
+            const isApprovalNeeded = p.status === "approval_needed";
             return (
               <MastodonListItem
                 key={p.id}
                 isConnected={isConnectedMastodon}
                 isSoon={isSoon}
+                isApprovalNeeded={isApprovalNeeded}
               />
             );
           }
 
           const isConnected = connected.has(p.id);
           const isSoon = p.status === "soon";
-          const isLocked = !isConnected && !isSoon && atLimit;
+          const isApprovalNeeded = p.status === "approval_needed";
+          const isLocked = !isConnected && !isSoon && !isApprovalNeeded && atLimit;
           const isReauth = isConnected && needsReauth.has(p.id);
           return (
             <li
@@ -399,6 +408,12 @@ export default async function ChannelsSettingsPage({
                       Reconnect needed
                     </span>
                   ) : null}
+                  {isApprovalNeeded ? (
+                    <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-peach-100 border border-peach-300 text-[10.5px] text-ink font-medium tracking-wide">
+                      <Sparkle className="w-3 h-3" />
+                      AI-ready
+                    </span>
+                  ) : null}
                   {isSoon ? (
                     <span className="inline-flex items-center h-5 px-2 rounded-full border border-dashed border-border-strong text-[10.5px] text-ink/55 tracking-wide uppercase">
                       Soon
@@ -421,6 +436,17 @@ export default async function ChannelsSettingsPage({
                   >
                     Not available yet
                   </button>
+                ) : isApprovalNeeded ? (
+                  <form action={notifyWhenAvailable}>
+                    <input type="hidden" name="provider" value={p.id} />
+                    <button
+                      type="submit"
+                      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-peach-300 bg-peach-100 text-[13px] text-ink font-medium hover:bg-peach-200 transition-colors"
+                    >
+                      <Bell className="w-3.5 h-3.5" />
+                      Notify me
+                    </button>
+                  </form>
                 ) : isConnected ? (
                   <div className="flex items-center gap-1.5">
                     {p.id === "bluesky" ? (
@@ -460,15 +486,15 @@ export default async function ChannelsSettingsPage({
                     <Lock className="w-3.5 h-3.5" />
                     Upgrade to connect
                   </Link>
-                ) : p.id === "bluesky" ? (
-                  <Link
-                    href="/app/settings/channels/bluesky-connect"
-                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Connect
-                  </Link>
-                ) : (
+) : p.id === "bluesky" ? (
+							<Link
+								href="/app/settings/channels/bluesky-connect"
+								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
+							>
+								<Plus className="w-3.5 h-3.5" />
+								Connect
+							</Link>
+						) : (
                   <form action={connectChannel}>
                     <input type="hidden" name="provider" value={p.id} />
                     <button
