@@ -869,32 +869,29 @@ export default function LandingPage() {
 							</h2>
 						</div>
 						<p className="text-[14px] text-ink/60 max-w-sm">
-							Twelve platforms today, more shipping this quarter. We build
-							for the API, not the marketing page — if it breaks, we tell you
-							before the audience notices.
+							Generate content for all twelve platforms. Connect and auto-publish for the ones marked <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-ink"/> Live</span>. More connections shipping as platform approvals land.
 						</p>
 					</div>
 
 					<ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 border-t border-l border-border">
 						{[
-							{
-								n: "Instagram",
-								tag: "Posts · Reels · Stories",
-								dot: "bg-peach-400",
-							},
-							{ n: "X", tag: "Threads · Long-form", dot: "bg-ink" },
-							{ n: "LinkedIn", tag: "Company · Personal", dot: "bg-primary" },
-							{ n: "TikTok", tag: "Short form · Drafts", dot: "bg-ink" },
-							{ n: "Threads", tag: "Native cross-post", dot: "bg-ink" },
-							{ n: "Facebook", tag: "Pages · Groups", dot: "bg-primary" },
-							{ n: "Pinterest", tag: "Pins · Boards", dot: "bg-peach-400" },
-							{ n: "YouTube", tag: "Shorts · Community", dot: "bg-peach-400" },
-							{ n: "Medium", tag: "Articles · Stories", dot: "bg-ink" },
-							{ n: "Bluesky", tag: "Feeds · Threads", dot: "bg-primary" },
-							{ n: "Mastodon", tag: "Federated · Open", dot: "bg-primary" },
-							{ n: "Reddit", tag: "Posts · Communities", dot: "bg-peach-400" },
+							// Live: auto-publish ready
+							{ n: "LinkedIn", tag: "Company · Personal", status: "live" as const },
+							{ n: "X", tag: "Threads · Long-form", status: "live" as const },
+							{ n: "Bluesky", tag: "Feeds · Threads", status: "live" as const },
+							{ n: "Mastodon", tag: "Federated · Open", status: "live" as const },
+							// AI-ready: generate content, connect coming soon
+							{ n: "Instagram", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "TikTok", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "Threads", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "Facebook", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "Pinterest", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "YouTube", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "Medium", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{ n: "Reddit", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
 						].map((c) => {
 							const icon = SOCIAL_ICONS.find((i) => i.n === c.n);
+							const isLive = c.status === "live";
 							return (
 								<li
 									key={c.n}
@@ -922,19 +919,26 @@ export default function LandingPage() {
 										</div>
 									</div>
 									<span
-										className={`w-2 h-2 rounded-full ${c.dot} mt-2 sm:mt-3 group-hover:scale-125 transition-transform shrink-0`}
+										className={`w-2 h-2 rounded-full mt-2 sm:mt-3 group-hover:scale-125 transition-transform shrink-0 ${
+											isLive ? "bg-ink" : "bg-peach-400"
+										}`}
 									/>
 								</li>
 							);
 						})}
 					</ul>
-					<div className="mt-8 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-2 gap-y-1">
+					<div className="mt-8 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-4 gap-y-2">
 						<span className="inline-flex items-center gap-2">
-							<Sparkle className="w-3.5 h-3.5 text-primary shrink-0" />
-							Coming next quarter:
+							<span className="w-2 h-2 rounded-full bg-ink" />
+							<span className="font-medium text-ink">Live</span> — Connect & auto-publish
 						</span>
-						<span className="font-display text-ink">
-							Substack Notes, and more.
+						<span className="inline-flex items-center gap-2">
+							<span className="w-2 h-2 rounded-full bg-peach-400" />
+							<span className="font-medium text-ink">AI-ready</span> — Generate now, connect soon
+						</span>
+						<span className="inline-flex items-center gap-2 ml-auto">
+							<Sparkle className="w-3.5 h-3.5 text-primary shrink-0" />
+							Coming: Substack Notes
 						</span>
 					</div>
 				</div>

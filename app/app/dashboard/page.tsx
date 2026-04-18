@@ -108,7 +108,8 @@ export default async function DashboardPage() {
 		.from(blueskyCredentials)
 		.where(eq(blueskyCredentials.userId, user.id));
 
-	const connectedChannels = Number(channelsCount.value ?? 0) + Number(hasBlueskyCount.value ?? 0);
+	const connectedChannels =
+		Number(channelsCount.value ?? 0) + Number(hasBlueskyCount.value ?? 0);
 
 	const upcoming = await db
 		.select({
@@ -192,11 +193,13 @@ export default async function DashboardPage() {
 		.groupBy(platformInsights.platform);
 
 	const reachByPlatform = new Map(
-		reachRows.map((r) => ({
-			platform: r.platform,
-			impressions: Number(r.impressions ?? 0),
-			posts: Number(r.posts ?? 0),
-		})).map((r) => [r.platform, r]),
+		reachRows
+			.map((r) => ({
+				platform: r.platform,
+				impressions: Number(r.impressions ?? 0),
+				posts: Number(r.posts ?? 0),
+			}))
+			.map((r) => [r.platform, r]),
 	);
 	const totalImpressions = reachRows.reduce(
 		(sum, r) => sum + Number(r.impressions ?? 0),
@@ -221,117 +224,114 @@ export default async function DashboardPage() {
 		notionRows,
 		notionDocCount,
 	] = await Promise.all([
-			// Latest plan with at least one un-accepted idea; surface as "Pick up
-			// where you left off."
-			db
-				.select({
-					id: contentPlans.id,
-					goal: contentPlans.goal,
-					rangeStart: contentPlans.rangeStart,
-					rangeEnd: contentPlans.rangeEnd,
-					status: contentPlans.status,
-					ideas: contentPlans.ideas,
-				})
-				.from(contentPlans)
-				.where(eq(contentPlans.userId, user.id))
-				.orderBy(desc(contentPlans.createdAt))
-				.limit(1),
+		// Latest plan with at least one un-accepted idea; surface as "Pick up
+		// where you left off."
+		db
+			.select({
+				id: contentPlans.id,
+				goal: contentPlans.goal,
+				rangeStart: contentPlans.rangeStart,
+				rangeEnd: contentPlans.rangeEnd,
+				status: contentPlans.status,
+				ideas: contentPlans.ideas,
+			})
+			.from(contentPlans)
+			.where(eq(contentPlans.userId, user.id))
+			.orderBy(desc(contentPlans.createdAt))
+			.limit(1),
 
-			// Most recent non-archived campaign — list its beat progress so
-			// the user can pick up a campaign mid-run from the dashboard.
-			db
-				.select({
-					id: campaigns.id,
-					name: campaigns.name,
-					kind: campaigns.kind,
-					status: campaigns.status,
-					rangeStart: campaigns.rangeStart,
-					rangeEnd: campaigns.rangeEnd,
-					beats: campaigns.beats,
-				})
-				.from(campaigns)
-				.where(
-					and(
-						eq(campaigns.userId, user.id),
-						notInArray(campaigns.status, ["archived", "complete"]),
-					),
-				)
-				.orderBy(desc(campaigns.createdAt))
-				.limit(1),
-
-			db
-				.select({
-					newCount: sql<number>`count(*) filter (where ${ideas.status} = 'new')`,
-					total: count(),
-				})
-				.from(ideas)
-				.where(eq(ideas.userId, user.id)),
-
-			db
-				.select({
-					id: ideas.id,
-					title: ideas.title,
-					body: ideas.body,
-					source: ideas.source,
-					createdAt: ideas.createdAt,
-				})
-				.from(ideas)
-				.where(and(eq(ideas.userId, user.id), eq(ideas.status, "new")))
-				.orderBy(desc(ideas.createdAt))
-				.limit(3),
-
-			db
-				.select({
-					total: count(),
-					unread: sql<number>`count(*) filter (where ${feedItems.isRead} = false)`,
-				})
-				.from(feedItems)
-				.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
-				.where(eq(feeds.userId, user.id)),
-
-			db
-				.select({
-					id: feedItems.id,
-					title: feedItems.title,
-					url: feedItems.url,
-					publishedAt: feedItems.publishedAt,
-					feedTitle: feeds.title,
-					isRead: feedItems.isRead,
-				})
-				.from(feedItems)
-				.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
-				.where(eq(feeds.userId, user.id))
-				.orderBy(desc(feedItems.publishedAt))
-				.limit(3),
-
-			db
-				.select({
-					total: count(),
-					unread: sql<number>`count(*) filter (where ${inboxMessages.isRead} = false)`,
-				})
-				.from(inboxMessages)
-				.where(eq(inboxMessages.userId, user.id)),
-
-			db
-				.select({
-					workspaceName: notionCredentials.workspaceName,
-					lastSyncedAt: notionCredentials.lastSyncedAt,
-					reauthRequired: notionCredentials.reauthRequired,
-				})
-				.from(notionCredentials)
-				.where(eq(notionCredentials.userId, user.id))
-				.limit(1),
-
-			db
-				.select({ total: count() })
-				.from(brandCorpus)
-				.where(
-					and(
-						eq(brandCorpus.userId, user.id),
-						eq(brandCorpus.source, "notion"),
-					),
+		// Most recent non-archived campaign — list its beat progress so
+		// the user can pick up a campaign mid-run from the dashboard.
+		db
+			.select({
+				id: campaigns.id,
+				name: campaigns.name,
+				kind: campaigns.kind,
+				status: campaigns.status,
+				rangeStart: campaigns.rangeStart,
+				rangeEnd: campaigns.rangeEnd,
+				beats: campaigns.beats,
+			})
+			.from(campaigns)
+			.where(
+				and(
+					eq(campaigns.userId, user.id),
+					notInArray(campaigns.status, ["archived", "complete"]),
 				),
-		]);
+			)
+			.orderBy(desc(campaigns.createdAt))
+			.limit(1),
+
+		db
+			.select({
+				newCount: sql<number>`count(*) filter (where ${ideas.status} = 'new')`,
+				total: count(),
+			})
+			.from(ideas)
+			.where(eq(ideas.userId, user.id)),
+
+		db
+			.select({
+				id: ideas.id,
+				title: ideas.title,
+				body: ideas.body,
+				source: ideas.source,
+				createdAt: ideas.createdAt,
+			})
+			.from(ideas)
+			.where(and(eq(ideas.userId, user.id), eq(ideas.status, "new")))
+			.orderBy(desc(ideas.createdAt))
+			.limit(3),
+
+		db
+			.select({
+				total: count(),
+				unread: sql<number>`count(*) filter (where ${feedItems.isRead} = false)`,
+			})
+			.from(feedItems)
+			.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
+			.where(eq(feeds.userId, user.id)),
+
+		db
+			.select({
+				id: feedItems.id,
+				title: feedItems.title,
+				url: feedItems.url,
+				publishedAt: feedItems.publishedAt,
+				feedTitle: feeds.title,
+				isRead: feedItems.isRead,
+			})
+			.from(feedItems)
+			.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
+			.where(eq(feeds.userId, user.id))
+			.orderBy(desc(feedItems.publishedAt))
+			.limit(3),
+
+		db
+			.select({
+				total: count(),
+				unread: sql<number>`count(*) filter (where ${inboxMessages.isRead} = false)`,
+			})
+			.from(inboxMessages)
+			.where(eq(inboxMessages.userId, user.id)),
+
+		db
+			.select({
+				workspaceName: notionCredentials.workspaceName,
+				lastSyncedAt: notionCredentials.lastSyncedAt,
+				reauthRequired: notionCredentials.reauthRequired,
+			})
+			.from(notionCredentials)
+			.where(eq(notionCredentials.userId, user.id))
+			.limit(1),
+
+		db
+			.select({ total: count() })
+			.from(brandCorpus)
+			.where(
+				and(eq(brandCorpus.userId, user.id), eq(brandCorpus.source, "notion")),
+			),
+	]);
 
 	const activePlanRow = activePlan[0] ?? null;
 	const planPendingCount = activePlanRow
@@ -359,7 +359,12 @@ export default async function DashboardPage() {
 	const firstName = (user.name ?? user.email).split(/\s|@/)[0];
 	const greeting = greet(new Date(), tz);
 	const stats = [
-		{ label: "Drafts", value: counts.drafts ?? 0, hint: "in the writing room", href: "/app/posts?status=draft" },
+		{
+			label: "Drafts",
+			value: counts.drafts ?? 0,
+			hint: "in the writing room",
+			href: "/app/posts?status=draft",
+		},
 		{
 			label: "Scheduled",
 			value: counts.scheduled ?? 0,
@@ -474,7 +479,7 @@ export default async function DashboardPage() {
 											<p>{formatTime(p.scheduledAt!, tz)}</p>
 										</div>
 										<div className="flex-1 min-w-0">
-											<p className="text-[14.5px] text-ink leading-[1.5] line-clamp-2">
+											<p className="text-[14.5px] text-ink leading-normal line-clamp-2">
 												{p.content}
 											</p>
 											<div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -514,7 +519,7 @@ export default async function DashboardPage() {
 												{p.publishedAt ? formatTime(p.publishedAt, tz) : ""}
 											</p>
 										</div>
-										<p className="flex-1 text-[14px] text-ink/80 leading-[1.5] line-clamp-2">
+										<p className="flex-1 text-[14px] text-ink/80 leading-normal line-clamp-2">
 											{p.content}
 										</p>
 									</li>
@@ -587,10 +592,7 @@ export default async function DashboardPage() {
 						/>
 					) : null}
 
-					<EngagementCard
-						unread={unreadInboxCount}
-						total={totalInboxCount}
-					/>
+					<EngagementCard unread={unreadInboxCount} total={totalInboxCount} />
 				</aside>
 			</section>
 		</div>
@@ -709,12 +711,13 @@ function ActiveCampaignCard({
 				</span>
 				<span>{CAMPAIGN_KIND_LABELS[kind] ?? kind}</span>
 			</div>
-			<p className="mt-2 font-display text-[20px] leading-[1.25] tracking-[-0.01em] text-ink">
+			<p className="mt-2 font-display text-[20px] leading-tight tracking-[-0.01em] text-ink">
 				{name}
 			</p>
 			<p className="mt-1.5 text-[12.5px] text-ink/60">
 				{accepted} of {total} beats drafted
-				{pending > 0 ? ` · ${pending} pending` : ""} · {fmt(rangeStart)} → {fmt(rangeEnd)}
+				{pending > 0 ? ` · ${pending} pending` : ""} · {fmt(rangeStart)} →{" "}
+				{fmt(rangeEnd)}
 			</p>
 			<div className="mt-3 h-1.5 rounded-full bg-background border border-border overflow-hidden">
 				<div
@@ -748,17 +751,20 @@ function ActivePlanCard({
 	rangeEnd: Date;
 }) {
 	const fmt = (d: Date) =>
-		new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(d);
+		new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(
+			d,
+		);
 	return (
 		<article className="rounded-2xl border border-primary/40 bg-primary-soft/40 p-6">
 			<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
 				Muse plan · pending
 			</p>
-			<p className="mt-2 font-display text-[20px] leading-[1.25] tracking-[-0.01em] text-ink">
+			<p className="mt-2 font-display text-[20px] leading-tight tracking-[-0.01em] text-ink">
 				{goal}
 			</p>
 			<p className="mt-1.5 text-[12.5px] text-ink/60">
-				{pending} idea{pending === 1 ? "" : "s"} waiting · {fmt(rangeStart)} → {fmt(rangeEnd)}
+				{pending} idea{pending === 1 ? "" : "s"} waiting · {fmt(rangeStart)} →{" "}
+				{fmt(rangeEnd)}
 			</p>
 			<Link
 				href={`/app/calendar/plan?id=${planId}`}
@@ -825,7 +831,7 @@ function IdeasCard({
 					))}
 				</ul>
 			) : (
-				<p className="mt-3 text-[12.5px] text-ink/55 leading-[1.5]">
+				<p className="mt-3 text-[12.5px] text-ink/55 leading-normal">
 					Capture something worth coming back to — a hook, a story, a link.
 				</p>
 			)}
@@ -898,13 +904,7 @@ function FeedDigestCard({
 	);
 }
 
-function EngagementCard({
-	unread,
-	total,
-}: {
-	unread: number;
-	total: number;
-}) {
+function EngagementCard({ unread, total }: { unread: number; total: number }) {
 	const hasUnread = unread > 0;
 	return (
 		<article className="rounded-2xl border border-border bg-background-elev p-6">
@@ -930,7 +930,7 @@ function EngagementCard({
 								? "Inbox is up to date"
 								: "Nothing in the inbox yet"}
 					</p>
-					<p className="mt-1 text-[12.5px] text-ink/60 leading-[1.5]">
+					<p className="mt-1 text-[12.5px] text-ink/60 leading-normal">
 						{hasUnread
 							? "Replies and mentions waiting for triage."
 							: total > 0
@@ -988,7 +988,7 @@ function ChannelsCard({ providers }: { providers: string[] }) {
 					})}
 				</ul>
 			) : (
-				<p className="mt-3 text-[13px] text-ink/60 leading-[1.5]">
+				<p className="mt-3 text-[13px] text-ink/60 leading-normal">
 					Connect your first channel from Settings to start scheduling posts.
 				</p>
 			)}
@@ -1053,7 +1053,7 @@ function KnowledgeCard({
 						<span className="text-ink/55 truncate max-w-[55%]">
 							{reauthRequired
 								? "reconnect needed"
-								: workspaceName ?? "connected"}
+								: (workspaceName ?? "connected")}
 						</span>
 					</div>
 					{lastSyncedAt && !reauthRequired ? (
@@ -1099,7 +1099,8 @@ function ReachCard({
 	}>;
 	gatedConnectedCount: number;
 }) {
-	const hasAnyData = totalImpressions > 0 || perPlatform.some((p) => p.posts > 0);
+	const hasAnyData =
+		totalImpressions > 0 || perPlatform.some((p) => p.posts > 0);
 	return (
 		<article className="rounded-2xl border border-border bg-background-elev p-6">
 			<div className="flex items-start justify-between gap-4">
@@ -1127,12 +1128,12 @@ function ReachCard({
 							className="flex items-center justify-between text-[12.5px]"
 						>
 							<span className="inline-flex items-center gap-2 text-ink/75">
-								{PROVIDER_ICONS[p.platform] ? (
-									(() => {
-										const Icon = PROVIDER_ICONS[p.platform];
-										return <Icon className="w-3.5 h-3.5" />;
-									})()
-								) : null}
+								{PROVIDER_ICONS[p.platform]
+									? (() => {
+											const Icon = PROVIDER_ICONS[p.platform];
+											return <Icon className="w-3.5 h-3.5" />;
+										})()
+									: null}
 								{PROVIDER_LABELS[p.platform] ?? p.platform}
 							</span>
 							<span className="text-ink/55">
@@ -1149,8 +1150,8 @@ function ReachCard({
 
 			{gatedConnectedCount > 0 ? (
 				<p className="mt-5 text-[11.5px] text-ink/50 leading-[1.55]">
-					{gatedConnectedCount} channel{gatedConnectedCount === 1 ? "" : "s"} waiting
-					on platform approval. We&apos;ll backfill once it lands.
+					{gatedConnectedCount} channel{gatedConnectedCount === 1 ? "" : "s"}{" "}
+					waiting on platform approval. We&apos;ll backfill once it lands.
 				</p>
 			) : null}
 		</article>

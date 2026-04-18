@@ -29,16 +29,16 @@ import {
 	Gauge,
 	GitBranch,
 	Hash,
+	ImagePlus,
+	ImageUp,
 	Layers,
 	Loader2,
-	Palette,
 	Paperclip,
 	Plug,
 	RotateCcw,
 	Send,
 	Sparkles,
 	Type,
-	Upload,
 	Wand2,
 	X as XIcon,
 } from "lucide-react";
@@ -956,7 +956,7 @@ export function Composer({
 						{showImageGen ? (
 							<div className="px-5 py-4 border-t border-border bg-peach-100/40 space-y-3">
 								<div className="flex items-center gap-2 text-[12px] text-ink/65">
-									<Palette className="w-3.5 h-3.5 text-primary" />
+									<ImagePlus className="w-3.5 h-3.5 text-primary" />
 									<span>Describe the image you want — Muse generates it in your chosen aspect.</span>
 								</div>
 								<input
@@ -1016,12 +1016,12 @@ export function Composer({
 											disabled={isImaging || !imagePrompt.trim()}
 											className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
 										>
-											{isImaging ? (
-												<Loader2 className="w-3.5 h-3.5 animate-spin" />
-											) : (
-												<Palette className="w-3.5 h-3.5" />
-											)}
-											Generate
+										{isImaging ? (
+											<Loader2 className="w-3.5 h-3.5 animate-spin" />
+										) : (
+											<ImagePlus className="w-3.5 h-3.5" />
+										)}
+										Generate
 										</button>
 									</div>
 								</div>
@@ -1074,24 +1074,24 @@ export function Composer({
 										? `Up to ${MAX_MEDIA} images`
 										: "Attach image"
 								}
-								icon={
-									isUploading ? (
-										<Loader2 className="w-4 h-4 animate-spin" />
-									) : (
-										<Upload className="w-4 h-4" />
-									)
-								}
-							/>
-							<ToolButton
-								onClick={() => setShowImageGen((v) => !v)}
-								disabled={baseMedia.length >= MAX_MEDIA}
-								active={showImageGen}
-								label={
-									baseMedia.length >= MAX_MEDIA
-										? `Up to ${MAX_MEDIA} images`
-										: "Generate image"
-								}
-								icon={<Palette className="w-4 h-4" />}
+							icon={
+								isUploading ? (
+									<Loader2 className="w-4 h-4 animate-spin" />
+								) : (
+									<ImageUp className="w-4 h-4" />
+								)
+							}
+						/>
+						<ToolButton
+							onClick={() => setShowImageGen((v) => !v)}
+							disabled={baseMedia.length >= MAX_MEDIA}
+							active={showImageGen}
+							label={
+								baseMedia.length >= MAX_MEDIA
+									? `Up to ${MAX_MEDIA} images`
+									: "Generate image"
+							}
+							icon={<ImagePlus className="w-4 h-4" />}
 							/>
 
 							<ToolDivider />
