@@ -9,16 +9,14 @@ import {
   PenSquare,
   Rss,
   Sparkles,
-  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { ideas, type PostMedia } from "@/db/schema";
-import {
-  deleteIdeaAction,
-  updateIdeaStatusAction,
-} from "@/app/actions/ideas";
+import { updateIdeaStatusAction } from "@/app/actions/ideas";
+import { DeleteIdeaButton } from "./_components/delete-confirm";
 import { IdeaDialog } from "./_components/idea-dialog";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 
@@ -89,13 +87,33 @@ export default async function IdeasPage({
       </header>
 
       <FilterTabs
-        filter={filter}
-        counts={{
-          new: countBy("new"),
-          drafted: countBy("drafted"),
-          archived: countBy("archived"),
-          all: counts.length,
-        }}
+        activeKey={filter}
+        items={[
+          {
+            key: "new",
+            label: "New",
+            href: "/app/ideas?filter=new",
+            count: countBy("new"),
+          },
+          {
+            key: "drafted",
+            label: "Drafted",
+            href: "/app/ideas?filter=drafted",
+            count: countBy("drafted"),
+          },
+          {
+            key: "archived",
+            label: "Archived",
+            href: "/app/ideas?filter=archived",
+            count: countBy("archived"),
+          },
+          {
+            key: "all",
+            label: "All",
+            href: "/app/ideas?filter=all",
+            count: counts.length,
+          },
+        ]}
       />
 
       {rows.length === 0 ? (
@@ -108,52 +126,6 @@ export default async function IdeasPage({
         </ul>
       )}
     </div>
-  );
-}
-
-function FilterTabs({
-  filter,
-  counts,
-}: {
-  filter: Filter;
-  counts: { new: number; drafted: number; archived: number; all: number };
-}) {
-  const tabs: Array<{ key: Filter; label: string; count: number }> = [
-    { key: "new", label: "New", count: counts.new },
-    { key: "drafted", label: "Drafted", count: counts.drafted },
-    { key: "archived", label: "Archived", count: counts.archived },
-    { key: "all", label: "All", count: counts.all },
-  ];
-  return (
-    <nav className="flex items-center gap-1 flex-wrap">
-      {tabs.map((t) => {
-        const active = t.key === filter;
-        return (
-          <Link
-            key={t.key}
-            href={`/app/ideas?filter=${t.key}`}
-            className={cn(
-              "inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full text-[12.5px] font-medium transition-colors",
-              active
-                ? "bg-ink text-background"
-                : "text-ink/70 hover:text-ink hover:bg-muted/60",
-            )}
-          >
-            {t.label}
-            <span
-              className={cn(
-                "inline-flex items-center justify-center h-5 min-w-5 px-1 rounded-full text-[10.5px] tabular-nums",
-                active
-                  ? "bg-background/20 text-background"
-                  : "bg-peach-100 text-ink/70",
-              )}
-            >
-              {t.count}
-            </span>
-          </Link>
-        );
-      })}
-    </nav>
   );
 }
 
@@ -189,6 +161,24 @@ function EmptyState({ filter }: { filter: Filter }) {
       <p className="mt-2 text-[13.5px] text-ink/60 max-w-md mx-auto leading-[1.55]">
         {copy.body}
       </p>
+      {filter === "new" || filter === "all" ? (
+        <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
+          <Link
+            href="/app/feeds"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink transition-colors"
+          >
+            <Rss className="w-3.5 h-3.5" />
+            Browse feeds
+          </Link>
+          <Link
+            href="/app/settings/muse"
+            className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink transition-colors"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            Sync from Notion
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -353,16 +343,7 @@ function IdeaCard({ idea }: { idea: IdeaRow }) {
           </form>
         )}
 
-        <form action={deleteIdeaAction} className="ml-auto">
-          <input type="hidden" name="id" value={idea.id} />
-          <button
-            type="submit"
-            aria-label="Delete"
-            className="inline-flex items-center justify-center w-8 h-8 rounded-full text-ink/40 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </form>
+        <DeleteIdeaButton ideaId={idea.id} />
       </div>
     </li>
   );

@@ -14,6 +14,7 @@ import {
 } from "@/app/actions/corpus";
 import { loadCurrentVoice } from "@/lib/ai/voice";
 import { getCurrentUser } from "@/lib/current-user";
+import { Slider } from "./_components/slider";
 
 export const dynamic = "force-dynamic";
 
@@ -195,30 +196,6 @@ export default async function MuseSettingsPage({
   );
 }
 
-function Slider({ name, label }: { name: string; label: string }) {
-  return (
-    <label className="block">
-      <div className="flex items-center justify-between">
-        <span className="text-[13px] text-ink/75">{label}</span>
-        <output
-          htmlFor={name}
-          className="text-[12px] text-ink/50 tabular-nums"
-        >
-          50
-        </output>
-      </div>
-      <input
-        id={name}
-        name={name}
-        type="range"
-        min={0}
-        max={100}
-        defaultValue={50}
-        className="mt-2 w-full accent-ink"
-      />
-    </label>
-  );
-}
 
 function PerspectivePicker() {
   const options = [

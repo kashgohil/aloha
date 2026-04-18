@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { and, desc, eq } from "drizzle-orm";
 import {
 	AlertCircle,
@@ -88,6 +89,15 @@ export default async function PostsPage({
 		.orderBy(desc(posts.updatedAt))
 		.limit(100);
 
+	const statusCounts = await db
+		.select({ status: posts.status })
+		.from(posts)
+		.where(eq(posts.userId, user.id));
+	const countBy = (s: StatusFilter) =>
+		s === "all"
+			? statusCounts.length
+			: statusCounts.filter((r) => r.status === s).length;
+
 	return (
 		<div className="space-y-10">
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
@@ -108,26 +118,15 @@ export default async function PostsPage({
 				</Link>
 			</header>
 
-			{/* Status tabs */}
-			<nav className="flex items-center gap-1 border-b border-border pb-px">
-				{STATUSES.map((s) => (
-					<Link
-						key={s}
-						href={s === "all" ? "/app/posts" : `/app/posts?status=${s}`}
-						className={cn(
-							"relative inline-flex items-center h-10 px-4 text-[13.5px] font-medium transition-colors whitespace-nowrap",
-							filter === s
-								? "text-ink"
-								: "text-ink/55 hover:text-ink",
-						)}
-					>
-						{s === "all" ? "All" : STATUS_META[s].label}
-						{filter === s && (
-							<span className="absolute bottom-0 inset-x-4 h-[2px] bg-ink rounded-full" />
-						)}
-					</Link>
-				))}
-			</nav>
+			<FilterTabs
+				activeKey={filter}
+				items={STATUSES.map((s) => ({
+					key: s,
+					label: s === "all" ? "All" : STATUS_META[s].label,
+					href: s === "all" ? "/app/posts" : `/app/posts?status=${s}`,
+					count: countBy(s),
+				}))}
+			/>
 
 			{/* Post list */}
 			{rows.length === 0 ? (

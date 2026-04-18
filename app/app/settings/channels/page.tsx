@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, eq, notInArray } from "drizzle-orm";
-import { ArrowUpRight, Bell, Clock, Lock, Plus, ShieldCheck, Sparkle, Trash2 } from "lucide-react";
+import { ArrowUpRight, Bell, BookOpen, Clock, Lock, Plus, ShieldCheck, Sparkle, Trash2 } from "lucide-react";
 import { db } from "@/db";
 import {
   accounts,
@@ -504,6 +504,26 @@ export default async function ChannelsSettingsPage({
           </p>
         </div>
       </div>
+
+      <Link
+        href="/app/settings/muse"
+        className="group rounded-2xl border border-border bg-background-elev p-5 flex items-start gap-4 hover:bg-muted/40 transition-colors"
+      >
+        <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
+          <BookOpen className="w-4 h-4 text-ink" />
+        </span>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13.5px] text-ink font-medium">
+            Looking for Notion or Google Docs?
+          </p>
+          <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
+            Knowledge sources feed Muse — your writing voice model — not the
+            publishing pipeline. They live on the{" "}
+            <span className="text-ink font-medium">Muse</span> tab.
+          </p>
+        </div>
+        <ArrowUpRight className="w-4 h-4 text-ink/40 group-hover:text-ink transition-colors mt-1 shrink-0" />
+      </Link>
     </div>
   );
 }

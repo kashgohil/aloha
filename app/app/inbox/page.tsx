@@ -1,9 +1,8 @@
 import { db } from "@/db";
 import { inboxMessages } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
-import { cn } from "@/lib/utils";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { and, desc, eq } from "drizzle-orm";
-import Link from "next/link";
 import { InboxList } from "./_components/inbox-list";
 import { InboxThread } from "./_components/inbox-thread";
 import { InboxEmpty } from "./_components/inbox-empty";
@@ -45,6 +44,20 @@ export default async function InboxPage({
     .orderBy(desc(inboxMessages.platformCreatedAt))
     .limit(200);
 
+  const allForCounts = await db
+    .select({
+      isRead: inboxMessages.isRead,
+      reason: inboxMessages.reason,
+    })
+    .from(inboxMessages)
+    .where(eq(inboxMessages.userId, user.id));
+  const counts: Record<Filter, number> = {
+    all: allForCounts.length,
+    unread: allForCounts.filter((m) => !m.isRead).length,
+    replies: allForCounts.filter((m) => m.reason === "reply").length,
+    mentions: allForCounts.filter((m) => m.reason === "mention").length,
+  };
+
   let threadMessages: typeof messages = [];
   if (selectedId) {
     const selected = messages.find((m) => m.id === selectedId);
@@ -82,24 +95,15 @@ export default async function InboxPage({
         </div>
       </header>
 
-      {/* Filter tabs */}
-      <nav className="flex items-center gap-1 border-b border-border pb-px">
-        {FILTERS.map((f) => (
-          <Link
-            key={f}
-            href={f === "all" ? "/app/inbox" : `/app/inbox?filter=${f}`}
-            className={cn(
-              "relative inline-flex items-center h-10 px-4 text-[13.5px] font-medium transition-colors whitespace-nowrap",
-              filter === f ? "text-ink" : "text-ink/55 hover:text-ink",
-            )}
-          >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
-            {filter === f && (
-              <span className="absolute bottom-0 inset-x-4 h-[2px] bg-ink rounded-full" />
-            )}
-          </Link>
-        ))}
-      </nav>
+      <FilterTabs
+        activeKey={filter}
+        items={FILTERS.map((f) => ({
+          key: f,
+          label: f.charAt(0).toUpperCase() + f.slice(1),
+          href: f === "all" ? "/app/inbox" : `/app/inbox?filter=${f}`,
+          count: counts[f],
+        }))}
+      />
 
       {messages.length === 0 ? (
         <InboxEmpty />

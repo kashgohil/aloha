@@ -3,7 +3,6 @@ import {
   BookmarkCheck,
   BookmarkPlus,
   ExternalLink,
-  Plus,
   RefreshCw,
   Rss,
   Trash2,
@@ -15,14 +14,10 @@ import {
   markItemReadAction,
   refreshFeedAction,
   saveItemAsIdeaAction,
-  subscribeToFeedAction,
   unsubscribeFeedAction,
 } from "@/app/actions/feeds";
-import {
-  CURATED_CATEGORIES,
-  CURATED_FEEDS,
-  type CuratedCategory,
-} from "@/lib/feeds/curated";
+import { CURATED_FEEDS } from "@/lib/feeds/curated";
+import { AddFeedDialog } from "./_components/add-feed-dialog";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 
@@ -81,8 +76,8 @@ export default async function FeedsPage({
         .limit(ITEMS_PER_FEED)
     : [];
 
-  const subscribedUrls = new Set(
-    (await db
+  const subscribedUrls = (
+    await db
       .select({ url: feeds.url })
       .from(feeds)
       .where(
@@ -93,8 +88,8 @@ export default async function FeedsPage({
             CURATED_FEEDS.map((c) => c.url),
           ),
         ),
-      )).map((r) => r.url),
-  );
+      )
+  ).map((r) => r.url);
 
   return (
     <div className="space-y-10">
@@ -112,25 +107,7 @@ export default async function FeedsPage({
             coming back to.
           </p>
         </div>
-        <form
-          action={subscribeToFeedAction}
-          className="flex items-center gap-2 w-full lg:w-auto"
-        >
-          <input
-            name="url"
-            type="url"
-            required
-            placeholder="Paste a feed or site URL"
-            className="flex-1 lg:w-80 h-11 px-4 rounded-full border border-border-strong bg-background-elev text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-          />
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add
-          </button>
-        </form>
+        <AddFeedDialog subscribedUrls={subscribedUrls} />
       </header>
 
       {userFeeds.length === 0 ? (
@@ -150,8 +127,6 @@ export default async function FeedsPage({
           </section>
         </section>
       )}
-
-      <CuratedCatalog subscribedUrls={subscribedUrls} />
     </div>
   );
 }
@@ -166,9 +141,9 @@ function EmptyState() {
         Start with one feed.
       </p>
       <p className="mt-2 text-[13.5px] text-ink/60 max-w-md mx-auto leading-[1.55]">
-        Paste a URL above, or pick from the curated catalog below. We sync
-        daily, dedupe items, and give you a one-click save into your swipe
-        file.
+        Hit <span className="text-ink font-medium">Add feed</span> up top — pick
+        from the catalog, or paste any RSS / Atom URL. We sync daily, dedupe
+        items, and give you a one-click save into your swipe file.
       </p>
     </div>
   );
@@ -417,91 +392,6 @@ function ItemCard({ item }: { item: ItemRow }) {
         </div>
       </div>
     </li>
-  );
-}
-
-function CuratedCatalog({ subscribedUrls }: { subscribedUrls: Set<string> }) {
-  return (
-    <section className="rounded-3xl border border-border bg-background-elev p-6">
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-            Discover
-          </p>
-          <h2 className="mt-1.5 font-display text-[22px] leading-[1.15] text-ink">
-            Curated catalog
-          </h2>
-          <p className="mt-1.5 text-[13px] text-ink/65 max-w-xl leading-[1.55]">
-            A starter set of feeds worth reading, grouped by category. One
-            click to subscribe.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {CURATED_CATEGORIES.map((category) => (
-          <CategoryBlock
-            key={category}
-            category={category}
-            subscribedUrls={subscribedUrls}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function CategoryBlock({
-  category,
-  subscribedUrls,
-}: {
-  category: CuratedCategory;
-  subscribedUrls: Set<string>;
-}) {
-  const items = CURATED_FEEDS.filter((f) => f.category === category);
-  if (items.length === 0) return null;
-  return (
-    <div className="rounded-2xl border border-border bg-background p-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] text-ink/55 mb-3">
-        {category}
-      </p>
-      <ul className="space-y-2">
-        {items.map((item) => {
-          const subscribed = subscribedUrls.has(item.url);
-          return (
-            <li
-              key={item.url}
-              className="flex items-start justify-between gap-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] text-ink font-medium truncate">
-                  {item.title}
-                </p>
-                <p className="text-[11.5px] text-ink/55 leading-[1.4] line-clamp-2">
-                  {item.description}
-                </p>
-              </div>
-              <form action={subscribeToFeedAction}>
-                <input type="hidden" name="url" value={item.url} />
-                <input type="hidden" name="category" value={item.category} />
-                <button
-                  type="submit"
-                  disabled={subscribed}
-                  className={cn(
-                    "inline-flex items-center h-7 px-2.5 rounded-full text-[11.5px] font-medium transition-colors shrink-0",
-                    subscribed
-                      ? "bg-ink text-background"
-                      : "border border-border-strong text-ink hover:border-ink",
-                  )}
-                >
-                  {subscribed ? "Subscribed" : "Subscribe"}
-                </button>
-              </form>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
   );
 }
 
