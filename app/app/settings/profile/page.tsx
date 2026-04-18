@@ -50,7 +50,7 @@ export default async function ProfileSettingsPage({
   const zones = getTimezones();
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-4xl space-y-6">
       {saved ? (
         <div
           role="status"
