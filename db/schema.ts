@@ -177,6 +177,12 @@ export const posts = pgTable("posts", {
   sourceIdeaId: uuid("sourceIdeaId").references((): AnyPgColumn => ideas.id, {
     onDelete: "set null",
   }),
+  // Stamped when a post was drafted from a campaign beat. Lets the
+  // campaign detail list its own drafts + the calendar tint cells by
+  // campaign. Set-null on campaign delete so drafts survive.
+  campaignId: uuid("campaignId").references((): AnyPgColumn => campaigns.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -376,6 +382,40 @@ export const assets = pgTable("assets", {
   // Free-form metadata per asset — EXIF, platform-of-origin, Figma file id,
   // etc. Kept loose so adapters don't need schema changes.
   metadata: jsonb("metadata").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// Campaigns — a sequenced arc of posts around one goal (launch, webinar,
+// sale, drip, evergreen). Beats live in `beats` as jsonb: each beat has a
+// phase label (teaser / announce / social_proof / urgency / recap), a
+// channel, a title + angle, and a format. Acceptance flips the beat in
+// place and back-refs the draft post id, same pattern as content_plans.
+export const campaigns = pgTable("campaigns", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  goal: text("goal").notNull(),
+  kind: text("kind", {
+    enum: ["launch", "webinar", "sale", "drip", "evergreen", "custom"],
+  }).notNull(),
+  channels: text("channels").array().default([]).notNull(),
+  rangeStart: timestamp("rangeStart", { mode: "date" }).notNull(),
+  rangeEnd: timestamp("rangeEnd", { mode: "date" }).notNull(),
+  beats: jsonb("beats")
+    .$type<Array<Record<string, unknown>>>()
+    .default([])
+    .notNull(),
+  status: text("status", {
+    enum: ["draft", "ready", "running", "complete", "archived"],
+  })
+    .default("draft")
+    .notNull(),
+  generationId: uuid("generationId").references(() => generations.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
