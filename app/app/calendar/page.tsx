@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { campaigns, posts } from "@/db/schema";
 import { getEffectiveStatesForUser } from "@/lib/channel-state";
 import type { EffectiveState } from "@/lib/channel-state-format";
 import { stateOr, stateStyles } from "@/lib/channel-state-format";
@@ -31,6 +31,7 @@ type PostRow = {
 	status: string;
 	scheduledAt: Date | null;
 	publishedAt: Date | null;
+	campaignId: string | null;
 };
 
 const first = (v: string | string[] | undefined) =>
@@ -64,7 +65,7 @@ export default async function CalendarPage({
 	const fetchTo = new Date(rangeTo);
 	fetchTo.setUTCDate(fetchTo.getUTCDate() + 2);
 
-	const [rows, channelStates] = await Promise.all([
+	const [rows, channelStates, userCampaigns] = await Promise.all([
 		db
 			.select({
 				id: posts.id,
@@ -73,6 +74,7 @@ export default async function CalendarPage({
 				status: posts.status,
 				scheduledAt: posts.scheduledAt,
 				publishedAt: posts.publishedAt,
+				campaignId: posts.campaignId,
 			})
 			.from(posts)
 			.where(
@@ -83,7 +85,23 @@ export default async function CalendarPage({
 				),
 			) as Promise<PostRow[]>,
 		getEffectiveStatesForUser(user.id),
+		db
+			.select({
+				id: campaigns.id,
+				name: campaigns.name,
+			})
+			.from(campaigns)
+			.where(eq(campaigns.userId, user.id)),
 	]);
+
+	// Build a stable, per-user ordering of campaigns so each gets a
+	// consistent color across the calendar. Hash-based would work too, but
+	// ordered index keeps the palette tight (and predictable if the user
+	// only has a few running campaigns).
+	const campaignIndex = new Map<string, { name: string; colorIdx: number }>();
+	userCampaigns.forEach((c, i) => {
+		campaignIndex.set(c.id, { name: c.name, colorIdx: i });
+	});
 
 	const buckets = new Map<string, PostRow[]>();
 	for (const r of rows) {
@@ -168,6 +186,7 @@ export default async function CalendarPage({
 					buckets={buckets}
 					todayKey={todayKey}
 					channelStates={channelStates}
+					campaignIndex={campaignIndex}
 				/>
 			) : (
 				<TimeGridView
@@ -181,6 +200,7 @@ export default async function CalendarPage({
 					todayKey={todayKey}
 					compact={view === "week"}
 					channelStates={channelStates}
+					campaignIndex={campaignIndex}
 				/>
 			)}
 
@@ -201,16 +221,20 @@ export default async function CalendarPage({
 
 // ── Month view ─────────────────────────────────────────────────────────
 
+type CampaignIndex = Map<string, { name: string; colorIdx: number }>;
+
 function MonthView({
 	anchor,
 	tz,
 	buckets,
 	todayKey,
 	channelStates,
+	campaignIndex,
 }: {
 	anchor: Date;
 	tz: string;
 	channelStates: Record<string, EffectiveState>;
+	campaignIndex: CampaignIndex;
 	buckets: Map<string, PostRow[]>;
 	todayKey: string;
 }) {
@@ -297,6 +321,10 @@ function MonthView({
 											<p className="line-clamp-2 text-ink group-hover:text-ink/90">
 												{p.content}
 											</p>
+											<CampaignPill
+												campaignId={p.campaignId}
+												campaignIndex={campaignIndex}
+											/>
 											<PlatformBadges
 												platforms={p.platforms}
 												channelStates={channelStates}
@@ -329,9 +357,11 @@ function TimeGridView({
 	todayKey,
 	compact,
 	channelStates,
+	campaignIndex,
 }: {
 	days: GridDay[];
 	channelStates: Record<string, EffectiveState>;
+	campaignIndex: CampaignIndex;
 	tz: string;
 	buckets: Map<string, PostRow[]>;
 	todayKey: string;
@@ -490,6 +520,10 @@ function TimeGridView({
 										>
 											{p.content}
 										</p>
+										<CampaignPill
+											campaignId={p.campaignId}
+											campaignIndex={campaignIndex}
+										/>
 										<PlatformBadges
 											platforms={p.platforms}
 											channelStates={channelStates}
@@ -865,3 +899,46 @@ const PROVIDER_LABELS: Record<string, string> = {
 	pinterest: "Pinterest",
 	mastodon: "Mastodon",
 };
+
+// Muted-tone palette — each campaign gets a slot based on its position in
+// the user's ordered list. Keeps all-peach calendars from washing out and
+// still reads well on the peach background.
+const CAMPAIGN_PALETTE = [
+	"bg-primary-soft text-primary-deep border-primary/50",
+	"bg-peach-200 text-ink border-peach-300",
+	"bg-peach-300 text-ink border-peach-400",
+	"bg-peach-400 text-ink border-ink/30",
+	"bg-ink/10 text-ink border-ink/20",
+	"bg-ink text-background border-ink",
+] as const;
+
+function CampaignPill({
+	campaignId,
+	campaignIndex,
+}: {
+	campaignId: string | null;
+	campaignIndex: CampaignIndex;
+}) {
+	if (!campaignId) return null;
+	const meta = campaignIndex.get(campaignId);
+	if (!meta) return null;
+	const color =
+		CAMPAIGN_PALETTE[meta.colorIdx % CAMPAIGN_PALETTE.length];
+	return (
+		<div className="mt-1">
+			<span
+				title={`Campaign · ${meta.name}`}
+				className={cn(
+					"inline-flex items-center h-4 px-1.5 rounded-full text-[9.5px] font-medium leading-none tracking-wide border gap-1 max-w-full",
+					color,
+				)}
+			>
+				<span
+					aria-hidden
+					className="inline-block w-1 h-1 rounded-full bg-current opacity-60"
+				/>
+				<span className="truncate">{meta.name}</span>
+			</span>
+		</div>
+	);
+}

@@ -7,7 +7,7 @@ import {
 	refineContent,
 	suggestHashtags,
 } from "@/app/actions/ai";
-import { saveDraft, schedulePost } from "@/app/actions/posts";
+import { saveDraft, schedulePost, updatePost } from "@/app/actions/posts";
 import {
 	BlueskyIcon,
 	FacebookIcon,
@@ -168,26 +168,50 @@ export function Composer({
 	bestWindows,
 	channelStates,
 	initialContent = "",
+	initialMedia = [],
+	initialPlatforms = [],
+	initialOverrides = {},
+	initialScheduledAt = null,
+	initialStatus = null,
+	editingPostId = null,
 	sourceIdeaId = null,
+	sourceIdeaTitle = null,
 }: {
 	author: Author;
 	connectedProviders: string[];
 	bestWindows: Record<string, BestWindow[]>;
 	channelStates: Record<string, EffectiveState>;
 	initialContent?: string;
+	initialMedia?: PostMedia[];
+	initialPlatforms?: string[];
+	initialOverrides?: Record<string, ChannelOverride>;
+	initialScheduledAt?: string | null;
+	initialStatus?: "draft" | "scheduled" | "published" | "failed" | null;
+	editingPostId?: string | null;
 	sourceIdeaId?: string | null;
+	sourceIdeaTitle?: string | null;
 }) {
 	const router = useRouter();
 	const [baseContent, setBaseContent] = useState(initialContent);
-	const [baseMedia, setBaseMedia] = useState<PostMedia[]>([]);
+	const isEditing = editingPostId !== null;
+	const isReadOnly = initialStatus === "published";
+	// datetime-local inputs want "YYYY-MM-DDTHH:mm" — slice the ISO and drop
+	// the timezone so the browser treats it as local time.
+	const defaultSchedule = initialScheduledAt
+		? initialScheduledAt.slice(0, 16)
+		: "";
+	const [baseMedia, setBaseMedia] = useState<PostMedia[]>(initialMedia);
 	const [overrides, setOverrides] = useState<Record<string, ChannelOverride>>(
-		{},
+		initialOverrides,
 	);
-	const [selected, setSelected] = useState<string[]>(
-		connectedProviders.length > 0 ? [connectedProviders[0]] : ["twitter"],
-	);
+	const [selected, setSelected] = useState<string[]>(() => {
+		if (initialPlatforms.length > 0) return initialPlatforms;
+		return connectedProviders.length > 0
+			? [connectedProviders[0]]
+			: ["twitter"];
+	});
 	const [activeTab, setActiveTab] = useState<TabId>("all");
-	const [scheduledAt, setScheduledAt] = useState("");
+	const [scheduledAt, setScheduledAt] = useState(defaultSchedule);
 	const [showSchedule, setShowSchedule] = useState(false);
 	const [isUploading, setIsUploading] = useState(false);
 	const [isRefining, startRefining] = useTransition();
@@ -480,27 +504,45 @@ export function Composer({
 	});
 
 	const handleSaveDraft = () => {
-		if (!canSubmit) return;
+		if (!canSubmit || isReadOnly) return;
 		setFormError(null);
 		startSaving(async () => {
 			try {
-				await saveDraft(buildPayload());
+				if (editingPostId) {
+					// Editing an existing draft or scheduled post. Passing
+					// scheduledAt=null flips scheduled → draft; omitting it for
+					// a draft keeps it a draft.
+					await updatePost(editingPostId, {
+						...buildPayload(),
+						scheduledAt: null,
+					});
+				} else {
+					await saveDraft(buildPayload());
+				}
 				router.push("/app/dashboard");
 			} catch {
-				setFormError("Couldn't save draft. Please try again.");
+				setFormError("Couldn't save. Please try again.");
 			}
 		});
 	};
 
 	const handleSchedule = () => {
-		if (!canSubmit || !scheduledAt) return;
+		if (!canSubmit || !scheduledAt || isReadOnly) return;
 		setFormError(null);
 		startPublishing(async () => {
 			try {
-				await schedulePost({
-					...buildPayload(),
-					scheduledAt: new Date(scheduledAt),
-				});
+				const when = new Date(scheduledAt);
+				if (editingPostId) {
+					await updatePost(editingPostId, {
+						...buildPayload(),
+						scheduledAt: when,
+					});
+				} else {
+					await schedulePost({
+						...buildPayload(),
+						scheduledAt: when,
+					});
+				}
 				router.push("/app/dashboard");
 			} catch {
 				setFormError("Couldn't schedule. Check the time and try again.");
@@ -509,11 +551,19 @@ export function Composer({
 	};
 
 	const handlePublishNow = () => {
-		if (!canSubmit) return;
+		if (!canSubmit || isReadOnly) return;
 		setFormError(null);
 		startPublishing(async () => {
 			try {
-				await schedulePost({ ...buildPayload(), scheduledAt: new Date() });
+				const when = new Date();
+				if (editingPostId) {
+					await updatePost(editingPostId, {
+						...buildPayload(),
+						scheduledAt: when,
+					});
+				} else {
+					await schedulePost({ ...buildPayload(), scheduledAt: when });
+				}
 				router.push("/app/dashboard");
 			} catch {
 				setFormError("Couldn't publish. Please try again.");
@@ -527,11 +577,22 @@ export function Composer({
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-						New post · {author.workspaceName ?? "Workspace"}
+						{isEditing
+							? `${headerEyebrowForStatus(initialStatus)} · ${author.workspaceName ?? "Workspace"}`
+							: `New post · ${author.workspaceName ?? "Workspace"}`}
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
-						Compose
-						<span className="text-primary font-light"> your next one.</span>
+						{isEditing ? (
+							<>
+								Edit
+								<span className="text-primary font-light"> this one.</span>
+							</>
+						) : (
+							<>
+								Compose
+								<span className="text-primary font-light"> your next one.</span>
+							</>
+						)}
 					</h1>
 				</div>
 
@@ -539,7 +600,7 @@ export function Composer({
 					<button
 						type="button"
 						onClick={handleSaveDraft}
-						disabled={!canSubmit || isSaving}
+						disabled={!canSubmit || isSaving || isReadOnly}
 						className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full border border-border-strong text-[14px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors"
 					>
 						{isSaving ? (
@@ -547,7 +608,7 @@ export function Composer({
 						) : (
 							<Paperclip className="w-4 h-4" />
 						)}
-						Save draft
+						{isEditing ? "Save changes" : "Save draft"}
 					</button>
 
 					<SchedulePopover
@@ -556,7 +617,7 @@ export function Composer({
 						open={showSchedule}
 						setOpen={setShowSchedule}
 						onConfirm={handleSchedule}
-						disabled={!canSubmit || isPublishing}
+						disabled={!canSubmit || isPublishing || isReadOnly}
 						busy={isPublishing && scheduledAt !== ""}
 						timezone={author.timezone}
 					/>
@@ -564,7 +625,7 @@ export function Composer({
 					<button
 						type="button"
 						onClick={handlePublishNow}
-						disabled={!canSubmit || isPublishing}
+						disabled={!canSubmit || isPublishing || isReadOnly}
 						className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
 					>
 						{isPublishing && !scheduledAt ? (
@@ -576,6 +637,29 @@ export function Composer({
 					</button>
 				</div>
 			</header>
+
+			{isReadOnly ? (
+				<div
+					role="alert"
+					className="flex items-start gap-3 rounded-2xl border border-border-strong bg-peach-100/60 px-4 py-3 text-[13.5px] text-ink"
+				>
+					<AlertCircle className="w-4 h-4 mt-[2px] text-primary shrink-0" />
+					<span className="leading-normal">
+						This post is already published. Edits won&apos;t reach
+						the networks — open it on the platform to change it.
+					</span>
+				</div>
+			) : null}
+
+			{sourceIdeaTitle ? (
+				<div className="inline-flex items-center gap-2 rounded-full border border-border bg-peach-100/60 px-3 py-1.5 text-[12px] text-ink/75 max-w-fit">
+					<Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+					<span>
+						From idea:{" "}
+						<span className="font-medium text-ink">{sourceIdeaTitle}</span>
+					</span>
+				</div>
+			) : null}
 
 			{formError ? (
 				<div
@@ -1442,4 +1526,19 @@ function BestWindowHint({
 			</span>
 		</div>
 	);
+}
+
+function headerEyebrowForStatus(
+	status: "draft" | "scheduled" | "published" | "failed" | null | undefined,
+): string {
+	switch (status) {
+		case "scheduled":
+			return "Editing scheduled post";
+		case "published":
+			return "Published · read-only";
+		case "failed":
+			return "Editing failed post";
+		default:
+			return "Editing draft";
+	}
 }
