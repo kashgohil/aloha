@@ -68,7 +68,7 @@ export default async function BillingPage({
 
 	if (!IS_DEV) {
 		return (
-			<div className="space-y-8">
+			<div className="max-w-4xl space-y-8">
 				<FreePlanHero connectedChannels={connectedChannels} />
 				<BillingComingSoon />
 			</div>
@@ -77,7 +77,7 @@ export default async function BillingPage({
 
 	if (sub.plan === "free") {
 		return (
-			<div className="space-y-8">
+			<div className="max-w-4xl space-y-8">
 				{flash ? <FlashBanner kind={flash} /> : null}
 				<FreePlanHero connectedChannels={connectedChannels} />
 				<UpgradeBlock initialChannels={Math.max(5, connectedChannels)} />
@@ -97,7 +97,7 @@ export default async function BillingPage({
 	const invoices = await listInvoices(userId);
 
 	return (
-		<div className="space-y-8">
+		<div className="max-w-4xl space-y-8">
 			{sub.pastDue ? <PastDueBanner /> : null}
 			{flash ? <FlashBanner kind={flash} /> : null}
 
@@ -295,7 +295,7 @@ function PlanSummary({
 
 function BillingComingSoon() {
 	return (
-		<div className="space-y-8">
+		<div className="max-w-4xl space-y-8">
 			<section className="rounded-3xl bg-background-elev border border-border p-8 lg:p-10">
 				<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
 					Paid plans
