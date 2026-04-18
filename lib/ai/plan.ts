@@ -4,7 +4,7 @@
 // Non-streaming for v1 — the structured output is small (<40 ideas) and
 // streaming JSON parsing is brittle. We'll revisit if latency bites.
 
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { contentPlans, feedItems, feeds } from "@/db/schema";
 import { getBestWindowsForUser } from "@/lib/best-time";
@@ -225,7 +225,12 @@ async function loadRecentInspiration(userId: string) {
       summary: feedItems.summary,
     })
     .from(feedItems)
-    .where(inArray(feedItems.feedId, userFeedIds))
+    .where(
+      and(
+        inArray(feedItems.feedId, userFeedIds),
+        isNotNull(feedItems.savedAsIdeaId),
+      ),
+    )
     .orderBy(desc(feedItems.publishedAt))
     .limit(MAX_INSPIRATION_ITEMS);
   return items;

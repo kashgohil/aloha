@@ -19,7 +19,7 @@ import { PROMPTS, registerPrompts } from "./prompts";
 import { loadCurrentVoice } from "./voice";
 import { buildVoiceBlock } from "./voice-context";
 import { getBestWindowsForUser } from "@/lib/best-time";
-import { desc, inArray } from "drizzle-orm";
+import { desc, inArray, isNotNull } from "drizzle-orm";
 
 export const CAMPAIGN_KINDS = [
   "launch",
@@ -331,7 +331,12 @@ async function loadRecentInspiration(userId: string) {
       summary: feedItems.summary,
     })
     .from(feedItems)
-    .where(inArray(feedItems.feedId, userFeedIds))
+    .where(
+      and(
+        inArray(feedItems.feedId, userFeedIds),
+        isNotNull(feedItems.savedAsIdeaId),
+      ),
+    )
     .orderBy(desc(feedItems.publishedAt))
     .limit(MAX_INSPIRATION_ITEMS);
 }
