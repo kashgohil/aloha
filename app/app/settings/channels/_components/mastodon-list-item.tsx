@@ -1,10 +1,11 @@
 "use client";
 
 import { MastodonIcon } from "@/app/auth/_components/provider-icons";
-import { Plus, ShieldCheck, Trash2, Sparkle, Bell } from "lucide-react";
+import { Plus, ShieldCheck, Sparkle, Bell } from "lucide-react";
 import { useState } from "react";
 import { disconnectMastodon } from "../../actions";
 import { MastodonChannelItem } from "./mastodon-item";
+import { ConfirmDeleteForm } from "@/components/ui/confirm-dialog";
 
 type Props = {
 	isConnected: boolean;
@@ -126,17 +127,20 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded }: Prop
 								{isConnected ? "Reconnect" : "Connect"}
 							</button>
 						)}
-						{isConnected ? (
-							<button
-								type="button"
-								disabled={disconnecting}
-								onClick={disconnectAction}
-								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-primary-deep hover:bg-peach-100/60 transition-colors disabled:opacity-50"
-							>
-								<Trash2 className="w-3.5 h-3.5" />
-								Disconnect
-							</button>
-						) : null}
+					{isConnected ? (
+						<ConfirmDeleteForm
+							action={async () => {
+								setDisconnecting(true);
+								await disconnectMastodon();
+							}}
+							title="Disconnect Mastodon?"
+							description="This will remove the connection to your Mastodon instance. You can reconnect it later."
+							confirmText="Disconnect"
+							className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-primary-deep hover:bg-peach-100/60 transition-colors disabled:opacity-50"
+						>
+							Disconnect
+						</ConfirmDeleteForm>
+					) : null}
 					</div>
 				</div>
 				{showForm && (

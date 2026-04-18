@@ -3,7 +3,7 @@ import { automations } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { desc, eq } from "drizzle-orm";
-import { Pause, Play, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Pause, Play, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { FlowDiagram } from "./_components/flow-diagram";
 import {
@@ -13,9 +13,9 @@ import {
 } from "./_lib/templates";
 import {
 	createAutomation,
-	deleteAutomation,
 	toggleAutomation,
 } from "./actions";
+import { DeleteAutomationButton } from "./_components/delete-confirm";
 
 export const dynamic = "force-dynamic";
 
@@ -240,17 +240,7 @@ function SelectedHeader({
 						)}
 					</button>
 				</form>
-				<form action={deleteAutomation}>
-					<input type="hidden" name="id" value={id} />
-					<button
-						type="submit"
-						className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/60 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-						aria-label="Delete automation"
-					>
-						<Trash2 className="w-3.5 h-3.5" />
-						Delete
-					</button>
-				</form>
+				<DeleteAutomationButton automationId={id} name={name} />
 			</div>
 		</div>
 	);

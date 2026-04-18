@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
-import { BookOpen, Link2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
+import { BookOpen, Link2, Sparkles, Upload, Wand2 } from "lucide-react";
 import { db } from "@/db";
 import {
   brandCorpus,
@@ -9,13 +9,13 @@ import {
 } from "@/db/schema";
 import { trainVoiceAction } from "@/app/actions/voice";
 import {
-  disconnectNotionAction,
   syncNotionAction,
 } from "@/app/actions/corpus";
 import { loadCurrentVoice } from "@/lib/ai/voice";
 import { getCurrentUser } from "@/lib/current-user";
 import { Slider } from "./_components/slider";
 import { SyncNotionButton } from "./_components/sync-button";
+import { DisconnectNotionButton } from "./_components/disconnect-confirm";
 import { GoogleIcon, NotionIcon } from "@/app/auth/_components/provider-icons";
 
 export const dynamic = "force-dynamic";
@@ -476,15 +476,7 @@ function NotionTile({
         <form action={syncNotionAction}>
           <SyncNotionButton />
         </form>
-        <form action={disconnectNotionAction}>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-ink transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            Disconnect
-          </button>
-        </form>
+        <DisconnectNotionButton />
       </div>
     </article>
   );

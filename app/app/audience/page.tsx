@@ -1,4 +1,4 @@
-import { addLink, deleteLink, updatePage } from "@/app/actions/audience";
+import { addLink, updatePage } from "@/app/actions/audience";
 import { db } from "@/db";
 import { links, pages, subscribers } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
@@ -11,9 +11,9 @@ import {
 	Mail,
 	Plus,
 	Tags,
-	Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { DeleteLinkButton } from "./_components/delete-confirm";
 
 export const dynamic = "force-dynamic";
 
@@ -218,16 +218,7 @@ export default async function AudiencePage() {
 												<span className="truncate">{l.url}</span>
 											</a>
 										</div>
-										<form action={deleteLink}>
-											<input type="hidden" name="id" value={l.id} />
-											<button
-												type="submit"
-												className="p-2 rounded-full text-ink/50 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-												aria-label={`Remove ${l.title}`}
-											>
-												<Trash2 className="w-3.5 h-3.5" />
-											</button>
-										</form>
+										<DeleteLinkButton linkId={l.id} title={l.title} />
 									</li>
 								))
 							)}

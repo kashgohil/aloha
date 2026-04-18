@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, eq, notInArray } from "drizzle-orm";
-import { ArrowUpRight, Bell, BookOpen, Clock, Lock, Plus, ShieldCheck, Sparkle, Trash2 } from "lucide-react";
+import { ArrowUpRight, Bell, BookOpen, Clock, Lock, Plus, ShieldCheck, Sparkle } from "lucide-react";
 import { db } from "@/db";
 import {
   accounts,
@@ -19,7 +19,8 @@ import {
 import { getCurrentUser } from "@/lib/current-user";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
-import { connectChannel, disconnectChannel, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
+import { connectChannel, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
+import { DisconnectChannelButton } from "./_components/disconnect-confirm";
 import {
   LinkedInIcon,
   XIcon,
@@ -467,16 +468,7 @@ export default async function ChannelsSettingsPage({
                         </button>
                       </form>
                     ) : null}
-                    <form action={disconnectChannel}>
-                      <input type="hidden" name="provider" value={p.id} />
-                      <button
-                        type="submit"
-                        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Disconnect
-                      </button>
-                    </form>
+                    <DisconnectChannelButton provider={p.id} />
                   </div>
                 ) : isLocked ? (
                   <Link
