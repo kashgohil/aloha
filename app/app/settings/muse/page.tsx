@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { and, desc, eq } from "drizzle-orm";
-import { BookOpen, Link2, Loader2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
+import { BookOpen, Link2, Sparkles, Trash2, Upload, Wand2 } from "lucide-react";
 import { db } from "@/db";
 import {
   brandCorpus,
@@ -15,8 +15,11 @@ import {
 import { loadCurrentVoice } from "@/lib/ai/voice";
 import { getCurrentUser } from "@/lib/current-user";
 import { Slider } from "./_components/slider";
+import { SyncNotionButton } from "./_components/sync-button";
+import { GoogleIcon, NotionIcon } from "@/app/auth/_components/provider-icons";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const RECENT_SAMPLE_LIMIT = 20;
 
@@ -80,7 +83,7 @@ export default async function MuseSettingsPage({
   };
 
   return (
-    <div className="space-y-10">
+    <div className="max-w-4xl space-y-10">
       <div>
         <h2 className="font-display text-[28px] leading-[1.1] tracking-[-0.02em] text-ink">
           Muse — your voice
@@ -402,8 +405,8 @@ function NotionTile({
     return (
       <article className="rounded-2xl border border-border bg-background p-5">
         <div className="flex items-center gap-2 text-[13.5px] text-ink font-medium">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-ink text-background text-[11px] font-bold">
-            N
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-background border border-border text-ink">
+            <NotionIcon className="w-3.5 h-3.5" />
           </span>
           Notion
         </div>
@@ -426,8 +429,8 @@ function NotionTile({
     return (
       <article className="rounded-2xl border border-primary/40 bg-primary-soft/60 p-5">
         <div className="flex items-center gap-2 text-[13.5px] text-ink font-medium">
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-ink text-background text-[11px] font-bold">
-            N
+          <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-background border border-border text-ink">
+            <NotionIcon className="w-3.5 h-3.5" />
           </span>
           Notion · reconnect needed
         </div>
@@ -459,8 +462,8 @@ function NotionTile({
   return (
     <article className="rounded-2xl border border-primary/40 bg-primary-soft/40 p-5">
       <div className="flex items-center gap-2 text-[13.5px] text-ink font-medium">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-ink text-background text-[11px] font-bold">
-          N
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-background border border-border text-ink">
+          <NotionIcon className="w-3.5 h-3.5" />
         </span>
         Notion · {notion.workspaceName ?? notion.workspaceId.slice(0, 8)}
       </div>
@@ -471,13 +474,7 @@ function NotionTile({
       </p>
       <div className="mt-4 flex items-center gap-2">
         <form action={syncNotionAction}>
-          <button
-            type="submit"
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
-          >
-            <Loader2 className="w-3.5 h-3.5" />
-            Sync now
-          </button>
+          <SyncNotionButton />
         </form>
         <form action={disconnectNotionAction}>
           <button
@@ -497,8 +494,8 @@ function GoogleDocsTile() {
   return (
     <article className="rounded-2xl border border-dashed border-border-strong p-5">
       <div className="flex items-center gap-2 text-[13.5px] text-ink/70 font-medium">
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-peach-100 border border-border text-[11px] font-bold">
-          G
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded bg-background border border-border">
+          <GoogleIcon className="w-3.5 h-3.5" />
         </span>
         Google Docs
       </div>
@@ -507,7 +504,7 @@ function GoogleDocsTile() {
         finalising the narrow read-only scopes we want to request.
       </p>
       <span className="mt-4 inline-flex items-center h-10 px-4 rounded-full border border-dashed border-border-strong text-[13px] text-ink/45">
-        Not available yet
+        Coming soon
       </span>
     </article>
   );
