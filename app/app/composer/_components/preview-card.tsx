@@ -1,5 +1,6 @@
 import { Heart, MessageSquare, Repeat2, Share, Bookmark } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CHANNEL_ICONS, channelLabel } from "@/components/channel-chip";
 import type { Platform } from "./composer";
 
 type Author = {
@@ -53,14 +54,20 @@ export function PreviewCard({
             </p>
           </div>
         </div>
-        <span
-          className={cn(
-            "inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-medium tracking-wide",
-            platform.accent,
-          )}
-        >
-          {platform.name}
-        </span>
+        {(() => {
+          const Icon = CHANNEL_ICONS[platform.id];
+          return (
+            <span
+              aria-label={channelLabel(platform.id)}
+              className={cn(
+                "inline-flex items-center justify-center w-6 h-6 rounded-full",
+                platform.accent,
+              )}
+            >
+              {Icon ? <Icon className="w-3 h-3" /> : null}
+            </span>
+          );
+        })()}
       </header>
 
       <div className="px-5 py-4">
