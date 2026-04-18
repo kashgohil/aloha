@@ -1,25 +1,12 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
-import {
-  BookmarkCheck,
-  BookmarkPlus,
-  ExternalLink,
-  RefreshCw,
-  Rss,
-  Trash2,
-} from "lucide-react";
-import Link from "next/link";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { Rss } from "lucide-react";
 import { db } from "@/db";
 import { feedItems, feeds } from "@/db/schema";
-import {
-  markItemReadAction,
-  refreshFeedAction,
-  saveItemAsIdeaAction,
-  unsubscribeFeedAction,
-} from "@/app/actions/feeds";
 import { CURATED_FEEDS } from "@/lib/feeds/curated";
 import { AddFeedDialog } from "./_components/add-feed-dialog";
+import { FeedSidebar } from "./_components/feed-sidebar";
+import { FeedStream } from "./_components/feed-stream";
 import { getCurrentUser } from "@/lib/current-user";
-import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -54,30 +41,39 @@ export default async function FeedsPage({
   const activeFeed =
     userFeeds.find((f) => f.id === selectedFeedId) ?? userFeeds[0] ?? null;
 
-  // Item fetch: either the active feed only, or every feed the user has
-  // (for the default "all" view when no feed is selected via URL).
-  const items = activeFeed
-    ? await db
-        .select({
-          id: feedItems.id,
-          feedId: feedItems.feedId,
-          title: feedItems.title,
-          summary: feedItems.summary,
-          url: feedItems.url,
-          author: feedItems.author,
-          imageUrl: feedItems.imageUrl,
-          publishedAt: feedItems.publishedAt,
-          isRead: feedItems.isRead,
-          savedAsIdeaId: feedItems.savedAsIdeaId,
-        })
-        .from(feedItems)
-        .where(eq(feedItems.feedId, activeFeed.id))
-        .orderBy(desc(feedItems.publishedAt))
-        .limit(ITEMS_PER_FEED)
-    : [];
+  const [items, unreadRows, subscribedUrlRows] = await Promise.all([
+    activeFeed
+      ? db
+          .select({
+            id: feedItems.id,
+            feedId: feedItems.feedId,
+            title: feedItems.title,
+            summary: feedItems.summary,
+            url: feedItems.url,
+            author: feedItems.author,
+            imageUrl: feedItems.imageUrl,
+            publishedAt: feedItems.publishedAt,
+            isRead: feedItems.isRead,
+            savedAsIdeaId: feedItems.savedAsIdeaId,
+          })
+          .from(feedItems)
+          .where(eq(feedItems.feedId, activeFeed.id))
+          .orderBy(desc(feedItems.publishedAt))
+          .limit(ITEMS_PER_FEED)
+      : Promise.resolve([]),
 
-  const subscribedUrls = (
-    await db
+    // Per-feed unread counts, scoped to this user's feeds.
+    db
+      .select({
+        feedId: feedItems.feedId,
+        unread: sql<number>`count(*) filter (where ${feedItems.isRead} = false)`,
+      })
+      .from(feedItems)
+      .innerJoin(feeds, eq(feedItems.feedId, feeds.id))
+      .where(eq(feeds.userId, user.id))
+      .groupBy(feedItems.feedId),
+
+    db
       .select({ url: feeds.url })
       .from(feeds)
       .where(
@@ -88,8 +84,14 @@ export default async function FeedsPage({
             CURATED_FEEDS.map((c) => c.url),
           ),
         ),
-      )
-  ).map((r) => r.url);
+      ),
+  ]);
+
+  const unreadByFeed: Record<string, number> = {};
+  for (const r of unreadRows) {
+    unreadByFeed[r.feedId] = Number(r.unread ?? 0);
+  }
+  const subscribedUrls = subscribedUrlRows.map((r) => r.url);
 
   return (
     <div className="space-y-10">
@@ -115,14 +117,17 @@ export default async function FeedsPage({
       ) : (
         <section className="grid grid-cols-12 gap-6">
           <aside className="col-span-12 lg:col-span-4 xl:col-span-3">
-            <SourceList
-              feeds={userFeeds}
-              activeFeedId={activeFeed?.id ?? null}
-            />
+            <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] flex flex-col">
+              <FeedSidebar
+                feeds={userFeeds}
+                activeFeedId={activeFeed?.id ?? null}
+                unreadByFeed={unreadByFeed}
+              />
+            </div>
           </aside>
           <section className="col-span-12 lg:col-span-8 xl:col-span-9">
             {activeFeed ? (
-              <FeedItems feed={activeFeed} items={items} />
+              <FeedStream feed={activeFeed} items={items} />
             ) : null}
           </section>
         </section>
@@ -147,258 +152,4 @@ function EmptyState() {
       </p>
     </div>
   );
-}
-
-type FeedRow = {
-  id: string;
-  title: string;
-  siteUrl: string | null;
-  iconUrl: string | null;
-  lastFetchedAt: Date | null;
-  lastError: string | null;
-};
-
-function SourceList({
-  feeds: userFeeds,
-  activeFeedId,
-}: {
-  feeds: FeedRow[];
-  activeFeedId: string | null;
-}) {
-  return (
-    <ul className="rounded-3xl border border-border bg-background-elev overflow-hidden divide-y divide-border">
-      {userFeeds.map((f) => {
-        const active = f.id === activeFeedId;
-        return (
-          <li
-            key={f.id}
-            className={cn(
-              "flex items-center gap-3 px-4 py-3 transition-colors",
-              active ? "bg-peach-100/60" : "hover:bg-muted/30",
-            )}
-          >
-            <Link
-              href={`/app/feeds?feed=${f.id}`}
-              className="flex-1 min-w-0 flex items-center gap-2.5"
-            >
-              <span className="w-6 h-6 rounded bg-background border border-border grid place-items-center overflow-hidden shrink-0">
-                {f.iconUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={f.iconUrl}
-                    alt=""
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Rss className="w-3 h-3 text-ink/50" />
-                )}
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[13px] text-ink font-medium truncate">
-                  {f.title}
-                </span>
-                {f.lastError ? (
-                  <span className="block text-[11px] text-red-600 truncate">
-                    {f.lastError}
-                  </span>
-                ) : f.lastFetchedAt ? (
-                  <span className="block text-[11px] text-ink/45">
-                    synced{" "}
-                    {new Intl.DateTimeFormat("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    }).format(f.lastFetchedAt)}
-                  </span>
-                ) : null}
-              </span>
-            </Link>
-            <form action={refreshFeedAction}>
-              <input type="hidden" name="feedId" value={f.id} />
-              <button
-                type="submit"
-                aria-label="Refresh"
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/55 hover:text-ink hover:bg-muted/60 transition-colors"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
-            </form>
-            <form action={unsubscribeFeedAction}>
-              <input type="hidden" name="feedId" value={f.id} />
-              <button
-                type="submit"
-                aria-label="Unsubscribe"
-                className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/40 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </form>
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-type ItemRow = {
-  id: string;
-  feedId: string;
-  title: string;
-  summary: string | null;
-  url: string | null;
-  author: string | null;
-  imageUrl: string | null;
-  publishedAt: Date | null;
-  isRead: boolean;
-  savedAsIdeaId: string | null;
-};
-
-function FeedItems({ feed, items }: { feed: FeedRow; items: ItemRow[] }) {
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="font-display text-[24px] leading-[1.1] text-ink">
-            {feed.title}
-          </h2>
-          {feed.siteUrl ? (
-            <a
-              href={feed.siteUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-0.5 inline-flex items-center gap-1 text-[12px] text-ink/55 hover:text-ink transition-colors"
-            >
-              {hostnameOf(feed.siteUrl)}
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          ) : null}
-        </div>
-      </div>
-
-      {items.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-border-strong bg-background-elev px-5 py-8 text-[13px] text-ink/55 text-center">
-          No items yet. The nightly sync will pull the latest — or hit refresh
-          on the source.
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((item) => (
-            <ItemCard key={item.id} item={item} />
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-function ItemCard({ item }: { item: ItemRow }) {
-  const saved = item.savedAsIdeaId !== null;
-  return (
-    <li
-      className={cn(
-        "rounded-2xl border bg-background-elev p-4 flex gap-4",
-        item.isRead
-          ? "border-border opacity-80"
-          : "border-border-strong",
-      )}
-    >
-      {item.imageUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={item.imageUrl}
-          alt=""
-          className="w-28 h-28 rounded-xl object-cover border border-border shrink-0 hidden sm:block"
-        />
-      ) : null}
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 text-[11px] text-ink/50 uppercase tracking-[0.16em]">
-          {item.author ? <span>{item.author}</span> : null}
-          {item.publishedAt ? (
-            <span>
-              {new Intl.DateTimeFormat("en-US", {
-                month: "short",
-                day: "numeric",
-              }).format(item.publishedAt)}
-            </span>
-          ) : null}
-        </div>
-        <h3 className="mt-1.5 text-[15px] text-ink font-medium leading-[1.35]">
-          {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              {item.title}
-            </a>
-          ) : (
-            item.title
-          )}
-        </h3>
-        {item.summary ? (
-          <p className="mt-2 text-[13px] text-ink/70 leading-[1.55] line-clamp-3">
-            {item.summary}
-          </p>
-        ) : null}
-        <div className="mt-3 flex items-center gap-2 flex-wrap">
-          <form action={saveItemAsIdeaAction}>
-            <input type="hidden" name="itemId" value={item.id} />
-            <button
-              type="submit"
-              disabled={saved}
-              className={cn(
-                "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[12px] font-medium transition-colors",
-                saved
-                  ? "bg-ink text-background"
-                  : "border border-border-strong text-ink hover:border-ink",
-              )}
-            >
-              {saved ? (
-                <>
-                  <BookmarkCheck className="w-3.5 h-3.5" />
-                  Saved
-                </>
-              ) : (
-                <>
-                  <BookmarkPlus className="w-3.5 h-3.5" />
-                  Save to ideas
-                </>
-              )}
-            </button>
-          </form>
-          {!item.isRead ? (
-            <form action={markItemReadAction}>
-              <input type="hidden" name="itemId" value={item.id} />
-              <input type="hidden" name="read" value="true" />
-              <button
-                type="submit"
-                className="inline-flex items-center h-8 px-3 rounded-full text-[12px] text-ink/60 hover:text-ink transition-colors"
-              >
-                Mark read
-              </button>
-            </form>
-          ) : null}
-          {item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 h-8 px-3 text-[12px] text-ink/60 hover:text-ink transition-colors"
-            >
-              Open
-              <ExternalLink className="w-3 h-3" />
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function hostnameOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, "");
-  } catch {
-    return url;
-  }
 }
