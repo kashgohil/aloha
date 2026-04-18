@@ -1,7 +1,8 @@
-import { and, count, eq, ne, notInArray } from "drizzle-orm";
+import { and, count, eq, isNotNull, ne, notInArray } from "drizzle-orm";
 import {
   ArrowLeft,
   BarChart3,
+  Check,
   Lightbulb,
   Rss,
   Sparkles,
@@ -21,22 +22,11 @@ import { createCampaignAction } from "@/app/actions/campaigns";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { getCurrentUser } from "@/lib/current-user";
 import { CAMPAIGN_KINDS } from "@/lib/ai/campaign";
+import { ChannelToggle } from "@/components/channel-chip";
+import { DatePicker } from "@/components/ui/date-picker";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-const CHANNEL_LABELS: Record<string, string> = {
-  twitter: "X",
-  linkedin: "LinkedIn",
-  facebook: "Facebook",
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  threads: "Threads",
-  bluesky: "Bluesky",
-  medium: "Medium",
-  reddit: "Reddit",
-  pinterest: "Pinterest",
-  mastodon: "Mastodon",
-};
 
 const KIND_DETAIL: Record<
   string,
@@ -90,7 +80,9 @@ export default async function NewCampaignPage() {
         .select({ value: count() })
         .from(feedItems)
         .innerJoin(feeds, eq(feedItems.feedId, feeds.id))
-        .where(eq(feeds.userId, user.id)),
+        .where(
+          and(eq(feeds.userId, user.id), isNotNull(feedItems.savedAsIdeaId)),
+        ),
       db
         .select({ value: count() })
         .from(platformInsights)
@@ -116,8 +108,8 @@ export default async function NewCampaignPage() {
   const defaultEnd = twoWeeks.toISOString().slice(0, 10);
 
   return (
-    <div className="max-w-3xl space-y-8">
-      <div>
+    <div className="space-y-8">
+      <div className="max-w-3xl">
         <Link
           href="/app/campaigns"
           className="inline-flex items-center gap-1 text-[12.5px] text-ink/55 hover:text-ink transition-colors"
@@ -128,7 +120,7 @@ export default async function NewCampaignPage() {
         <h1 className="mt-4 font-display text-[40px] leading-[1.05] tracking-[-0.02em] text-ink">
           Plan a campaign with <span className="text-primary font-light">Muse</span>
         </h1>
-        <p className="mt-3 text-[14px] text-ink/65 leading-[1.55] max-w-2xl">
+        <p className="mt-3 text-[14px] text-ink/65 leading-[1.55]">
           Tell Muse the shape of the run — launch, webinar, sale, drip. It
           produces a sequenced beat sheet: phase, channel, angle, format
           for every post in the arc. You review, accept, tune in composer.
@@ -136,7 +128,7 @@ export default async function NewCampaignPage() {
       </div>
 
       {channels.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-border-strong bg-background-elev px-6 py-10 text-center">
+        <div className="max-w-3xl rounded-3xl border border-dashed border-border-strong bg-background-elev px-6 py-10 text-center">
           <p className="text-[14px] text-ink font-medium">
             Connect a channel first.
           </p>
@@ -149,68 +141,68 @@ export default async function NewCampaignPage() {
           </p>
         </div>
       ) : (
-        <form
-          action={createCampaignAction}
-          className="rounded-3xl border border-border bg-background-elev p-6 space-y-6"
-        >
-          <Field label="Name" hint="Short label. Optional — Muse drafts one from the goal if you skip.">
-            <input
-              name="name"
-              placeholder="e.g. Q2 Pricing Refresh"
-              className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-            />
-          </Field>
-
-          <Field label="Goal" hint="What's this campaign supposed to achieve?">
-            <input
-              name="goal"
-              required
-              placeholder="e.g. announce new tier, drive 200 trials over two weeks"
-              className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
-            />
-          </Field>
-
-          <Field label="Campaign kind" hint="Picks the phase arc Muse builds toward.">
-            <KindPicker />
-          </Field>
-
-          <Field label="Channels">
-            <ChannelPicker channels={channels} />
-          </Field>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Start">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-6 items-start">
+          <form
+            action={createCampaignAction}
+            className="rounded-3xl border border-border bg-background-elev p-6 space-y-6 min-w-0"
+          >
+            <Field label="Name" hint="Short label. Optional — Muse drafts one from the goal if you skip.">
               <input
-                name="rangeStart"
-                type="date"
-                defaultValue={defaultStart}
-                required
-                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink focus:outline-none focus:border-ink"
+                name="name"
+                placeholder="e.g. Q2 Pricing Refresh"
+                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
               />
             </Field>
-            <Field label="End">
+
+            <Field label="Goal" hint="What's this campaign supposed to achieve?">
               <input
-                name="rangeEnd"
-                type="date"
-                defaultValue={defaultEnd}
+                name="goal"
                 required
-                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink focus:outline-none focus:border-ink"
+                placeholder="e.g. announce new tier, drive 200 trials over two weeks"
+                className="w-full h-11 px-4 rounded-full border border-border bg-background text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink"
               />
             </Field>
-          </div>
 
-          <ResearchSummary research={research} />
+            <Field label="Campaign kind" hint="Picks the phase arc Muse builds toward.">
+              <KindPicker />
+            </Field>
 
-          <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
-            >
-              <Wand2 className="w-4 h-4" />
-              Draft the beat sheet
-            </button>
-          </div>
-        </form>
+            <Field label="Channels">
+              <ChannelPicker channels={channels} />
+            </Field>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Start">
+                <DatePicker
+                  name="rangeStart"
+                  defaultValue={defaultStart}
+                  required
+                />
+              </Field>
+              <Field label="End">
+                <DatePicker
+                  name="rangeEnd"
+                  defaultValue={defaultEnd}
+                  required
+                />
+              </Field>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
+              >
+                <Wand2 className="w-4 h-4" />
+                Draft the beat sheet
+              </button>
+            </div>
+          </form>
+
+          <aside className="lg:sticky lg:top-6">
+            <ResearchSummary research={research} />
+          </aside>
+        </div>
       )}
     </div>
   );
@@ -269,19 +261,7 @@ function ChannelPicker({ channels }: { channels: string[] }) {
   return (
     <div className="flex flex-wrap gap-2">
       {channels.map((c) => (
-        <label
-          key={c}
-          className="inline-flex items-center gap-2 h-10 px-4 rounded-full border border-border bg-background text-[13px] text-ink cursor-pointer has-[:checked]:bg-ink has-[:checked]:text-background has-[:checked]:border-ink"
-        >
-          <input
-            type="checkbox"
-            name="channels"
-            value={c}
-            defaultChecked
-            className="sr-only"
-          />
-          {CHANNEL_LABELS[c] ?? c}
-        </label>
+        <ChannelToggle key={c} channel={c} />
       ))}
     </div>
   );
@@ -297,59 +277,108 @@ function ResearchSummary({
     voiceTrained: boolean;
   };
 }) {
-  const rows: Array<{
+  type Row = {
     label: string;
-    value: string;
     Icon: React.ComponentType<{ className?: string }>;
-  }> = [
+    ready: boolean;
+    value: string;
+    detail: string;
+  };
+  const rows: Row[] = [
     {
       label: "Voice",
-      value: research.voiceTrained ? "Trained" : "Not trained yet",
       Icon: Sparkles,
+      ready: research.voiceTrained,
+      value: research.voiceTrained ? "Trained" : "Not trained",
+      detail: research.voiceTrained
+        ? "Muse will mimic your tone per channel."
+        : "Train it for sharper, on-brand drafts.",
     },
     {
-      label: "Ideas in swipe file",
-      value:
-        research.ideas === 0
-          ? "None — consider capturing first"
-          : `${research.ideas}`,
+      label: "Swipe file",
       Icon: Lightbulb,
+      ready: research.ideas > 0,
+      value: research.ideas > 0 ? `${research.ideas} ideas` : "Empty",
+      detail:
+        research.ideas > 0
+          ? "Angles, hooks, and seeds to pull from."
+          : "Capture a few first for richer beats.",
     },
     {
-      label: "Past posts to draw from",
-      value:
-        research.insights === 0
-          ? "None yet — read-back populates nightly"
-          : `${research.insights}`,
+      label: "Past posts",
       Icon: BarChart3,
+      ready: research.insights > 0,
+      value:
+        research.insights > 0 ? `${research.insights} insights` : "None yet",
+      detail:
+        research.insights > 0
+          ? "High-performers shape angle suggestions."
+          : "Read-back populates this nightly.",
     },
     {
-      label: "Recent reads from feeds",
-      value:
-        research.feedItems === 0
-          ? "None yet — add feeds for context"
-          : `${research.feedItems}`,
+      label: "Saved from feeds",
       Icon: Rss,
+      ready: research.feedItems > 0,
+      value:
+        research.feedItems > 0 ? `${research.feedItems} saved` : "None yet",
+      detail:
+        research.feedItems > 0
+          ? "Only feed items you've saved feed into Muse."
+          : "Save interesting reads from your feeds — unsaved items are ignored.",
     },
   ];
+  const readyCount = rows.filter((r) => r.ready).length;
+
   return (
-    <section className="rounded-2xl border border-border bg-peach-100/40 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/55">
-        What Muse will reference
-      </p>
-      <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+    <section className="space-y-4 rounded-3xl border border-dashed border-peach-300/70 bg-peach-100/40 p-5">
+      <header>
+        <div className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-[0.22em] text-primary-deep">
+          <Sparkles className="w-3 h-3" />
+          Muse will reference
+        </div>
+        <p className="mt-2 text-[13px] text-ink/70 leading-[1.55]">
+          <span className="text-ink font-medium">{readyCount}</span> of{" "}
+          {rows.length} signals ready. Missing ones just mean leaner drafts.
+        </p>
+      </header>
+      <ul className="space-y-2.5">
         {rows.map((r) => (
           <li
             key={r.label}
-            className="flex items-start gap-2 text-[12.5px] text-ink/80"
+            className="flex items-start gap-3 pl-3 py-1 border-l-2 border-peach-300/60"
           >
-            <r.Icon className="w-3.5 h-3.5 mt-[3px] text-primary shrink-0" />
-            <span className="flex-1">
-              <span className="block text-[11px] uppercase tracking-[0.16em] text-ink/50">
-                {r.label}
-              </span>
-              <span className="block text-ink">{r.value}</span>
+            <span
+              className={cn(
+                "mt-0.5 inline-grid place-items-center w-6 h-6 rounded-full shrink-0",
+                r.ready
+                  ? "bg-primary-soft text-primary-deep"
+                  : "bg-muted/60 text-ink/40",
+              )}
+            >
+              {r.ready ? (
+                <Check className="w-3 h-3" />
+              ) : (
+                <r.Icon className="w-3 h-3" />
+              )}
             </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[12.5px] text-ink font-medium">
+                  {r.label}
+                </span>
+                <span
+                  className={cn(
+                    "text-[11.5px] tabular-nums",
+                    r.ready ? "text-ink/70" : "text-ink/40",
+                  )}
+                >
+                  {r.value}
+                </span>
+              </div>
+              <p className="mt-0.5 text-[12px] text-ink/55 leading-[1.5]">
+                {r.detail}
+              </p>
+            </div>
           </li>
         ))}
       </ul>
