@@ -116,8 +116,8 @@ export function IdeaDialog({ children }: { children?: React.ReactNode }) {
         {children}
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 transition-opacity duration-200" />
-        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-background-elev p-6 shadow-xl outline-none data-[starting-style]:opacity-0 data-[starting-style]:scale-95 data-[ending-style]:opacity-0 data-[ending-style]:scale-95 transition-[opacity,transform] duration-200">
+        <Dialog.Backdrop className="fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm data-[starting-style]:opacity-0 transition-opacity duration-200" />
+        <Dialog.Popup className="fixed left-1/2 top-1/2 z-50 w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-3xl border border-border bg-background-elev p-6 shadow-xl outline-none data-[starting-style]:opacity-0 data-[starting-style]:scale-95 transition-[opacity,transform] duration-200">
           <div className="flex items-start gap-3">
             <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
               <Lightbulb className="w-4 h-4 text-ink" />
