@@ -421,11 +421,14 @@ export const assets = pgTable("assets", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-// Campaigns — a sequenced arc of posts around one goal (launch, webinar,
-// sale, drip, evergreen). Beats live in `beats` as jsonb: each beat has a
-// phase label (teaser / announce / social_proof / urgency / recap), a
-// channel, a title + angle, and a format. Acceptance flips the beat in
-// place and back-refs the draft post id, same pattern as content_plans.
+// Campaigns — a sequenced run of posts around one goal. Two shapes share
+// this table: narrative arcs (launch, webinar, sale, custom) where beats
+// flow teaser → announce → …, and cadence runs (drip, evergreen) where
+// beats pace over a range at `postsPerWeek` frequency and carry richer
+// scaffolding (hook, keyPoints, cta, hashtags). `themes` and
+// `postsPerWeek` are only meaningful for cadence kinds; arc kinds leave
+// them null/empty. Acceptance flips a beat in place and back-refs the
+// draft post id.
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("userId")
@@ -437,6 +440,8 @@ export const campaigns = pgTable("campaigns", {
     enum: ["launch", "webinar", "sale", "drip", "evergreen", "custom"],
   }).notNull(),
   channels: text("channels").array().default([]).notNull(),
+  themes: text("themes").array().default([]).notNull(),
+  postsPerWeek: integer("postsPerWeek"),
   rangeStart: timestamp("rangeStart", { mode: "date" }).notNull(),
   rangeEnd: timestamp("rangeEnd", { mode: "date" }).notNull(),
   beats: jsonb("beats")
@@ -447,35 +452,6 @@ export const campaigns = pgTable("campaigns", {
     enum: ["draft", "ready", "running", "complete", "archived"],
   })
     .default("draft")
-    .notNull(),
-  generationId: uuid("generationId").references(() => generations.id, {
-    onDelete: "set null",
-  }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
-
-// Generated content plans. A plan wraps the user's brief + the model's
-// structured output (see `PlanIdea` in lib/ai/plan.ts). `status` tracks the
-// review lifecycle; `ideas` is the authoritative list — user acceptance
-// flips entries in place and back-refs the draft post id.
-export const contentPlans = pgTable("content_plans", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  goal: text("goal").notNull(),
-  themes: text("themes").array().default([]).notNull(),
-  channels: text("channels").array().default([]).notNull(),
-  frequency: integer("frequency").notNull(),
-  rangeStart: timestamp("rangeStart", { mode: "date" }).notNull(),
-  rangeEnd: timestamp("rangeEnd", { mode: "date" }).notNull(),
-  status: text("status", { enum: ["draft", "ready", "accepted", "archived"] })
-    .default("draft")
-    .notNull(),
-  ideas: jsonb("ideas")
-    .$type<Array<Record<string, unknown>>>()
-    .default([])
     .notNull(),
   generationId: uuid("generationId").references(() => generations.id, {
     onDelete: "set null",

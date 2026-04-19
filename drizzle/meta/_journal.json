@@ -162,6 +162,13 @@
       "when": 1776590930818,
       "tag": "0022_gigantic_dreadnoughts",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1776607186700,
+      "tag": "0023_superb_infant_terrible",
+      "breakpoints": true
     }
   ]
 }
