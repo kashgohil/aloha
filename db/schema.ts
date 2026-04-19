@@ -7,6 +7,7 @@ import {
   primaryKey,
   boolean,
   jsonb,
+  index,
   uniqueIndex,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
@@ -293,21 +294,97 @@ export const links = pgTable("links", {
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
-export const automations = pgTable("automations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  kind: text("kind").notNull(),
-  name: text("name").notNull(),
-  status: text("status", { enum: ["active", "paused", "draft"] })
-    .default("draft")
-    .notNull(),
-  runCount: integer("runCount").default(0).notNull(),
-  lastRunAt: timestamp("lastRunAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+// Serialized flow step. `steps` is null on legacy rows — callers fall back to
+// the template definition keyed by `kind`. Once a row is edited through the
+// builder the full graph is persisted here and the template is no longer
+// consulted.
+export type StoredFlowStep = {
+  id: string;
+  type: "trigger" | "action" | "condition" | "delay";
+  kind: string;
+  title: string;
+  detail: string;
+  config?: Record<string, unknown>;
+  next?: string[];
+  branches?: { yes?: string[]; no?: string[] };
+};
+
+export type StoredStepResult = {
+  stepId: string;
+  status: "success" | "failed" | "skipped";
+  startedAt: string;
+  finishedAt: string;
+  output?: Record<string, unknown>;
+  error?: string;
+};
+
+export const automations = pgTable(
+  "automations",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    name: text("name").notNull(),
+    status: text("status", { enum: ["active", "paused", "draft"] })
+      .default("draft")
+      .notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>(),
+    steps: jsonb("steps").$type<StoredFlowStep[]>(),
+    runCount: integer("runCount").default(0).notNull(),
+    lastRunAt: timestamp("lastRunAt"),
+    // Materialized next fire time for schedule-kind triggers. Null for
+    // event-driven automations. The cron endpoint scans active rows where
+    // nextFireAt <= now and enqueues a run.
+    nextFireAt: timestamp("nextFireAt"),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (t) => [
+    index("automations_next_fire_idx").on(t.status, t.nextFireAt),
+  ],
+);
+
+export const automationRuns = pgTable(
+  "automation_runs",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    automationId: uuid("automationId")
+      .notNull()
+      .references(() => automations.id, { onDelete: "cascade" }),
+    status: text("status", {
+      enum: ["running", "waiting", "success", "failed", "skipped"],
+    })
+      .default("running")
+      .notNull(),
+    trigger: jsonb("trigger").$type<Record<string, unknown>>(),
+    stepResults: jsonb("stepResults")
+      .$type<StoredStepResult[]>()
+      .default([])
+      .notNull(),
+    error: text("error"),
+    // Resume metadata for runs paused on a `delay` step. When status =
+    // 'waiting', the cron endpoint picks up rows where resumeAt <= now and
+    // continues execution from `cursor` with `snapshot` merged as the
+    // accumulated context.
+    resumeAt: timestamp("resumeAt"),
+    cursor: text("cursor"),
+    snapshot: jsonb("snapshot")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    startedAt: timestamp("startedAt").defaultNow().notNull(),
+    finishedAt: timestamp("finishedAt"),
+  },
+  (t) => [
+    index("automation_runs_automation_started_idx").on(
+      t.automationId,
+      t.startedAt.desc(),
+    ),
+    index("automation_runs_resume_idx").on(t.status, t.resumeAt),
+  ],
+);
 
 export const subscribers = pgTable("subscribers", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -683,6 +760,30 @@ export const mastodonCredentials = pgTable("mastodon_credentials", {
   accessToken: text("accessToken").notNull(),
   accountId: text("accountId").notNull(),
   username: text("username").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export const telegramCredentials = pgTable("telegram_credentials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .unique()
+    .references(() => users.id, { onDelete: "cascade" }),
+  // User's phone number (used for authentication)
+  phoneNumber: text("phoneNumber").notNull(),
+  // Session data after authentication (auth_key, server_salt, etc.)
+  sessionData: jsonb("sessionData").$type<Record<string, unknown>>(),
+  // Where to post (channel/group username or ID)
+  chatId: text("chatId").notNull(),
+  // Display name for the connection (channel username for links)
+  username: text("username"),
+  // Auth state for multi-step login
+  authState: text("authState", {
+    enum: ["pending_phone", "pending_code", "pending_2fa", "authenticated", "failed"],
+  }).default("pending_phone").notNull(),
+  // Flipped to true when the session is invalid
+  reauthRequired: boolean("reauthRequired").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

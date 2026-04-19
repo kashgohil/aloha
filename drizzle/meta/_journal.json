@@ -183,6 +183,20 @@
       "when": 1776612893776,
       "tag": "0025_purple_calypso",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1776621517786,
+      "tag": "0026_bright_peter_parker",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1776628159147,
+      "tag": "0027_hard_jazinda",
+      "breakpoints": true
     }
   ]
 }
