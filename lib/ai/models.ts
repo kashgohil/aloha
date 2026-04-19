@@ -17,9 +17,9 @@ export type FeatureKey =
   | "composer.image"
   | "voice.train"
   | "voice.sample"
-  | "plan.generate"
   | "repurpose.fanout"
   | "campaign.beatsheet"
+  | "campaign.cadence"
   | "inbox.triage"
   | "inbox.reply"
   | "insights.commentary"
@@ -45,9 +45,9 @@ const FEATURE_TIER: Record<FeatureKey, Tier> = {
   "composer.image": "pro",
   "voice.train": "pro",
   "voice.sample": "flash",
-  "plan.generate": "pro",
   "repurpose.fanout": "flash",
   "campaign.beatsheet": "sonnet",
+  "campaign.cadence": "sonnet",
   "inbox.triage": "sonnet",
   "inbox.reply": "pro",
   "insights.commentary": "pro",

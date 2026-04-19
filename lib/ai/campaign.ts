@@ -1,8 +1,15 @@
-// Campaign beat-sheet generation. Mirrors the plan generator shape but
-// produces a sequenced arc (teaser → announce → social_proof → urgency
-// → recap, adapted to the campaign kind) instead of a flat weekly
-// cadence. Reuses plan helpers for voice + inspiration + best-windows
-// to avoid duplication.
+// Campaign beat-sheet generation. Two shapes share this engine:
+//
+//   - Arc campaigns (launch / webinar / sale / custom) produce a sequenced
+//     narrative — teaser → announce → social_proof → urgency → recap — via
+//     the `campaignBeatsheet` prompt. Beats carry phase + title + angle.
+//
+//   - Cadence campaigns (drip / evergreen) produce a rhythm over a longer
+//     range at `postsPerWeek` frequency via the `campaignCadence` prompt.
+//     Beats still carry a phase (mostly teaser/announce/social_proof) but
+//     additionally carry richer scaffolding (hook, keyPoints, cta,
+//     hashtags, mediaSuggestion, rationale) so the review UI looks and
+//     feels like the old plan ideas.
 
 import { and, eq, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -30,6 +37,10 @@ export const CAMPAIGN_KINDS = [
   "custom",
 ] as const;
 export type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
+
+export const CADENCE_KINDS = ["drip", "evergreen"] as const satisfies readonly CampaignKind[];
+export const isCadenceKind = (k: CampaignKind): boolean =>
+  (CADENCE_KINDS as readonly string[]).includes(k);
 
 export const BEAT_PHASES = [
   "teaser",
@@ -61,6 +72,15 @@ export type CampaignBeat = {
   title: string;
   angle: string;
   format: BeatFormat;
+  // Richer scaffolding — populated for cadence campaigns (drip/evergreen)
+  // so the review cards + the accepted draft carry real post material, not
+  // just a working title. Arc campaigns leave these undefined.
+  hook?: string;
+  keyPoints?: string[];
+  cta?: string;
+  hashtags?: string[];
+  mediaSuggestion?: string;
+  rationale?: string;
   accepted?: boolean;
   acceptedPostId?: string;
 };
@@ -71,6 +91,8 @@ export type GenerateCampaignInput = {
   goal: string;
   kind: CampaignKind;
   channels: string[];
+  themes: string[];
+  postsPerWeek: number | null;
   rangeStart: Date;
   rangeEnd: Date;
 };
@@ -95,6 +117,11 @@ export async function generateCampaign(
     throw new Error("End date must be after start date.");
   }
 
+  const cadence = isCadenceKind(input.kind);
+  if (cadence && (!input.postsPerWeek || input.postsPerWeek < 1)) {
+    throw new Error("Pick a posts-per-week cadence for drip/evergreen runs.");
+  }
+
   await registerPrompts();
 
   const [voice, bestWindowsByChannel, inspiration, userIdeas, topPerformers] =
@@ -106,8 +133,7 @@ export async function generateCampaign(
       loadPastHighPerformers(input.userId, input.channels),
     ]);
 
-  const vars = {
-    kind: input.kind,
+  const sharedVars = {
     goal: input.goal.trim(),
     channels: input.channels.join(", "),
     rangeStart: toIsoDate(input.rangeStart),
@@ -119,17 +145,38 @@ export async function generateCampaign(
     voiceBlock: buildVoiceBlock(voice),
   };
 
-  const result = await generate({
-    userId: input.userId,
-    feature: "campaign.beatsheet",
-    template: PROMPTS.campaignBeatsheet,
-    vars,
-    userMessage:
-      "Produce the beat sheet as strict JSON. No markdown, no prose outside the JSON object.",
-    temperature: 0.6,
-  });
+  const result = cadence
+    ? await generate({
+        userId: input.userId,
+        feature: "campaign.cadence",
+        template: PROMPTS.campaignCadence,
+        vars: {
+          ...sharedVars,
+          kind: input.kind,
+          themes:
+            input.themes.length > 0
+              ? input.themes.join(", ")
+              : "(none specified)",
+          frequency: String(input.postsPerWeek ?? 5),
+        },
+        userMessage:
+          "Produce the cadence run as strict JSON. No markdown, no prose outside the JSON object.",
+        temperature: 0.7,
+      })
+    : await generate({
+        userId: input.userId,
+        feature: "campaign.beatsheet",
+        template: PROMPTS.campaignBeatsheet,
+        vars: {
+          ...sharedVars,
+          kind: input.kind,
+        },
+        userMessage:
+          "Produce the beat sheet as strict JSON. No markdown, no prose outside the JSON object.",
+        temperature: 0.6,
+      });
 
-  const parsed = parseCampaignJson(result.text, input.channels);
+  const parsed = parseCampaignJson(result.text, input.channels, cadence);
   const beatsWithIds: CampaignBeat[] = parsed.beats.map((b) => ({
     ...b,
     id: crypto.randomUUID(),
@@ -143,6 +190,8 @@ export async function generateCampaign(
       goal: input.goal.trim(),
       kind: input.kind,
       channels: input.channels,
+      themes: input.themes,
+      postsPerWeek: cadence ? (input.postsPerWeek ?? null) : null,
       rangeStart: input.rangeStart,
       rangeEnd: input.rangeEnd,
       beats: beatsWithIds as unknown as Array<Record<string, unknown>>,
@@ -163,6 +212,7 @@ export async function generateCampaign(
 function parseCampaignJson(
   text: string,
   allowedChannels: string[],
+  rich: boolean,
 ): { name: string; overview: string; beats: Omit<CampaignBeat, "id">[] } {
   const cleaned = text
     .trim()
@@ -209,7 +259,47 @@ function parseCampaignJson(
 
     if (!title || !date || !allowed.has(channel)) continue;
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-    beats.push({ date, phase, channel, title, angle, format });
+
+    const beat: Omit<CampaignBeat, "id"> = {
+      date,
+      phase,
+      channel,
+      title,
+      angle,
+      format,
+    };
+
+    if (rich) {
+      const hook = typeof r.hook === "string" ? r.hook.trim() : "";
+      const cta = typeof r.cta === "string" ? r.cta.trim() : "";
+      const mediaSuggestion =
+        typeof r.mediaSuggestion === "string" ? r.mediaSuggestion.trim() : "";
+      const rationale =
+        typeof r.rationale === "string" ? r.rationale.trim() : "";
+      const keyPoints = Array.isArray(r.keyPoints)
+        ? r.keyPoints
+            .filter((k): k is string => typeof k === "string")
+            .map((k) => k.trim())
+            .filter(Boolean)
+            .slice(0, 8)
+        : [];
+      const hashtags = Array.isArray(r.hashtags)
+        ? r.hashtags
+            .filter((k): k is string => typeof k === "string")
+            .map((k) => (k.startsWith("#") ? k : `#${k}`))
+            .filter((k) => /^#[\w-]+$/.test(k))
+            .slice(0, 20)
+        : [];
+
+      if (hook) beat.hook = hook;
+      if (keyPoints.length > 0) beat.keyPoints = keyPoints;
+      if (cta) beat.cta = cta;
+      if (hashtags.length > 0) beat.hashtags = hashtags;
+      if (mediaSuggestion) beat.mediaSuggestion = mediaSuggestion;
+      if (rationale) beat.rationale = rationale;
+    }
+
+    beats.push(beat);
   }
 
   if (beats.length === 0) {
@@ -424,6 +514,8 @@ export async function loadCampaign(
   goal: string;
   kind: CampaignKind;
   channels: string[];
+  themes: string[];
+  postsPerWeek: number | null;
   rangeStart: Date;
   rangeEnd: Date;
   beats: CampaignBeat[];
@@ -442,6 +534,8 @@ export async function loadCampaign(
     goal: row.goal,
     kind: row.kind as CampaignKind,
     channels: row.channels,
+    themes: row.themes,
+    postsPerWeek: row.postsPerWeek,
     rangeStart: row.rangeStart,
     rangeEnd: row.rangeEnd,
     beats: row.beats as CampaignBeat[],
@@ -469,10 +563,9 @@ export async function listCampaigns(userId: string) {
 }
 
 // Regenerates a single beat in place. The beat's date, channel, and phase
-// are kept — Muse rewrites the title + angle + format only. Useful when
-// one beat in an otherwise-good sheet is off-tone or too similar to
-// another beat. Refuses to regenerate beats that are already drafted
-// (that would orphan the linked post's provenance).
+// are kept — Muse rewrites the title + angle + format (and scaffolding for
+// cadence campaigns) only. Refuses to regenerate beats that are already
+// drafted (that would orphan the linked post's provenance).
 export async function regenerateCampaignBeat(
   userId: string,
   campaignId: string,
@@ -489,6 +582,7 @@ export async function regenerateCampaignBeat(
     );
   }
 
+  const cadence = isCadenceKind(campaign.kind);
   const other = campaign.beats.filter((b) => b.id !== beatId);
   const duplicateGuard = other
     .map((b) => `  - [${b.channel} · ${b.phase}] ${b.title}`)
@@ -505,48 +599,66 @@ export async function regenerateCampaignBeat(
       loadPastHighPerformers(userId, campaign.channels),
     ]);
 
-  const result = await generate({
-    userId,
-    feature: "campaign.beatsheet",
-    template: PROMPTS.campaignBeatsheet,
-    vars: {
-      kind: campaign.kind,
-      goal: campaign.goal,
-      channels: campaign.channels.join(", "),
-      rangeStart: target.date,
-      rangeEnd: target.date,
-      bestWindows: formatBestWindows(
-        campaign.channels,
-        bestWindowsByChannel,
-      ),
-      inspiration: formatInspiration(inspiration),
-      yourIdeas: formatIdeas(userIdeas),
-      topPerformers: formatTopPerformers(topPerformers),
-      voiceBlock: buildVoiceBlock(voice),
-    },
-    userMessage: [
-      "Regenerate ONE single beat only.",
-      `It must target: date ${target.date}, channel ${target.channel}, phase ${target.phase}.`,
-      "Produce exactly one beat in the \"beats\" array.",
-      "Do NOT repeat any of these existing beats in shape or substance:",
-      duplicateGuard || "  (none)",
-      "Return strict JSON — no markdown, no prose outside the JSON object.",
-    ].join("\n"),
-    temperature: 0.85,
-  });
+  const sharedVars = {
+    goal: campaign.goal,
+    channels: campaign.channels.join(", "),
+    rangeStart: target.date,
+    rangeEnd: target.date,
+    bestWindows: formatBestWindows(campaign.channels, bestWindowsByChannel),
+    inspiration: formatInspiration(inspiration),
+    yourIdeas: formatIdeas(userIdeas),
+    topPerformers: formatTopPerformers(topPerformers),
+    voiceBlock: buildVoiceBlock(voice),
+  };
 
-  const parsed = parseCampaignJson(result.text, campaign.channels);
+  const userMessage = [
+    "Regenerate ONE single beat only.",
+    `It must target: date ${target.date}, channel ${target.channel}, phase ${target.phase}.`,
+    'Produce exactly one beat in the "beats" array.',
+    "Do NOT repeat any of these existing beats in shape or substance:",
+    duplicateGuard || "  (none)",
+    "Return strict JSON — no markdown, no prose outside the JSON object.",
+  ].join("\n");
+
+  const result = cadence
+    ? await generate({
+        userId,
+        feature: "campaign.cadence",
+        template: PROMPTS.campaignCadence,
+        vars: {
+          ...sharedVars,
+          kind: campaign.kind,
+          themes:
+            campaign.themes.length > 0
+              ? campaign.themes.join(", ")
+              : "(none specified)",
+          frequency: String(campaign.postsPerWeek ?? 1),
+        },
+        userMessage,
+        temperature: 0.85,
+      })
+    : await generate({
+        userId,
+        feature: "campaign.beatsheet",
+        template: PROMPTS.campaignBeatsheet,
+        vars: {
+          ...sharedVars,
+          kind: campaign.kind,
+        },
+        userMessage,
+        temperature: 0.85,
+      });
+
+  const parsed = parseCampaignJson(result.text, campaign.channels, cadence);
   const fresh = parsed.beats[0];
   if (!fresh) throw new Error("Regeneration came back empty. Try again.");
 
   const replacement: CampaignBeat = {
+    ...fresh,
     id: beatId,
     date: target.date,
     channel: target.channel,
     phase: target.phase,
-    title: fresh.title,
-    angle: fresh.angle,
-    format: fresh.format,
   };
 
   const next = campaign.beats.map((b) => (b.id === beatId ? replacement : b));
@@ -559,4 +671,52 @@ export async function regenerateCampaignBeat(
     .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
 
   return replacement;
+}
+
+// ---- draft body composition ----------------------------------------------
+
+// Builds the editor-ready body from a beat. For rich (cadence) beats we
+// flow hook → keyPoints → cta → hashtags the same way the old plan
+// generator did; for arc beats we fall back to title + angle.
+export function composeBeatBody(beat: CampaignBeat): string {
+  const hasRicher =
+    beat.hook || (beat.keyPoints && beat.keyPoints.length > 0) || beat.cta;
+  if (!hasRicher) {
+    return beat.title + (beat.angle ? `\n\n${beat.angle}` : "");
+  }
+  const parts: string[] = [];
+  if (beat.hook) parts.push(beat.hook);
+  if (beat.keyPoints && beat.keyPoints.length > 0) {
+    const isBeatFormat =
+      beat.format === "thread" || beat.format === "carousel";
+    parts.push(
+      isBeatFormat
+        ? beat.keyPoints.map((k, i) => `${i + 1}. ${k}`).join("\n")
+        : beat.keyPoints.join("\n\n"),
+    );
+  }
+  if (beat.cta) parts.push(beat.cta);
+  if (beat.hashtags && beat.hashtags.length > 0) {
+    parts.push(beat.hashtags.join(" "));
+  }
+  return parts.join("\n\n");
+}
+
+// Short human-readable format hint shown in the composer sidebar. Not
+// prompt context — just UI copy.
+export function formatGuidanceFor(format: string, channel: string): string {
+  switch (format) {
+    case "thread":
+      return `Thread on ${channel} — each beat is one post, hook carries the reader to the next.`;
+    case "carousel":
+      return "Carousel — each beat is one slide, big type, one idea per card.";
+    case "long-form":
+      return "Long-form — headline + scannable sections, aim for depth over brevity.";
+    case "short-video":
+      return "Short video — hook in the first 3s, beats pace the script, caption is the CTA.";
+    case "link":
+      return "Link post — framing sits outside the preview, let the link title do work.";
+    default:
+      return "Single post — hook, payoff, close. Tight.";
+  }
 }

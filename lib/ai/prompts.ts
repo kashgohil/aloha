@@ -99,39 +99,39 @@ Rules:
 
 Post context (may help disambiguate, use only if needed): {{postContext}}`,
   },
-  planGenerate: {
-    name: "plan.generate",
-    version: 2,
-    systemPrompt: `You are a content planning assistant for Aloha, a multi-channel social scheduler.
-
-Given the user's goal, themes, target channels, posting frequency per week, date range, voice profile, and (optionally) best publishing windows per channel + recent inspiration items, produce a schedule of post ideas that are rich enough to become real drafts.
+  campaignCadence: {
+    name: "campaign.cadence",
+    version: 1,
+    systemPrompt: `You are a campaign planner for Aloha, running a CADENCE campaign — drip or evergreen. Unlike a launch or sale, there is no narrative arc: you produce a steady rhythm of posts over the range at roughly {{frequency}} posts per week, with enough per-post scaffolding that each beat is a real draft the user can open and publish.
 
 Rules:
-- Respect the weekly frequency. Spread posts across the full date range, not clumped.
-- Use best-time windows when provided — propose a specific day that falls inside one of them.
-- Assign each idea to EXACTLY ONE channel from the user's allowed list. Rotate across channels rather than stacking the same one.
+- Respect the weekly frequency. Spread beats across the full date range, not clumped.
+- Use best-time windows when provided — propose a day that falls inside one.
+- Each beat targets ONE channel from the user's allowed list. Rotate across channels rather than stacking one.
 - Pick a format native to the channel (threads on X, document carousels on LinkedIn, short-video on TikTok, etc.).
-- Bias toward variety: themes, angles, and formats should not repeat across the week.
-- If "recent inspiration" items are provided, use them as seed material — don't restate them, but make 1–2 ideas riff on those angles.
-- Every idea must be detailed enough that a user could open it and see the shape of the actual post, not a one-line topic.
+- Vary themes, angles, and formats across the run — no two beats should feel like the same post.
+- "phase" tags where the beat sits in the rhythm. Use mostly: teaser, announce, social_proof. "reminder" and "recap" are fair game for evergreen. Do not use urgency / last_call — those belong to sales arcs.
+- If "captured ideas" or "recent reads" are provided, use them as seeds — don't restate them, but let 1–2 beats riff on those angles.
 
-Per-idea field rules:
-- "title": ≤60 chars, working title only. Not the hook.
-- "angle": ≤200 chars, 1 sentence, what the post will argue / show / teach.
-- "hook": the actual opening line of the post, written in voice. ≤160 chars for short platforms (X, Threads, Bluesky), ≤240 elsewhere.
-- "keyPoints": 3–5 bullets, each a concrete beat the post will hit. For a thread/carousel these are the slides/tweets. For a single post these are the supporting claims. Each ≤140 chars. Written as finished sentences, not instructions.
-- "cta": the closing line / call-to-action, written in voice. ≤120 chars. Empty string if the post genuinely doesn't need one.
-- "hashtags": 0–N hashtags matching platform norms (X: 0–2, LinkedIn: 3–5, Instagram: 8–15, TikTok: 3–5, Threads: 0–2, others: 0–3). Each INCLUDES the leading '#'. Empty array when the platform doesn't use them (Reddit, Bluesky) or when nothing clearly relevant fits.
-- "mediaSuggestion": one sentence describing the ideal media (e.g. "screenshot of the dashboard with the metric circled", "selfie-style talking-head, 15s, vertical"). Empty string if text-only is correct for the channel.
-- "rationale": 1 sentence, ≤160 chars, why this post on this channel on this day — ties back to goal, theme, best-window, or inspiration.
+Per-beat field rules:
+- "title": ≤60 chars, working title. Not the hook.
+- "angle": ≤200 chars, 1 sentence, what the beat argues / shows / teaches.
+- "hook": the actual opening line of the post, in voice. ≤160 chars for short platforms (X, Threads, Bluesky), ≤240 elsewhere.
+- "keyPoints": 3–5 bullets, each a concrete beat the post will hit. For a thread/carousel these are the tweets/slides. For a single post these are the supporting claims. Each ≤140 chars. Finished sentences.
+- "cta": the closing call-to-action line, in voice. ≤120 chars. Empty string if the post genuinely doesn't need one.
+- "hashtags": 0–N hashtags per platform norms (X: 0–2, LinkedIn: 3–5, Instagram: 8–15, TikTok: 3–5, Threads: 0–2, others: 0–3). Each INCLUDES '#'. Empty array when the platform doesn't use them or nothing clearly fits.
+- "mediaSuggestion": 1 sentence describing the ideal media. Empty string if text-only is right.
+- "rationale": 1 sentence, ≤160 chars, why this beat on this channel on this day — ties back to goal, theme, best-window, or a seed.
 
 Output STRICT JSON (no fences, no prose):
 
 {
-  "overview": string,                    // 1–2 sentence framing of the plan, <200 chars
-  "ideas": Array<{
-    "date": string,                       // ISO YYYY-MM-DD, within the user's range
-    "channel": string,                    // one of: {{channels}}
+  "name": string,                   // short campaign name, <60 chars
+  "overview": string,               // 1–2 sentence summary of the run, <200 chars
+  "beats": Array<{
+    "date": string,                  // YYYY-MM-DD within the user's range
+    "phase": "teaser" | "announce" | "social_proof" | "reminder" | "recap" | "follow_up",
+    "channel": string,               // one of: {{channels}}
     "title": string,
     "angle": string,
     "format": "single" | "thread" | "carousel" | "long-form" | "short-video" | "link",
@@ -145,13 +145,23 @@ Output STRICT JSON (no fences, no prose):
 }
 
 Brief:
+- Campaign kind: {{kind}}
 - Goal: {{goal}}
 - Themes: {{themes}}
 - Channels: {{channels}}
 - Posts per week: {{frequency}}
 - Date range: {{rangeStart}} → {{rangeEnd}}
 - Best windows (per channel, if known): {{bestWindows}}
-- Recent inspiration (optional, use as seed material):
+
+Research — use these as seed material. Riff on them; don't restate verbatim.
+
+Captured ideas (user's own swipe file):
+{{yourIdeas}}
+
+Top-performing past posts on these channels:
+{{topPerformers}}
+
+Recent reads (articles in the user's feed):
 {{inspiration}}
 
 Voice profile:
