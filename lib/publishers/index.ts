@@ -6,12 +6,14 @@
 // "published" with publishedAt set to the earliest success. Only an
 // all-platforms-failed outcome is marked "failed".
 
+import * as Sentry from "@sentry/nextjs";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { accounts, postDeliveries, posts, type PostMedia } from "@/db/schema";
+import { accounts, postDeliveries, posts, telegramCredentials, type PostMedia } from "@/db/schema";
 import { decideForPublish } from "@/lib/channel-state";
 import { sendManualAssistReminderForDelivery } from "@/lib/manual-assist";
 import { createNotification } from "@/lib/notifications";
+import { dispatchEvent } from "@/lib/automations/dispatch";
 import { PublishError } from "./errors";
 import { publishToLinkedIn } from "./linkedin";
 import { publishToX } from "./x";
@@ -24,8 +26,9 @@ import { publishToMastodon } from "./mastodon";
 import { publishToReddit } from "./reddit";
 import { publishToPinterest } from "./pinterest";
 import { publishToYouTube } from "./youtube";
+import { publishToTelegram } from "./telegram";
 
-type PlatformKey = "linkedin" | "twitter" | "bluesky" | "medium" | "facebook" | "instagram" | "threads" | "mastodon" | "reddit" | "pinterest" | "youtube";
+type PlatformKey = "linkedin" | "twitter" | "bluesky" | "medium" | "facebook" | "instagram" | "threads" | "mastodon" | "reddit" | "pinterest" | "youtube" | "telegram";
 
 const PUBLISHERS: Record<
 	PlatformKey,
@@ -46,10 +49,11 @@ const PUBLISHERS: Record<
 	reddit: publishToReddit,
 	pinterest: publishToPinterest,
 	youtube: publishToYouTube,
+	telegram: publishToTelegram,
 };
 
 function isSupportedPlatform(p: string): p is PlatformKey {
-	return p === "linkedin" || p === "twitter" || p === "bluesky" || p === "medium" || p === "facebook" || p === "instagram" || p === "threads" || p === "mastodon" || p === "reddit" || p === "pinterest" || p === "youtube";
+	return p === "linkedin" || p === "twitter" || p === "bluesky" || p === "medium" || p === "facebook" || p === "instagram" || p === "threads" || p === "mastodon" || p === "reddit" || p === "pinterest" || p === "youtube" || p === "telegram";
 }
 
 export type PublishSummary = {
@@ -116,6 +120,10 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				try {
 					await sendManualAssistReminderForDelivery(postId, platform);
 				} catch (err) {
+					Sentry.captureException(err, {
+						tags: { source: "publishers.manual-assist", platform },
+						extra: { postId },
+					});
 					console.error(
 						`[manual-assist] reminder failed for post ${postId} / ${platform}:`,
 						err,
@@ -242,6 +250,16 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			url: `/app/posts/${postId}`,
 			metadata: { postId, okChannels, failedChannels },
 		});
+
+		if (kind === "post_published" || kind === "post_partial") {
+			dispatchEvent({
+				triggerKind: "post_published",
+				userId: post.userId,
+				payload: { postId, okChannels, failedChannels },
+			}).catch((err) =>
+				console.error("[automations] post_published dispatch failed", err),
+			);
+		}
 	}
 
 	const genuineFailures = results.filter((r) => !r.ok && !r.gated);
@@ -290,10 +308,19 @@ async function markDeliveryFailed(id: string, code: string, message: string) {
 }
 
 async function setReauthRequired(userId: string, provider: string, value: boolean) {
+	// Handle OAuth providers (accounts table)
 	await db
 		.update(accounts)
 		.set({ reauthRequired: value })
 		.where(
 			and(eq(accounts.userId, userId), eq(accounts.provider, provider)),
 		);
+
+	// Handle custom credential providers
+	if (provider === "telegram") {
+		await db
+			.update(telegramCredentials)
+			.set({ reauthRequired: value })
+			.where(eq(telegramCredentials.userId, userId));
+	}
 }

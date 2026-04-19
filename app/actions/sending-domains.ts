@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { sendingDomains } from "@/db/schema";
 import { requireBroadcastEntitlement } from "@/lib/billing/broadcasts";
 import { env } from "@/lib/env";
+import { dispatchEvent } from "@/lib/automations/dispatch";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
@@ -149,6 +150,7 @@ export async function verifySendingDomain(formData: FormData) {
   }
 
   const status = mapStatus(data.status);
+  const justVerified = status === "verified" && row.status !== "verified";
   await db
     .update(sendingDomains)
     .set({
@@ -159,6 +161,16 @@ export async function verifySendingDomain(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(sendingDomains.id, id));
+
+  if (justVerified) {
+    dispatchEvent({
+      triggerKind: "domain_verified",
+      userId,
+      payload: { domainId: row.id, domain: row.domain },
+    }).catch((err) =>
+      console.error("[automations] domain_verified dispatch failed", err),
+    );
+  }
 
   revalidatePath("/app/audience/sending");
 }
