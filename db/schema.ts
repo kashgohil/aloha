@@ -43,6 +43,11 @@ export const users = pgTable("users", {
   onboardedAt: timestamp("onboardedAt", { mode: "date" }),
   // Billing — lazy-created on first checkout
   polarCustomerId: text("polarCustomerId").unique(),
+  // Master switch for in-app notifications. When false, `createNotification`
+  // is a no-op. Per-category flags below layer on top.
+  notificationsEnabled: boolean("notificationsEnabled").default(true).notNull(),
+  notifyPostOutcomes: boolean("notifyPostOutcomes").default(true).notNull(),
+  notifyInboxSyncIssues: boolean("notifyInboxSyncIssues").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -826,6 +831,34 @@ export const platformContentCache = pgTable(
     ),
   ],
 );
+
+// In-app notifications. Written by publishers + inbox sync; consumed by the
+// bell menu. `kind` drives the icon + label; `url` is the optional click-
+// through target; `metadata` holds kind-specific extras (postId, platform,
+// error summary) so the UI can render without extra joins.
+export const notifications = pgTable("notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  kind: text("kind", {
+    enum: [
+      "post_published",
+      "post_partial",
+      "post_failed",
+      "inbox_sync_failed",
+    ],
+  }).notNull(),
+  title: text("title").notNull(),
+  body: text("body"),
+  url: text("url"),
+  metadata: jsonb("metadata")
+    .$type<Record<string, unknown>>()
+    .default({})
+    .notNull(),
+  isRead: boolean("isRead").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 export const inboxSyncCursors = pgTable(
   "inbox_sync_cursors",
