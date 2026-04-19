@@ -1,3 +1,4 @@
+import bigInt from "big-integer";
 import {
   getBlueskyCredentials,
   createSession,
@@ -140,8 +141,7 @@ export async function replyOnTelegram(
     if (chatId.startsWith("@")) {
       entity = await client.getEntity(chatId);
     } else {
-      const numericId = BigInt(chatId);
-      entity = await client.getEntity(numericId);
+      entity = await client.getEntity(bigInt(chatId));
     }
 
     // Send reply

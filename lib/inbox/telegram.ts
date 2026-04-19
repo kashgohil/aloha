@@ -1,3 +1,4 @@
+import bigInt from "big-integer";
 import type { SyncResult, NormalizedMessage } from "./types";
 import { getTelegramSession } from "@/lib/publishers/telegram";
 
@@ -20,8 +21,7 @@ export async function fetchTelegramMessages(
 		if (chatId.startsWith("@")) {
 			entity = await client.getEntity(chatId);
 		} else {
-			const numericId = BigInt(chatId);
-			entity = await client.getEntity(numericId);
+			entity = await client.getEntity(bigInt(chatId));
 		}
 
 		// Get messages from the chat
