@@ -3,10 +3,12 @@ import { JsonLd } from "@/lib/json-ld";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { MarketingNav } from "./_components/nav";
 import { MarketingFooter } from "./_components/footer";
+import { ForceLight } from "./_components/force-light";
 
 export default function MarketingLayout({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary selection:text-white">
+      <ForceLight />
       <JsonLd data={[organizationJsonLd(), websiteJsonLd()]} />
       <MarketingNav />
       {children}
