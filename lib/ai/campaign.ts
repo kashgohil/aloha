@@ -176,7 +176,7 @@ export async function generateCampaign(
         temperature: 0.6,
       });
 
-  const parsed = parseCampaignJson(result.text, input.channels, cadence);
+  const parsed = parseCampaignJson(result.text, input.channels);
   const beatsWithIds: CampaignBeat[] = parsed.beats.map((b) => ({
     ...b,
     id: crypto.randomUUID(),
@@ -212,7 +212,6 @@ export async function generateCampaign(
 function parseCampaignJson(
   text: string,
   allowedChannels: string[],
-  rich: boolean,
 ): { name: string; overview: string; beats: Omit<CampaignBeat, "id">[] } {
   const cleaned = text
     .trim()
@@ -269,35 +268,37 @@ function parseCampaignJson(
       format,
     };
 
-    if (rich) {
-      const hook = typeof r.hook === "string" ? r.hook.trim() : "";
-      const cta = typeof r.cta === "string" ? r.cta.trim() : "";
-      const mediaSuggestion =
-        typeof r.mediaSuggestion === "string" ? r.mediaSuggestion.trim() : "";
-      const rationale =
-        typeof r.rationale === "string" ? r.rationale.trim() : "";
-      const keyPoints = Array.isArray(r.keyPoints)
-        ? r.keyPoints
-            .filter((k): k is string => typeof k === "string")
-            .map((k) => k.trim())
-            .filter(Boolean)
-            .slice(0, 8)
-        : [];
-      const hashtags = Array.isArray(r.hashtags)
-        ? r.hashtags
-            .filter((k): k is string => typeof k === "string")
-            .map((k) => (k.startsWith("#") ? k : `#${k}`))
-            .filter((k) => /^#[\w-]+$/.test(k))
-            .slice(0, 20)
-        : [];
+    // Scaffolding fields — both prompts (beatsheet + cadence) now emit them
+    // so every accepted beat becomes a draft-ready post. Old arc beats
+    // persisted before this change just won't carry them; the parser
+    // tolerates either shape.
+    const hook = typeof r.hook === "string" ? r.hook.trim() : "";
+    const cta = typeof r.cta === "string" ? r.cta.trim() : "";
+    const mediaSuggestion =
+      typeof r.mediaSuggestion === "string" ? r.mediaSuggestion.trim() : "";
+    const rationale =
+      typeof r.rationale === "string" ? r.rationale.trim() : "";
+    const keyPoints = Array.isArray(r.keyPoints)
+      ? r.keyPoints
+          .filter((k): k is string => typeof k === "string")
+          .map((k) => k.trim())
+          .filter(Boolean)
+          .slice(0, 8)
+      : [];
+    const hashtags = Array.isArray(r.hashtags)
+      ? r.hashtags
+          .filter((k): k is string => typeof k === "string")
+          .map((k) => (k.startsWith("#") ? k : `#${k}`))
+          .filter((k) => /^#[\w-]+$/.test(k))
+          .slice(0, 20)
+      : [];
 
-      if (hook) beat.hook = hook;
-      if (keyPoints.length > 0) beat.keyPoints = keyPoints;
-      if (cta) beat.cta = cta;
-      if (hashtags.length > 0) beat.hashtags = hashtags;
-      if (mediaSuggestion) beat.mediaSuggestion = mediaSuggestion;
-      if (rationale) beat.rationale = rationale;
-    }
+    if (hook) beat.hook = hook;
+    if (keyPoints.length > 0) beat.keyPoints = keyPoints;
+    if (cta) beat.cta = cta;
+    if (hashtags.length > 0) beat.hashtags = hashtags;
+    if (mediaSuggestion) beat.mediaSuggestion = mediaSuggestion;
+    if (rationale) beat.rationale = rationale;
 
     beats.push(beat);
   }
@@ -649,7 +650,7 @@ export async function regenerateCampaignBeat(
         temperature: 0.85,
       });
 
-  const parsed = parseCampaignJson(result.text, campaign.channels, cadence);
+  const parsed = parseCampaignJson(result.text, campaign.channels);
   const fresh = parsed.beats[0];
   if (!fresh) throw new Error("Regeneration came back empty. Try again.");
 
