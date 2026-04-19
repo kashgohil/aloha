@@ -41,6 +41,7 @@ import {
 	Hash,
 	ImagePlus,
 	ImageUp,
+	Images,
 	Layers,
 	Loader2,
 	Paperclip,
@@ -57,9 +58,12 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { FanoutPanel } from "./fanout-panel";
 import { ImportPanel } from "./import-panel";
+import { LibraryPanel } from "./library-panel";
 import { PreviewCard } from "./preview-card";
 import { ScorePanel } from "./score-panel";
 import { VariantsPanel, type VariantPlatform } from "./variants-panel";
+import { Calendar } from "@/components/ui/calendar";
+import { TimePicker } from "@/components/ui/time-picker";
 
 const PLATFORM_ICONS: Record<
 	string,
@@ -237,6 +241,7 @@ export function Composer({
 	const [showFanout, setShowFanout] = useState(false);
 	const [showImport, setShowImport] = useState(false);
 	const [showScore, setShowScore] = useState(false);
+	const [showLibrary, setShowLibrary] = useState(false);
 	const [isHashing, startHashing] = useTransition();
 	const [hashSuggestions, setHashSuggestions] = useState<string[]>([]);
 	const [altTextLoading, setAltTextLoading] = useState<string | null>(null);
@@ -353,6 +358,20 @@ export function Composer({
 
 	const removeMedia = (url: string) =>
 		setBaseMedia((prev) => prev.filter((m) => m.url !== url));
+
+	const handleAttachFromLibrary = (picked: PostMedia[]) => {
+		setBaseMedia((prev) => {
+			const have = new Set(prev.map((m) => m.url));
+			const next = [...prev];
+			for (const m of picked) {
+				if (next.length >= MAX_MEDIA) break;
+				if (have.has(m.url)) continue;
+				next.push(m);
+			}
+			return next;
+		});
+		setShowLibrary(false);
+	};
 
 	const toggle = (id: string) =>
 		setSelected((prev) =>
@@ -731,55 +750,6 @@ export function Composer({
 			<section className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
 				{/* Editor */}
 				<div className="lg:col-span-7">
-					{showVariants ? (
-						<div className="mb-6">
-							<VariantsPanel
-								platforms={variantPlatforms}
-								onAccept={applyVariantToChannel}
-								onClose={() => setShowVariants(false)}
-							/>
-						</div>
-					) : null}
-					{showFanout && fanoutSourcePlatform ? (
-						<div className="mb-6">
-							<FanoutPanel
-								sourcePlatform={fanoutSourcePlatform.id}
-								sourcePlatformName={fanoutSourcePlatform.name}
-								sourceContent={effectiveContent(fanoutSourcePlatform.id)}
-								targets={fanoutTargets}
-								onAccept={applyVariantToChannel}
-								onClose={() => setShowFanout(false)}
-							/>
-						</div>
-					) : null}
-					{showImport ? (
-						<div className="mb-6">
-							<ImportPanel
-								targets={variantPlatforms}
-								onAccept={applyVariantToChannel}
-								onClose={() => setShowImport(false)}
-							/>
-						</div>
-					) : null}
-					{showScore && scorePlatform ? (
-						<div className="mb-6">
-							<ScorePanel
-								platformId={scorePlatform.id}
-								platformName={scorePlatform.name}
-								content={scoreContent}
-								onImprove={(text) => {
-									if (activeTab === scorePlatform.id) {
-										handleEditorChange(text);
-									} else if (activeTab === "all") {
-										setBaseContent(text);
-									} else {
-										applyVariantToChannel(scorePlatform.id, text);
-									}
-								}}
-								onClose={() => setShowScore(false)}
-							/>
-						</div>
-					) : null}
 					{/* Tab strip */}
 					<div
 						role="tablist"
@@ -1117,6 +1087,26 @@ export function Composer({
 									}
 									icon={<ImagePlus className="w-4 h-4" />}
 								/>
+								<ToolButton
+									onClick={() => {
+										setShowLibrary((v) => !v);
+										if (!showLibrary) {
+											setShowGenerate(false);
+											setShowVariants(false);
+											setShowFanout(false);
+											setShowImport(false);
+											setShowScore(false);
+										}
+									}}
+									disabled={baseMedia.length >= MAX_MEDIA}
+									active={showLibrary}
+									label={
+										baseMedia.length >= MAX_MEDIA
+											? `Up to ${MAX_MEDIA} images`
+											: "Attach from library"
+									}
+									icon={<Images className="w-4 h-4" />}
+								/>
 
 								<ToolDivider />
 
@@ -1145,6 +1135,7 @@ export function Composer({
 											setShowFanout(false);
 											setShowImport(false);
 											setShowScore(false);
+											setShowLibrary(false);
 										}
 									}}
 									active={showGenerate}
@@ -1159,6 +1150,7 @@ export function Composer({
 											setShowFanout(false);
 											setShowImport(false);
 											setShowScore(false);
+											setShowLibrary(false);
 										}
 									}}
 									disabled={selectedPlatforms.length === 0}
@@ -1178,6 +1170,7 @@ export function Composer({
 											setShowVariants(false);
 											setShowImport(false);
 											setShowScore(false);
+											setShowLibrary(false);
 										}
 									}}
 									disabled={!canFanout}
@@ -1202,6 +1195,7 @@ export function Composer({
 											setShowVariants(false);
 											setShowFanout(false);
 											setShowScore(false);
+											setShowLibrary(false);
 										}
 									}}
 									disabled={selectedPlatforms.length === 0}
@@ -1225,6 +1219,7 @@ export function Composer({
 											setShowVariants(false);
 											setShowFanout(false);
 											setShowImport(false);
+											setShowLibrary(false);
 										}
 									}}
 									disabled={!canScore}
@@ -1265,6 +1260,66 @@ export function Composer({
 							</div>
 						</TooltipProvider>
 					</div>
+
+					{showLibrary ? (
+						<div className="mt-6">
+							<LibraryPanel
+								attachedUrls={baseMedia.map((m) => m.url)}
+								remainingSlots={MAX_MEDIA - baseMedia.length}
+								onAttach={handleAttachFromLibrary}
+								onClose={() => setShowLibrary(false)}
+							/>
+						</div>
+					) : null}
+					{showVariants ? (
+						<div className="mt-6">
+							<VariantsPanel
+								platforms={variantPlatforms}
+								onAccept={applyVariantToChannel}
+								onClose={() => setShowVariants(false)}
+							/>
+						</div>
+					) : null}
+					{showFanout && fanoutSourcePlatform ? (
+						<div className="mt-6">
+							<FanoutPanel
+								sourcePlatform={fanoutSourcePlatform.id}
+								sourcePlatformName={fanoutSourcePlatform.name}
+								sourceContent={effectiveContent(fanoutSourcePlatform.id)}
+								targets={fanoutTargets}
+								onAccept={applyVariantToChannel}
+								onClose={() => setShowFanout(false)}
+							/>
+						</div>
+					) : null}
+					{showImport ? (
+						<div className="mt-6">
+							<ImportPanel
+								targets={variantPlatforms}
+								onAccept={applyVariantToChannel}
+								onClose={() => setShowImport(false)}
+							/>
+						</div>
+					) : null}
+					{showScore && scorePlatform ? (
+						<div className="mt-6">
+							<ScorePanel
+								platformId={scorePlatform.id}
+								platformName={scorePlatform.name}
+								content={scoreContent}
+								onImprove={(text) => {
+									if (activeTab === scorePlatform.id) {
+										handleEditorChange(text);
+									} else if (activeTab === "all") {
+										setBaseContent(text);
+									} else {
+										applyVariantToChannel(scorePlatform.id, text);
+									}
+								}}
+								onClose={() => setShowScore(false)}
+							/>
+						</div>
+					) : null}
 
 					<p className="mt-4 text-[12px] text-ink/50 leading-normal">
 						{activePlatform
@@ -1447,6 +1502,19 @@ function SchedulePopover({
 }) {
 	const ref = useRef<HTMLDivElement>(null);
 
+	// Parse scheduledAt into date and time components
+	const selectedDate = scheduledAt ? new Date(scheduledAt) : undefined;
+	const [selectedTime, setSelectedTime] = useState<string>(
+		scheduledAt ? scheduledAt.slice(11, 16) : "12:00"
+	);
+
+	// Update time when scheduledAt changes externally
+	useEffect(() => {
+		if (scheduledAt) {
+			setSelectedTime(scheduledAt.slice(11, 16));
+		}
+	}, [scheduledAt]);
+
 	useEffect(() => {
 		if (!open) return;
 		const onDown = (e: MouseEvent) => {
@@ -1463,12 +1531,35 @@ function SchedulePopover({
 		};
 	}, [open, setOpen]);
 
+	const handleDateSelect = (date: Date | undefined) => {
+		if (!date) return;
+		// Combine selected date with current time
+		const [hours, minutes] = selectedTime.split(":").map(Number);
+		const newDate = new Date(date);
+		newDate.setHours(hours, minutes, 0, 0);
+		setScheduledAt(newDate.toISOString().slice(0, 16));
+	};
+
+	const handleTimeChange = (time: string) => {
+		setSelectedTime(time);
+		if (selectedDate) {
+			const [hours, minutes] = time.split(":").map(Number);
+			const newDate = new Date(selectedDate);
+			newDate.setHours(hours, minutes, 0, 0);
+			setScheduledAt(newDate.toISOString().slice(0, 16));
+		}
+	};
+
 	const preview = scheduledAt
 		? new Intl.DateTimeFormat("en-US", {
 				dateStyle: "medium",
 				timeStyle: "short",
 			}).format(new Date(scheduledAt))
 		: "Schedule";
+
+	// Calculate min date (today, can't select past dates)
+	const minDate = new Date();
+	minDate.setHours(0, 0, 0, 0);
 
 	return (
 		<div ref={ref} className="relative">
@@ -1487,21 +1578,46 @@ function SchedulePopover({
 			</button>
 
 			{open ? (
-				<div className="absolute right-0 mt-2 w-[320px] rounded-2xl border border-border-strong bg-background-elev shadow-[0_18px_48px_-24px_rgba(26,22,18,0.25)] p-5 z-50">
+				<div className="absolute right-0 mt-2 w-[360px] rounded-2xl border border-border-strong bg-background-elev shadow-[0_18px_48px_-24px_rgba(26,22,18,0.25)] p-5 z-50">
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
 						Schedule
 					</p>
 					<p className="mt-1 text-[12.5px] text-ink/60 leading-normal">
 						Your timezone: <span className="text-ink">{timezone}</span>
 					</p>
-					<input
-						type="datetime-local"
-						value={scheduledAt}
-						onChange={(e) => setScheduledAt(e.target.value)}
-						min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
-						className="mt-4 w-full h-11 px-3.5 rounded-xl bg-background border border-border-strong text-[14px] text-ink focus:outline-none focus:border-ink transition-colors"
-					/>
+
+					<div className="mt-4 rounded-xl border border-border-strong bg-background p-3">
+						<Calendar
+							mode="single"
+							selected={selectedDate}
+							onSelect={handleDateSelect}
+							defaultMonth={selectedDate}
+							captionLayout="dropdown"
+							startMonth={new Date(minDate.getFullYear(), 0)}
+							endMonth={new Date(minDate.getFullYear() + 5, 11)}
+							disabled={{ before: minDate }}
+							autoFocus
+							className="w-full p-0 [--cell-size:--spacing(8)]"
+							classNames={{
+								root: "w-full",
+								month: "relative flex w-full flex-col gap-4",
+								month_caption:
+									"flex h-(--cell-size) w-full items-center justify-center",
+								button_previous:
+									"absolute top-0 left-0 z-10 size-8 p-0 inline-flex items-center justify-center rounded-full text-ink hover:bg-muted/50 transition-colors",
+								button_next:
+									"absolute top-0 right-0 z-10 size-8 p-0 inline-flex items-center justify-center rounded-full text-ink hover:bg-muted/50 transition-colors",
+							}}
+						/>
+					</div>
+
 					<div className="mt-4 flex items-center gap-2">
+						<Clock className="w-4 h-4 text-ink/50 shrink-0" />
+						<span className="text-[12.5px] text-ink/60 mr-auto">Time</span>
+						<TimePicker value={selectedTime} onChange={handleTimeChange} />
+					</div>
+
+					<div className="mt-5 flex items-center gap-2">
 						<button
 							type="button"
 							onClick={() => {
