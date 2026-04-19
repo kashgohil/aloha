@@ -11,6 +11,7 @@ import { db } from "@/db";
 import { accounts, postDeliveries, posts, type PostMedia } from "@/db/schema";
 import { decideForPublish } from "@/lib/channel-state";
 import { sendManualAssistReminderForDelivery } from "@/lib/manual-assist";
+import { createNotification } from "@/lib/notifications";
 import { PublishError } from "./errors";
 import { publishToLinkedIn } from "./linkedin";
 import { publishToX } from "./x";
@@ -213,6 +214,35 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			updatedAt: new Date(),
 		})
 		.where(eq(posts.id, postId));
+
+	// Notify on terminal outcomes only — gated-only is still in-flight and
+	// will re-drive later, so emitting a notification now would be noise.
+	if (nextPostStatus !== "scheduled") {
+		const okChannels = results.filter((r) => r.ok).map((r) => r.platform);
+		const failedChannels = results
+			.filter((r) => !r.ok && !r.gated)
+			.map((r) => r.platform);
+		const kind =
+			nextPostStatus === "published" && failedChannels.length === 0
+				? "post_published"
+				: nextPostStatus === "published"
+					? "post_partial"
+					: "post_failed";
+		const snippet = post.content.replace(/\s+/g, " ").trim().slice(0, 80);
+		const titleByKind = {
+			post_published: `Published to ${okChannels.join(", ")}`,
+			post_partial: `Partially published — ${failedChannels.join(", ")} failed`,
+			post_failed: `Post failed to publish`,
+		} as const;
+		await createNotification({
+			userId: post.userId,
+			kind,
+			title: titleByKind[kind],
+			body: snippet ? `"${snippet}"` : null,
+			url: `/app/posts/${postId}`,
+			metadata: { postId, okChannels, failedChannels },
+		});
+	}
 
 	const genuineFailures = results.filter((r) => !r.ok && !r.gated);
 	const retryable =
