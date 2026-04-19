@@ -9,6 +9,7 @@ import { fetchThreadsInbox } from "./threads";
 import { fetchMastodonNotifications } from "./mastodon";
 import { fetchPinterestInbox } from "./pinterest";
 import type { NormalizedMessage } from "./types";
+import { createNotification } from "@/lib/notifications";
 
 type Platform = "bluesky" | "twitter" | "facebook" | "instagram" | "threads" | "mastodon" | "pinterest";
 
@@ -45,10 +46,24 @@ export async function syncInbox(
     )
     .limit(1);
 
-  const { messages, newCursor } = await fetcher(
-    userId,
-    cursorRow?.cursor ?? null,
-  );
+  let messages: NormalizedMessage[];
+  let newCursor: string | null;
+  try {
+    const result = await fetcher(userId, cursorRow?.cursor ?? null);
+    messages = result.messages;
+    newCursor = result.newCursor;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    await createNotification({
+      userId,
+      kind: "inbox_sync_failed",
+      title: `Couldn't sync ${platform}`,
+      body: message.slice(0, 200),
+      url: `/app/inbox`,
+      metadata: { platform, error: message.slice(0, 500) },
+    });
+    throw err;
+  }
 
   if (messages.length === 0) return { synced: 0 };
 
