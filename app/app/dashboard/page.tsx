@@ -4,7 +4,6 @@ import {
 	blueskyCredentials,
 	brandCorpus,
 	campaigns,
-	contentPlans,
 	feedItems,
 	feeds,
 	ideas,
@@ -26,7 +25,6 @@ import {
 import Link from "next/link";
 import {
 	ActiveCampaignCard,
-	ActivePlanCard,
 	ChannelsCard,
 	EmptyCard,
 	EngagementCard,
@@ -197,7 +195,6 @@ export default async function DashboardPage() {
 
 	// ── Phase 3 surfaces ────────────────────────────────────────────────
 	const [
-		activePlan,
 		activeCampaign,
 		ideaCounts,
 		freshIdeas,
@@ -207,22 +204,6 @@ export default async function DashboardPage() {
 		notionRows,
 		notionDocCount,
 	] = await Promise.all([
-		// Latest plan with at least one un-accepted idea; surface as "Pick up
-		// where you left off."
-		db
-			.select({
-				id: contentPlans.id,
-				goal: contentPlans.goal,
-				rangeStart: contentPlans.rangeStart,
-				rangeEnd: contentPlans.rangeEnd,
-				status: contentPlans.status,
-				ideas: contentPlans.ideas,
-			})
-			.from(contentPlans)
-			.where(eq(contentPlans.userId, user.id))
-			.orderBy(desc(contentPlans.createdAt))
-			.limit(1),
-
 		// Most recent non-archived campaign — list its beat progress so
 		// the user can pick up a campaign mid-run from the dashboard.
 		db
@@ -315,13 +296,6 @@ export default async function DashboardPage() {
 				and(eq(brandCorpus.userId, user.id), eq(brandCorpus.source, "notion")),
 			),
 	]);
-
-	const activePlanRow = activePlan[0] ?? null;
-	const planPendingCount = activePlanRow
-		? (activePlanRow.ideas as Array<{ accepted?: boolean }>).filter(
-				(i) => !i.accepted,
-			).length
-		: 0;
 
 	const activeCampaignRow = activeCampaign[0] ?? null;
 	const campaignBeats = activeCampaignRow
@@ -524,16 +498,6 @@ export default async function DashboardPage() {
 							total={campaignBeats.length}
 							rangeStart={activeCampaignRow.rangeStart}
 							rangeEnd={activeCampaignRow.rangeEnd}
-						/>
-					) : null}
-
-					{activePlanRow && planPendingCount > 0 ? (
-						<ActivePlanCard
-							planId={activePlanRow.id}
-							goal={activePlanRow.goal}
-							pending={planPendingCount}
-							rangeStart={activePlanRow.rangeStart}
-							rangeEnd={activePlanRow.rangeEnd}
 						/>
 					) : null}
 
