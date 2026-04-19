@@ -1,9 +1,11 @@
 "use server";
 
+import { Client as QStashClient } from "@upstash/qstash";
+import { and, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { posts } from "@/db/schema";
+import { campaigns, posts } from "@/db/schema";
 import { CostCapExceededError } from "@/lib/ai/cost-cap";
 import {
   CAMPAIGN_KINDS,
@@ -17,6 +19,7 @@ import {
   type CampaignKind,
 } from "@/lib/ai/campaign";
 import { getCurrentUser } from "@/lib/current-user";
+import { env } from "@/lib/env";
 
 const isKind = (v: unknown): v is CampaignKind =>
   typeof v === "string" && (CAMPAIGN_KINDS as readonly string[]).includes(v);
@@ -161,4 +164,158 @@ export async function regenerateCampaignBeatAction(formData: FormData) {
 
   revalidatePath(`/app/campaigns/${campaignId}`);
   redirect(`/app/campaigns/${campaignId}`);
+}
+
+const qstashClient = new QStashClient({ token: env.QSTASH_TOKEN });
+
+// Pauses an active campaign. Flips the campaign row to "paused" and
+// demotes every *scheduled* post tied to it back to "draft" — scheduledAt
+// is preserved so resume can put them back on the clock without asking
+// for a time. Already-published and already-draft posts are untouched.
+//
+// Pending QStash messages for those posts still fire at their original
+// time, but the worker gates on status === "scheduled" and returns 400,
+// so nothing publishes. On resume we re-enqueue for any future-dated post
+// whose original QStash message has already fired-and-noop'd.
+export async function pauseCampaignAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const campaignId = String(formData.get("campaignId") ?? "");
+  if (!campaignId) throw new Error("campaignId required");
+
+  const [row] = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, user.id)))
+    .limit(1);
+  if (!row) throw new Error("Campaign not found.");
+
+  await db
+    .update(posts)
+    .set({ status: "draft", updatedAt: new Date() })
+    .where(
+      and(
+        eq(posts.campaignId, campaignId),
+        eq(posts.userId, user.id),
+        eq(posts.status, "scheduled"),
+      ),
+    );
+
+  await db
+    .update(campaigns)
+    .set({ status: "paused", updatedAt: new Date() })
+    .where(eq(campaigns.id, campaignId));
+
+  revalidatePath(`/app/campaigns/${campaignId}`);
+  revalidatePath("/app/campaigns");
+  revalidatePath("/app/calendar");
+  redirect(`/app/campaigns/${campaignId}`);
+}
+
+// Resumes a paused campaign. Flips campaign back to "running" and
+// promotes every paused post (status === "draft" with campaignId + a
+// future scheduledAt) back to "scheduled", re-enqueuing QStash delivery
+// at its preserved scheduledAt. Past-due posts stay as drafts — firing
+// them immediately would surprise the user.
+export async function resumeCampaignAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const campaignId = String(formData.get("campaignId") ?? "");
+  if (!campaignId) throw new Error("campaignId required");
+
+  const [row] = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, user.id)))
+    .limit(1);
+  if (!row) throw new Error("Campaign not found.");
+
+  const now = new Date();
+  const resumable = await db
+    .select({ id: posts.id, scheduledAt: posts.scheduledAt })
+    .from(posts)
+    .where(
+      and(
+        eq(posts.campaignId, campaignId),
+        eq(posts.userId, user.id),
+        eq(posts.status, "draft"),
+        isNotNull(posts.scheduledAt),
+        gt(posts.scheduledAt, now),
+      ),
+    );
+
+  if (resumable.length > 0) {
+    const ids = resumable.map((r) => r.id);
+    await db
+      .update(posts)
+      .set({ status: "scheduled", updatedAt: now })
+      .where(and(eq(posts.userId, user.id), inArray(posts.id, ids)));
+
+    for (const r of resumable) {
+      if (!r.scheduledAt) continue;
+      const delay = Math.max(
+        0,
+        Math.floor((r.scheduledAt.getTime() - Date.now()) / 1000),
+      );
+      await qstashClient.publishJSON({
+        url: `${env.APP_URL}/api/qstash`,
+        body: {
+          postId: r.id,
+          intendedScheduledAt: r.scheduledAt.toISOString(),
+        },
+        delay,
+      });
+    }
+  }
+
+  await db
+    .update(campaigns)
+    .set({ status: "running", updatedAt: now })
+    .where(eq(campaigns.id, campaignId));
+
+  revalidatePath(`/app/campaigns/${campaignId}`);
+  revalidatePath("/app/campaigns");
+  revalidatePath("/app/calendar");
+  redirect(`/app/campaigns/${campaignId}`);
+}
+
+// Deletes a campaign. Soft-deletes every draft / scheduled / failed post
+// tied to it (status=deleted + deletedAt; matches the pattern in
+// deletePost, so the 30-day purge sweeps them) and then hard-deletes the
+// campaign row. Published posts are preserved — deleting a campaign
+// shouldn't wipe history. Irreversible; UI must confirm.
+export async function deleteCampaignAction(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const campaignId = String(formData.get("campaignId") ?? "");
+  if (!campaignId) throw new Error("campaignId required");
+
+  const [row] = await db
+    .select({ id: campaigns.id })
+    .from(campaigns)
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, user.id)))
+    .limit(1);
+  if (!row) throw new Error("Campaign not found.");
+
+  const now = new Date();
+  await db
+    .update(posts)
+    .set({ status: "deleted", deletedAt: now, updatedAt: now })
+    .where(
+      and(
+        eq(posts.campaignId, campaignId),
+        eq(posts.userId, user.id),
+        inArray(posts.status, ["draft", "scheduled", "failed"]),
+      ),
+    );
+
+  await db.delete(campaigns).where(eq(campaigns.id, campaignId));
+
+  revalidatePath("/app/campaigns");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/dashboard");
+  redirect("/app/campaigns");
 }
