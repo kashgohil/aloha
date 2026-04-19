@@ -64,10 +64,11 @@ export default async function DashboardPage() {
 	})();
 
 	// ── Real metrics ────────────────────────────────────────────────────
+	const now = new Date();
 	const [counts] = await db
 		.select({
 			drafts: sql<number>`count(*) filter (where ${posts.status} = 'draft')`,
-			scheduled: sql<number>`count(*) filter (where ${posts.status} = 'scheduled')`,
+			scheduled: sql<number>`count(*) filter (where ${posts.status} = 'scheduled' and ${posts.scheduledAt} >= ${now.toISOString()})`,
 			publishedThisWeek: sql<number>`count(*) filter (where ${posts.status} = 'published' and ${posts.publishedAt} >= ${startOfWeek.toISOString()})`,
 		})
 		.from(posts)
