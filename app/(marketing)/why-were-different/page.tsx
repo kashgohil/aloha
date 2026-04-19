@@ -89,8 +89,9 @@ export default function WhyWereDifferentPage() {
                       to spot as AI.
                     </span>{" "}
                     That trade felt worth it — which is why Muse is
-                    priced as a per-channel switch you only pay for
-                    where it's actually earning its keep.
+                    a per-channel switch you flip on only where it's
+                    actually earning its keep. It's invite-only during
+                    beta; paid tiers follow.
                   </>
                 ),
               },

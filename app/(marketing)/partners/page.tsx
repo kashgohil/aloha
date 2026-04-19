@@ -446,26 +446,20 @@ export default function PartnersPage() {
 					<div className="grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-10 items-end">
 						<div className="col-span-12 lg:col-span-8">
 							<h2 className="font-display text-[36px] sm:text-[48px] lg:text-[64px] leading-none tracking-[-0.02em]">
-								Solo creator?
+								Running an agency or tool?
 								<br />
 								<span className="text-peach-300">
-									Check the affiliate programme instead.
+									Let's talk.
 								</span>
 							</h2>
 						</div>
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
-							<Link
-								href={routes.connect.affiliate}
+							<a
+								href="mailto:partners@usealoha.app"
 								className="inline-flex items-center gap-2 h-14 px-7 rounded-full text-background font-medium text-[15px] bg-primary transition-colors"
 							>
 								<Sparkle className="w-4 h-4" />
-								See affiliate
-							</Link>
-							<a
-								href="mailto:partners@usealoha.app"
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
-							>
-								Or write us
+								Write us
 								<ArrowUpRight className="w-4 h-4" />
 							</a>
 						</div>

@@ -21,35 +21,6 @@ export function MarketingFooter() {
 							The calm social media OS for people who'd rather be making the
 							work than managing the posting of the work.
 						</p>
-
-						<div className="mt-8 flex items-center gap-3">
-							<a
-								href={routes.misc.appStore}
-								aria-label="App Store"
-								className="h-11 px-4 inline-flex items-center gap-2 rounded-xl border border-border-strong hover:bg-muted/50 transition-colors"
-							>
-								<span className="font-display text-[18px]">Aa</span>
-								<div className="leading-tight text-left">
-									<p className="text-[9px] uppercase tracking-[0.18em] text-ink/50">
-										Download
-									</p>
-									<p className="text-[12.5px] font-medium">App Store</p>
-								</div>
-							</a>
-							<a
-								href={routes.misc.googlePlay}
-								aria-label="Google Play"
-								className="h-11 px-4 inline-flex items-center gap-2 rounded-xl border border-border-strong hover:bg-muted/50 transition-colors"
-							>
-								<span className="font-display text-[18px]">▶</span>
-								<div className="leading-tight text-left">
-									<p className="text-[9px] uppercase tracking-[0.18em] text-ink/50">
-										Get it on
-									</p>
-									<p className="text-[12.5px] font-medium">Google Play</p>
-								</div>
-							</a>
-						</div>
 					</div>
 
 					<div className="col-span-12 lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-8 lg:gap-10 text-[13.5px]">

@@ -74,7 +74,7 @@ const ROUTES = [
 		title: "Partnerships",
 		email: "partners@usealoha.app",
 		sla: "Within 2 business days",
-		body: "Integrations, co-marketing, agency partner programme, affiliate enrolment.",
+		body: "Integrations, co-marketing, agency partner programme.",
 		tone: "bg-peach-100",
 		link: { href: routes.connect.partners, label: "Partner programme" },
 	},

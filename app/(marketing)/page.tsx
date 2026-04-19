@@ -1,14 +1,7 @@
 import { JsonLd } from "@/lib/json-ld";
 import { routes } from "@/lib/routes";
 import { faqJsonLd, makeMetadata, softwareApplicationJsonLd } from "@/lib/seo";
-import {
-	ArrowRight,
-	ArrowUpRight,
-	Check,
-	Leaf,
-	Smile,
-	Sparkle,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Smile, Sparkle } from "lucide-react";
 import Link from "next/link";
 import { SOCIAL_ICONS } from "./_components/social-icons";
 import { EngageInbox } from "./engage-inbox";
@@ -64,45 +57,7 @@ export default function LandingPage() {
 				]}
 			/>
 			{/* ─── HERO ──────────────────────────────────────────────────────── */}
-			<header className="relative overflow-hidden bg-peach-200 min-h-[calc(100vh-72px)] flex flex-col">
-				{/* sparse decorative marks — Buffer-style playful restraint */}
-				<span
-					aria-hidden
-					className="absolute top-[14%] left-[6%] font-display text-[28px] text-ink/30 rotate-[-8deg] select-none"
-				>
-					✳
-				</span>
-				<span
-					aria-hidden
-					className="absolute top-[70%] left-[12%] font-display text-[22px] text-primary/60 rotate-12 select-none"
-				>
-					+
-				</span>
-				<span
-					aria-hidden
-					className="absolute top-[22%] right-[8%] font-display text-[40px] text-ink/15 rotate-18 select-none"
-				>
-					✳
-				</span>
-				<span
-					aria-hidden
-					className="absolute top-[84%] right-[14%] font-display text-[18px] text-ink/30 select-none"
-				>
-					※
-				</span>
-				<span
-					aria-hidden
-					className="absolute top-[50%] left-[3%] w-2 h-2 rounded-full bg-primary/50"
-				/>
-				<span
-					aria-hidden
-					className="absolute top-[10%] right-[26%] w-1.5 h-1.5 rounded-full bg-ink/30"
-				/>
-				<span
-					aria-hidden
-					className="absolute top-[58%] right-[4%] w-3 h-3 rounded-full border border-ink/30"
-				/>
-
+			<section className="bg-peach-200 wavy min-h-[calc(100vh-72px)]">
 				<div className="relative flex-1 max-w-[1320px] w-full mx-auto px-6 lg:px-10 pt-16 lg:pt-28 pb-20 lg:pb-32 grid grid-cols-12 gap-x-0 gap-y-12 lg:gap-8 items-end">
 					<div className="col-span-12 lg:col-span-7 relative">
 						<div className="inline-flex items-center gap-2 mb-6 lg:mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/60">
@@ -141,27 +96,6 @@ export default function LandingPage() {
 								See it work
 								<ArrowUpRight className="w-4 h-4" />
 							</a>
-						</div>
-
-						<div className="mt-10 lg:mt-12 flex flex-wrap items-center gap-3 sm:gap-5 text-[12.5px] text-ink/60">
-							<div className="flex -space-x-2">
-								{[
-									"bg-peach-100",
-									"bg-peach-200",
-									"bg-peach-300",
-									"bg-peach-400",
-									"bg-primary-soft",
-								].map((c, i) => (
-									<span
-										key={i}
-										className={`w-7 h-7 rounded-full border-2 border-background ${c} inline-block`}
-									/>
-								))}
-							</div>
-							<span>
-								<strong className="text-ink font-semibold">140,482</strong>{" "}
-								creators posting with Aloha this week.
-							</span>
 						</div>
 					</div>
 
@@ -321,8 +255,7 @@ export default function LandingPage() {
 						</div>
 					</div>
 				</div>
-
-			</header>
+			</section>
 
 			{/* ─── MANIFESTO PULLQUOTE ───────────────────────────────────────── */}
 			<section className="bg-peach-200">
@@ -556,8 +489,8 @@ export default function LandingPage() {
 						</div>
 						<p className="col-span-12 lg:col-span-4 text-[15.5px] text-ink/70 leading-[1.6]">
 							Muse is the voice model inside Composer. Trained on your own
-							writing, native to every channel, and priced as a per-channel
-							switch you can flip on where it earns its keep.
+							writing, native to every channel. Opening in invite-only beta —
+							join the wishlist if you want in.
 						</p>
 					</div>
 
@@ -595,7 +528,7 @@ export default function LandingPage() {
 							href={routes.pricing}
 							className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-ink text-background-elev font-medium text-[13.5px] hover:bg-primary transition-colors"
 						>
-							How Muse is priced
+							Request Muse beta access
 							<ArrowRight className="w-4 h-4" />
 						</Link>
 						<Link
@@ -869,26 +802,71 @@ export default function LandingPage() {
 							</h2>
 						</div>
 						<p className="text-[14px] text-ink/60 max-w-sm">
-							Generate content for all twelve platforms. Connect and auto-publish for the ones marked <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-ink"/> Live</span>. More connections shipping as platform approvals land.
+							Generate content for all twelve platforms. Connect and
+							auto-publish for the ones marked{" "}
+							<span className="inline-flex items-center gap-1">
+								<span className="w-2 h-2 rounded-full bg-ink" /> Live
+							</span>
+							. More connections shipping as platform approvals land.
 						</p>
 					</div>
 
 					<ul className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 border-t border-l border-border">
 						{[
 							// Live: auto-publish ready
-							{ n: "LinkedIn", tag: "Company · Personal", status: "live" as const },
+							{
+								n: "LinkedIn",
+								tag: "Company · Personal",
+								status: "live" as const,
+							},
 							{ n: "X", tag: "Threads · Long-form", status: "live" as const },
 							{ n: "Bluesky", tag: "Feeds · Threads", status: "live" as const },
-							{ n: "Mastodon", tag: "Federated · Open", status: "live" as const },
+							{
+								n: "Mastodon",
+								tag: "Federated · Open",
+								status: "live" as const,
+							},
 							// AI-ready: generate content, connect coming soon
-							{ n: "Instagram", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "TikTok", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "Threads", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "Facebook", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "Pinterest", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "YouTube", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "Medium", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
-							{ n: "Reddit", tag: "AI-ready · Connect soon", status: "ai-ready" as const },
+							{
+								n: "Instagram",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "TikTok",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "Threads",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "Facebook",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "Pinterest",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "YouTube",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "Medium",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
+							{
+								n: "Reddit",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
 						].map((c) => {
 							const icon = SOCIAL_ICONS.find((i) => i.n === c.n);
 							const isLive = c.status === "live";
@@ -930,11 +908,13 @@ export default function LandingPage() {
 					<div className="mt-8 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-4 gap-y-2">
 						<span className="inline-flex items-center gap-2">
 							<span className="w-2 h-2 rounded-full bg-ink" />
-							<span className="font-medium text-ink">Live</span> — Connect & auto-publish
+							<span className="font-medium text-ink">Live</span> — Connect &
+							auto-publish
 						</span>
 						<span className="inline-flex items-center gap-2">
 							<span className="w-2 h-2 rounded-full bg-peach-400" />
-							<span className="font-medium text-ink">AI-ready</span> — Generate now, connect soon
+							<span className="font-medium text-ink">AI-ready</span> — Generate
+							now, connect soon
 						</span>
 						<span className="inline-flex items-center gap-2 ml-auto">
 							<Sparkle className="w-3.5 h-3.5 text-primary shrink-0" />
@@ -1041,7 +1021,7 @@ export default function LandingPage() {
 				</section>
 			</section>
 
-			{/* ─── PLANS (Built for + Pricing, merged) ────────────────────────── */}
+			{/* ─── PLANS (Free today, Muse by invite) ─────────────────────────── */}
 			<section
 				id="pricing"
 				className="bg-peach-200 py-24 pb-32 lg:py-32 lg:pb-40 wavy"
@@ -1053,137 +1033,133 @@ export default function LandingPage() {
 								Pricing
 							</p>
 							<h2 className="font-display text-[32px] sm:text-[40px] lg:text-[56px] leading-[0.98] tracking-[-0.02em]">
-								Pay per channel.
+								Free to start.
 								<br />
-								<span className="text-primary">Muse is a switch.</span>
+								<span className="text-primary">Muse beta by invite.</span>
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-6 lg:col-start-7 text-[16px] text-ink/70 leading-[1.6]">
-							Free for three channels and the AI companion. Basic is $5 per
-							channel for scheduling, calendar, automations. Flip Muse on for
-							another $5 per channel and get style-trained AI where it earns its
-							keep. Prices decline past 10 channels.
+							Aloha is free right now — connect up to 3 channels, schedule
+							posts, use the AI companion. Muse (the AI that writes in your
+							voice) is opening to a small beta group first. Paid tiers land
+							when Muse is generally available.
 						</p>
 					</div>
 
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
-						{[
-							{
-								name: "Free",
-								icon: Smile,
-								tagline: "Taste every feature",
-								desc: "Three channels, manual posting, calendar, link-in-bio, and the AI companion — 50 generations a month to write, refine, and suggest.",
-								features: [
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+						<article className="rounded-3xl bg-peach-100 p-8 lg:p-10 flex flex-col">
+							<Smile className="w-6 h-6 text-ink" />
+							<p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+								Available now
+							</p>
+							<h3 className="mt-2 font-display text-[30px] leading-tight">
+								Free
+							</h3>
+							<p className="mt-1 text-[13px] text-ink/70">
+								Three channels, no card, no expiry
+							</p>
+							<p className="mt-5 text-[14.5px] text-ink/80 leading-[1.55]">
+								Everything you need to start publishing — scheduling, calendar,
+								link-in-bio, and an AI companion with 50 generations a month.
+							</p>
+							<ul className="mt-7 space-y-2.5 text-[13.5px] text-ink/80 flex-1">
+								{[
 									"3 connected channels",
 									"AI companion · 50 generations / mo",
 									"Scheduling + calendar + link-in-bio",
 									"Basic analytics (30 days)",
 									"Community support",
-								],
-								priceLine: "Free forever",
-								priceSub: "no card, no expiry",
-								cta: "Get going",
-								accent: "bg-peach-100",
-							},
-							{
-								name: "Basic",
-								icon: Leaf,
-								tagline: "Scheduling + AI companion",
-								desc: "Per-channel pricing for publishing, calendar, automations, and the AI companion. The companion is fair-use — write, refine, suggest, translate.",
-								features: [
-									"Per-channel · declines past 10",
-									"Unlimited scheduling + calendar",
-									"Automation engine",
-									"AI companion (fair use)",
-									"Email support",
-								],
-								priceLine: "$5 / channel",
-								priceSub: "declines to $3 past channel 25",
-								cta: "Start on Basic",
-								accent: "bg-primary-soft",
-							},
-							{
-								name: "Basic + Muse",
-								icon: Sparkle,
-								tagline: "Add the style-trained AI",
-								desc: "Muse learns from your writing and writes in your cadence — per channel, native to every platform. Fan-out, advanced campaigns, commentary, inbox replies.",
-								features: [
-									"Everything in Basic",
+								].map((f) => (
+									<li key={f} className="flex items-start gap-2.5">
+										<Check
+											className="w-3.5 h-3.5 mt-[3px] text-ink/70 shrink-0"
+											strokeWidth={2.5}
+										/>
+										{f}
+									</li>
+								))}
+							</ul>
+							<div className="mt-8 pt-6 border-t border-ink/10">
+								<p className="text-[12.5px] text-ink/65 mb-4">
+									<span className="font-medium text-ink">Free forever</span>
+									<span className="text-ink/45"> · no card, no expiry</span>
+								</p>
+								<Link
+									href={routes.signup}
+									className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-medium text-[13.5px] transition-colors w-full bg-ink text-background-elev hover:bg-primary"
+								>
+									Get going
+									<ArrowRight className="w-4 h-4" />
+								</Link>
+							</div>
+						</article>
+
+						<article className="rounded-3xl bg-peach-300 p-8 lg:p-10 flex flex-col">
+							<Sparkle className="w-6 h-6 text-ink" />
+							<p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.22em] text-primary">
+								Coming soon · invite only
+							</p>
+							<h3 className="mt-2 font-display text-[30px] leading-tight">
+								Muse
+							</h3>
+							<p className="mt-1 text-[13px] text-ink/70">
+								AI that actually sounds like you
+							</p>
+							<p className="mt-5 text-[14.5px] text-ink/80 leading-[1.55]">
+								Muse learns from your writing and generates content in your
+								voice — per channel, native to every platform. We're opening the
+								beta to a small group first. Paid tiers land when Muse is
+								generally available.
+							</p>
+							<ul className="mt-7 space-y-2.5 text-[13.5px] text-ink/80 flex-1">
+								{[
 									"Style-trained voice per channel",
 									"Per-channel native variants",
 									"Fan-out + advanced campaigns",
 									"Best-time, virality, commentary",
-								],
-								priceLine: "$10 / channel",
-								priceSub: "declines to $6 past channel 25",
-								cta: "Switch Muse on",
-								accent: "bg-peach-300",
-								featured: true,
-							},
-						].map((u, i) => (
-							<article
-								key={i}
-								className={`relative rounded-3xl p-8 lg:p-10 ${u.accent} flex flex-col ${
-									u.featured ? "lg:-translate-y-3" : ""
-								}`}
-							>
-								{u.featured && (
-									<span className="absolute top-5 right-5 inline-flex items-center gap-1 text-[10.5px] font-semibold uppercase tracking-[0.18em] text-ink bg-background-elev px-2 py-1 rounded-full">
-										<Sparkle className="w-3 h-3 text-primary" /> Most-picked
+									"Inbox replies in your style",
+								].map((f) => (
+									<li key={f} className="flex items-start gap-2.5">
+										<Check
+											className="w-3.5 h-3.5 mt-[3px] text-ink/70 shrink-0"
+											strokeWidth={2.5}
+										/>
+										{f}
+									</li>
+								))}
+							</ul>
+							<div className="mt-8 pt-6 border-t border-ink/10">
+								<p className="text-[12.5px] text-ink/65 mb-4">
+									<span className="font-medium text-ink">
+										Join the Muse beta wishlist
 									</span>
-								)}
-								<u.icon className="w-6 h-6 text-ink" />
-								<h3 className="mt-6 font-display text-[30px] leading-tight">
-									{u.name}
-								</h3>
-								<p className="mt-1 text-[13px] text-ink/70">{u.tagline}</p>
-								<p className="mt-5 text-[14.5px] text-ink/80 leading-[1.55]">
-									{u.desc}
+									<span className="text-ink/45">
+										{" "}
+										· we'll pick select participants
+									</span>
 								</p>
-
-								<ul className="mt-7 space-y-2.5 text-[13.5px] text-ink/80 flex-1">
-									{u.features.map((f) => (
-										<li key={f} className="flex items-start gap-2.5">
-											<Check
-												className="w-3.5 h-3.5 mt-[3px] text-ink/70 shrink-0"
-												strokeWidth={2.5}
-											/>
-											{f}
-										</li>
-									))}
-								</ul>
-
-								<div className="mt-8 pt-6 border-t border-ink/10">
-									<p className="text-[12.5px] text-ink/65 mb-4">
-										<span className="font-medium text-ink">{u.priceLine}</span>
-										<span className="text-ink/45"> · {u.priceSub}</span>
-									</p>
-									<Link
-										href={u.name === "Free" ? routes.signup : routes.pricing}
-										className={`inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-medium text-[13.5px] transition-colors w-full ${
-											u.featured
-												? "bg-primary text-primary-foreground hover:bg-primary-deep"
-												: "bg-ink text-background-elev hover:bg-primary"
-										}`}
-									>
-										{u.cta}
-										<ArrowRight className="w-4 h-4" />
-									</Link>
-								</div>
-							</article>
-						))}
+								<Link
+									href={routes.pricing}
+									className="inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-medium text-[13.5px] transition-colors w-full bg-primary text-primary-foreground hover:bg-primary-deep"
+								>
+									Request beta access
+									<ArrowRight className="w-4 h-4" />
+								</Link>
+							</div>
+						</article>
 					</div>
 
 					<p className="mt-10 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-6 gap-y-2">
 						<span>
 							<span className="font-display text-ink">
-								Nonprofits, students, and open-source maintainers
+								Free tier works for every channel we support
 							</span>
-							<span className="text-ink/55"> — 40% off, just ask.</span>
+							<span className="text-ink/55"> — no card, no expiry.</span>
 						</span>
 						<span className="text-ink/30">·</span>
 						<span>
-							Move between plans any time. Your content comes with you.
+							Muse and Broadcasts are invite-only during beta. Paid tiers to
+							follow.
 						</span>
 					</p>
 				</div>

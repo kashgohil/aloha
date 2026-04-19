@@ -189,10 +189,9 @@ export default function VoiceFoundationsGuidePage() {
 								times.
 							</p>
 							<p className="mt-4 max-w-2xl text-[13.5px] text-ink/60 leading-[1.6]">
-								This guide is free — Muse lives on the paid plan as a
-								per-channel switch. See{" "}
+								This guide is free. Muse is opening in invite-only beta —{" "}
 								<Link href={routes.pricing} className="pencil-link">
-									how it's priced
+									request access
 								</Link>
 								.
 							</p>

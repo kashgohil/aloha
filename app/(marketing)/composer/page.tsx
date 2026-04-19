@@ -276,7 +276,7 @@ export default function ComposerPage() {
 								href={routes.pricing}
 								className="pencil-link mt-8 inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
 							>
-								How Muse is priced
+								Request Muse beta access
 								<ArrowUpRight className="w-4 h-4" />
 							</Link>
 						</div>
