@@ -1,7 +1,20 @@
 "use client";
 
-import { CADENCE_KINDS, CAMPAIGN_KINDS, type CampaignKind } from "@/lib/ai/campaign";
 import { useState } from "react";
+
+// Kept in sync with CAMPAIGN_KINDS / CADENCE_KINDS in lib/ai/campaign.ts.
+// Inlined here because that module imports `@/db`, which drags `postgres`
+// into the client bundle.
+const CAMPAIGN_KINDS = [
+  "launch",
+  "webinar",
+  "sale",
+  "drip",
+  "evergreen",
+  "custom",
+] as const;
+type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
+const CADENCE_KINDS: readonly CampaignKind[] = ["drip", "evergreen"];
 
 const KIND_DETAIL: Record<
   CampaignKind,
@@ -33,8 +46,7 @@ const KIND_DETAIL: Record<
   },
 };
 
-const isCadence = (k: CampaignKind): boolean =>
-  (CADENCE_KINDS as readonly string[]).includes(k);
+const isCadence = (k: CampaignKind): boolean => CADENCE_KINDS.includes(k);
 
 export function CampaignKindPicker() {
   const [kind, setKind] = useState<CampaignKind>(CAMPAIGN_KINDS[0]);

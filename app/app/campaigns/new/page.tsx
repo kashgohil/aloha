@@ -1,4 +1,5 @@
 import { createCampaignAction } from "@/app/actions/campaigns";
+import { DraftBeatSheetSubmit } from "./_components/draft-submit";
 import { CampaignKindPicker } from "./_components/kind-picker";
 import { ChannelToggle } from "@/components/channel-chip";
 import { DatePicker } from "@/components/ui/date-picker";
@@ -163,13 +164,7 @@ export default async function NewCampaignPage() {
 						</div>
 
 						<div className="flex items-center justify-end gap-3 border-t border-border pt-5">
-							<button
-								type="submit"
-								className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
-							>
-								<Wand2 className="w-4 h-4" />
-								Draft the beat sheet
-							</button>
+							<DraftBeatSheetSubmit />
 						</div>
 					</form>
 
