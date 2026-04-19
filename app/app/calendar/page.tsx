@@ -136,8 +136,7 @@ export default async function CalendarPage({
 						{user.workspaceName ?? "Your workspace"} · {tz}
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
-						{header.main}{" "}
-						<span className="text-primary font-light">{header.accent}</span>
+						{header.main} <span className="text-primary">{header.accent}</span>
 					</h1>
 					<p className="mt-3 text-[14px] text-ink/65">{sub}</p>
 				</div>
@@ -922,8 +921,7 @@ function CampaignPill({
 	if (!campaignId) return null;
 	const meta = campaignIndex.get(campaignId);
 	if (!meta) return null;
-	const color =
-		CAMPAIGN_PALETTE[meta.colorIdx % CAMPAIGN_PALETTE.length];
+	const color = CAMPAIGN_PALETTE[meta.colorIdx % CAMPAIGN_PALETTE.length];
 	return (
 		<div className="mt-1">
 			<span
