@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { pages, links, subscribers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { dispatchEvent } from "@/lib/automations/dispatch";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,38}[a-z0-9]$/;
 
@@ -104,11 +105,24 @@ export async function deleteLink(formData: FormData) {
 
 export async function subscribe(data: { email: string; userId: string }) {
   try {
-    await db.insert(subscribers).values({
+    const [row] = await db
+      .insert(subscribers)
+      .values({
+        userId: data.userId,
+        email: data.email,
+        tags: ["lead", "public-page"],
+      })
+      .returning({ id: subscribers.id, email: subscribers.email });
+
+    // Fire-and-forget: failed dispatch should not fail the subscribe action.
+    dispatchEvent({
+      triggerKind: "subscriber_joined",
       userId: data.userId,
-      email: data.email,
-      tags: ["lead", "public-page"],
-    });
+      payload: { subscriberId: row.id, email: row.email },
+    }).catch((err) =>
+      console.error("[automations] subscribe dispatch failed", err),
+    );
+
     return { success: true };
   } catch (error) {
     console.error("Subscription Error:", error);

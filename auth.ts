@@ -1,4 +1,5 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
+import type { Provider } from "next-auth/providers";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "./db";
 import {
@@ -23,6 +24,7 @@ import LinkedIn from "next-auth/providers/linkedin";
 import Google from "next-auth/providers/google";
 import TikTok from "next-auth/providers/tiktok";
 import Medium from "next-auth/providers/medium";
+import { OAUTH_CHANNEL_PROVIDERS } from "@/lib/configured-providers";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -74,33 +76,50 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
-    GitHub({
-      clientId: env.AUTH_GITHUB_ID,
-      clientSecret: env.AUTH_GITHUB_SECRET,
-    }),
-    Google({
-      clientId: env.AUTH_GOOGLE_ID,
-      clientSecret: env.AUTH_GOOGLE_SECRET,
-    }),
-    Twitter({
-      clientId: env.AUTH_TWITTER_ID,
-      clientSecret: env.AUTH_TWITTER_SECRET,
-      authorization: {
-        url: "https://x.com/i/oauth2/authorize",
-        params: {
-          scope:
-            "tweet.read tweet.write users.read media.write offline.access",
-        },
-      },
-    }),
-    LinkedIn({
-      clientId: env.AUTH_LINKEDIN_ID,
-      clientSecret: env.AUTH_LINKEDIN_SECRET,
-      authorization: {
-        params: { scope: "openid profile email w_member_social" },
-      },
-    }),
-    {
+    ...(env.AUTH_GITHUB_ID && env.AUTH_GITHUB_SECRET
+      ? [
+          GitHub({
+            clientId: env.AUTH_GITHUB_ID,
+            clientSecret: env.AUTH_GITHUB_SECRET,
+          }),
+        ]
+      : []),
+    ...(env.AUTH_GOOGLE_ID && env.AUTH_GOOGLE_SECRET
+      ? [
+          Google({
+            clientId: env.AUTH_GOOGLE_ID,
+            clientSecret: env.AUTH_GOOGLE_SECRET,
+          }),
+        ]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.twitter
+      ? [
+          Twitter({
+            clientId: env.AUTH_TWITTER_ID,
+            clientSecret: env.AUTH_TWITTER_SECRET,
+            authorization: {
+              url: "https://x.com/i/oauth2/authorize",
+              params: {
+                scope:
+                  "tweet.read tweet.write users.read media.write offline.access",
+              },
+            },
+          }),
+        ]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.linkedin
+      ? [
+          LinkedIn({
+            clientId: env.AUTH_LINKEDIN_ID,
+            clientSecret: env.AUTH_LINKEDIN_SECRET,
+            authorization: {
+              params: { scope: "openid profile email w_member_social" },
+            },
+          }),
+        ]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.facebook
+      ? [{
       id: "facebook",
       name: "Facebook",
       type: "oauth",
@@ -128,8 +147,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_FACEBOOK_ID,
       clientSecret: env.AUTH_FACEBOOK_SECRET,
-    },
-    {
+    }]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.instagram
+      ? [{
       id: "instagram",
       name: "Instagram",
       type: "oauth",
@@ -161,8 +182,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_INSTAGRAM_ID,
       clientSecret: env.AUTH_INSTAGRAM_SECRET,
-    },
-    {
+    }]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.threads
+      ? [{
       id: "threads",
       name: "Threads",
       type: "oauth",
@@ -191,16 +214,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_THREADS_ID,
       clientSecret: env.AUTH_THREADS_SECRET,
-    },
-    TikTok({
-      clientId: env.AUTH_TIKTOK_ID,
-      clientSecret: env.AUTH_TIKTOK_SECRET,
-    }),
-    Medium({
-      clientId: env.AUTH_MEDIUM_ID!,
-      clientSecret: env.AUTH_MEDIUM_SECRET!,
-    }),
-    {
+    }]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.tiktok
+      ? [
+          TikTok({
+            clientId: env.AUTH_TIKTOK_ID,
+            clientSecret: env.AUTH_TIKTOK_SECRET,
+          }),
+        ]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.medium
+      ? [
+          Medium({
+            clientId: env.AUTH_MEDIUM_ID!,
+            clientSecret: env.AUTH_MEDIUM_SECRET!,
+          }),
+        ]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.reddit
+      ? [{
       id: "reddit",
       name: "Reddit",
       type: "oauth",
@@ -223,8 +256,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_REDDIT_ID,
       clientSecret: env.AUTH_REDDIT_SECRET,
-    },
-    {
+    }]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.youtube
+      ? [{
       id: "youtube",
       name: "YouTube",
       type: "oauth",
@@ -262,8 +297,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_YOUTUBE_ID,
       clientSecret: env.AUTH_YOUTUBE_SECRET,
-    },
-    {
+    }]
+      : []),
+    ...(OAUTH_CHANNEL_PROVIDERS.pinterest
+      ? [{
       id: "pinterest",
       name: "Pinterest",
       type: "oauth",
@@ -292,8 +329,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       clientId: env.AUTH_PINTEREST_ID,
       clientSecret: env.AUTH_PINTEREST_SECRET,
-    },
-  ],
+    }]
+      : []),
+  ] as Provider[],
   pages: {
     signIn: "/auth/signin",
     error: "/auth/error",
