@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Outfit, Geist } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
+import { themeInitScript } from "./app/_components/theme-provider";
 import { DEFAULT_DESCRIPTION, SITE_LOCALE, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +55,11 @@ export default function RootLayout({
     <html
       lang="en"
       className={cn("h-full", "antialiased", fraunces.variable, "font-sans", geist.variable)}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster

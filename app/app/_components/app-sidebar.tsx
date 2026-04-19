@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { AvatarMenu } from "./avatar-menu";
 import { NavLinks } from "./nav-links";
 import { NotificationsBell } from "./notifications-bell";
+import { ThemeToggle } from "./theme-toggle";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -98,8 +99,8 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
               placement="top"
               expandedLabel={!collapsed}
             />
+            <ThemeToggle />
             <NotificationsBell />
-
           </div>
         </div>
       </aside>

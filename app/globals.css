@@ -505,37 +505,55 @@ details[open] > summary .chev {
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
+	/* Warm charcoal — shares hue with --ink so dark mode reads as the same brand inverted */
+	--background: #1a1918;
+	--background-elev: #232221;
+	--foreground: #ece7da;
+	--muted: #2b2a27;
+	--muted-foreground: #a6a197;
+	--border: #32302c;
+	--border-strong: #464239;
+
+	/* Indigo lifted — original #4f46e5 fails contrast on dark */
+	--primary: #8a82ff;
+	--primary-foreground: #0f0d18;
+	--primary-soft: #2a2547;
+	--primary-deep: #b3acff;
+
+	/* Peach 100/200 invert to dark tints (used as soft surfaces); 300/400 stay warm for accents */
+	--peach-100: #3a2a1d;
+	--peach-200: #5a3f2a;
+	--peach-300: #c89466;
+	--peach-400: #ed9f57;
+
+	--ink: #f3ecdc;
+
+	--card: var(--background-elev);
+	--card-foreground: var(--foreground);
+	--popover: var(--background-elev);
+	--popover-foreground: var(--foreground);
+	--secondary: var(--peach-100);
+	--secondary-foreground: var(--foreground);
+	--accent: var(--peach-100);
+	--accent-foreground: var(--foreground);
 	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	--input: var(--border);
+	--ring: color-mix(in oklab, var(--primary) 45%, transparent);
+
+	--chart-1: var(--peach-400);
+	--chart-2: var(--peach-300);
+	--chart-3: var(--peach-200);
+	--chart-4: var(--primary);
+	--chart-5: var(--primary-deep);
+
+	--sidebar: var(--background-elev);
+	--sidebar-foreground: var(--foreground);
+	--sidebar-primary: var(--primary);
+	--sidebar-primary-foreground: var(--primary-foreground);
+	--sidebar-accent: var(--peach-100);
+	--sidebar-accent-foreground: var(--foreground);
+	--sidebar-border: var(--border);
+	--sidebar-ring: var(--ring);
 }
 
 @layer base {
