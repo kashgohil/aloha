@@ -7,9 +7,11 @@ import {
   blueskyCredentials,
   channelStates,
   mastodonCredentials,
+  telegramCredentials,
 } from "@/db/schema";
 import { MastodonListItem } from "./_components/mastodon-list-item";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
+import { isProviderConfigured } from "@/lib/configured-providers";
 import {
   PLATFORM_GATING,
   resolveEffectiveState,
@@ -34,6 +36,7 @@ import {
   MediumIcon,
   MastodonIcon,
   RedditIcon,
+  TelegramIcon,
 } from "@/app/auth/_components/provider-icons";
 
 export const dynamic = "force-dynamic";
@@ -148,6 +151,14 @@ const PROVIDERS: ProviderConfig[] = [
     mono: true,
     status: "approval_needed",
   },
+  {
+    id: "telegram",
+    name: "Telegram",
+    purpose: "Broadcast messages and photos to your channel.",
+    Icon: TelegramIcon,
+    mono: true,
+    status: "available",
+  },
 ];
 
 function ReauthBanner({ providers }: { providers: string[] }) {
@@ -253,7 +264,7 @@ export default async function ChannelsSettingsPage({
 }) {
   const user = (await getCurrentUser())!;
 
-  const [rows, blueskyRows, mastodonRows, stateRows] = await Promise.all([
+  const [rows, blueskyRows, mastodonRows, telegramRows, stateRows] = await Promise.all([
     db
       .select({
         provider: accounts.provider,
@@ -277,6 +288,11 @@ export default async function ChannelsSettingsPage({
       .where(eq(mastodonCredentials.userId, user.id))
       .limit(1),
     db
+      .select({ id: telegramCredentials.id, reauthRequired: telegramCredentials.reauthRequired })
+      .from(telegramCredentials)
+      .where(eq(telegramCredentials.userId, user.id))
+      .limit(1),
+    db
       .select({
         channel: channelStates.channel,
         publishMode: channelStates.publishMode,
@@ -295,9 +311,17 @@ export default async function ChannelsSettingsPage({
   if (mastodonRow) {
     connected.add("mastodon");
   }
+  const telegramRow = telegramRows[0];
+  if (telegramRow) {
+    connected.add("telegram");
+  }
   const needsReauth = new Set(
     rows.filter((r) => r.reauthRequired).map((r) => r.provider),
   );
+  // Check custom credentials tables for reauth flags
+  if (telegramRow?.reauthRequired) {
+    needsReauth.add("telegram");
+  }
 
   const stateByChannel = new Map(stateRows.map((r) => [r.channel, r]));
   const gatedConnected = PROVIDERS.filter(
@@ -375,7 +399,8 @@ export default async function ChannelsSettingsPage({
           const isConnected = connected.has(p.id);
           const isSoon = p.status === "soon";
           const isApprovalNeeded = p.status === "approval_needed";
-          const isLocked = !isConnected && !isSoon && !isApprovalNeeded && atLimit;
+          const isUnconfigured = !isConnected && !isSoon && !isProviderConfigured(p.id);
+          const isLocked = !isConnected && !isSoon && !isApprovalNeeded && !isUnconfigured && atLimit;
           const isReauth = isConnected && needsReauth.has(p.id);
           return (
             <li
@@ -437,6 +462,15 @@ export default async function ChannelsSettingsPage({
                   >
                     Not available yet
                   </button>
+                ) : isUnconfigured ? (
+                  <button
+                    type="button"
+                    disabled
+                    title="This channel isn't configured on this deployment yet."
+                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-dashed border-border-strong text-[13px] text-ink/45"
+                  >
+                    Unavailable
+                  </button>
                 ) : isApprovalNeeded ? (
                   <form action={notifyWhenAvailable}>
                     <input type="hidden" name="provider" value={p.id} />
@@ -449,10 +483,17 @@ export default async function ChannelsSettingsPage({
                     </button>
                   </form>
                 ) : isConnected ? (
-                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5">
                     {p.id === "bluesky" ? (
                       <Link
                         href="/app/settings/channels/bluesky-connect"
+                        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
+                      >
+                        Reconnect
+                      </Link>
+                    ) : p.id === "telegram" ? (
+                      <Link
+                        href="/app/settings/channels/telegram-connect"
                         className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
                       >
                         Reconnect
@@ -481,6 +522,14 @@ export default async function ChannelsSettingsPage({
 ) : p.id === "bluesky" ? (
 							<Link
 								href="/app/settings/channels/bluesky-connect"
+								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
+							>
+								<Plus className="w-3.5 h-3.5" />
+								Connect
+							</Link>
+						) : p.id === "telegram" ? (
+							<Link
+								href="/app/settings/channels/telegram-connect"
 								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
 							>
 								<Plus className="w-3.5 h-3.5" />

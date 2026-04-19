@@ -5,12 +5,13 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn } from "@/auth";
 import { db } from "@/db";
-import { accounts, users, blueskyCredentials, mastodonCredentials } from "@/db/schema";
+import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials } from "@/db/schema";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
 import { syncChannelQuantity } from "@/lib/billing/service";
 import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
+import { startTelegramAuth, completeTelegramAuth } from "@/lib/publishers/telegram";
 
 const VALID_PUBLISH_MODES: readonly PublishMode[] = [
   "auto",
@@ -112,6 +113,11 @@ export async function disconnectChannel(formData: FormData) {
     return;
   }
 
+  if (provider === "telegram") {
+    await disconnectTelegram();
+    return;
+  }
+
   await db
     .delete(accounts)
     .where(
@@ -130,7 +136,7 @@ export async function disconnectChannel(formData: FormData) {
 }
 
 async function currentChannelCount(userId: string): Promise<number> {
-  const [oauthRows, blueskyRow, mastodonRow] = await Promise.all([
+  const [oauthRows, blueskyRow, mastodonRow, telegramRow] = await Promise.all([
     db
       .select({ provider: accounts.provider })
       .from(accounts)
@@ -150,8 +156,13 @@ async function currentChannelCount(userId: string): Promise<number> {
       .from(mastodonCredentials)
       .where(eq(mastodonCredentials.userId, userId))
       .limit(1),
+    db
+      .select({ id: telegramCredentials.id })
+      .from(telegramCredentials)
+      .where(eq(telegramCredentials.userId, userId))
+      .limit(1),
   ]);
-  return oauthRows.length + (blueskyRow ? 1 : 0) + (mastodonRow ? 1 : 0);
+  return oauthRows.length + (blueskyRow ? 1 : 0) + (mastodonRow ? 1 : 0) + (telegramRow ? 1 : 0);
 }
 
 export async function connectBluesky(
@@ -305,6 +316,74 @@ export async function disconnectMastodon() {
   await db
     .delete(mastodonCredentials)
     .where(eq(mastodonCredentials.userId, userId));
+
+  revalidatePath("/app/settings/channels");
+  revalidatePath("/app/dashboard");
+}
+
+export async function connectTelegram(
+  _prevState: { error?: string; needsCode?: boolean; needsPassword?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; needsCode?: boolean; needsPassword?: boolean } | null> {
+  const userId = await requireUserId();
+
+  const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
+  const chatId = String(formData.get("chatId") ?? "").trim();
+  const username = String(formData.get("username") ?? "").trim() || null;
+  const phoneCode = String(formData.get("phoneCode") ?? "").trim();
+  const password = String(formData.get("password") ?? "").trim() || undefined;
+
+  if (!phoneNumber || !chatId) {
+    return { error: "Phone number and chat ID are required." };
+  }
+
+  const connected = await currentChannelCount(userId);
+  const entitlements = await getEntitlements(userId, connected);
+  if (!canConnectAnotherChannel(entitlements)) {
+    redirect("/app/settings/channels?limit=1");
+  }
+
+  // If we have a phone code, complete the authentication
+  if (phoneCode) {
+    const { success, error, needsPassword } = await completeTelegramAuth(userId, phoneCode, password);
+    if (!success) {
+      if (needsPassword) {
+        return { error: undefined, needsPassword: true };
+      }
+      return { error: error || "Failed to verify code" };
+    }
+    revalidatePath("/app/settings/channels");
+    revalidatePath("/app/dashboard");
+    redirect("/app/settings/channels?connected=telegram");
+  }
+
+  // Start new authentication flow
+  const { success, needsCode, error } = await startTelegramAuth(
+    userId,
+    phoneNumber,
+    chatId,
+    username || undefined,
+  );
+
+  if (!success) {
+    return { error: error || "Failed to start authentication" };
+  }
+
+  if (needsCode) {
+    return { needsCode: true };
+  }
+
+  revalidatePath("/app/settings/channels");
+  revalidatePath("/app/dashboard");
+  redirect("/app/settings/channels?connected=telegram");
+}
+
+export async function disconnectTelegram() {
+  const userId = await requireUserId();
+
+  await db
+    .delete(telegramCredentials)
+    .where(eq(telegramCredentials.userId, userId));
 
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");

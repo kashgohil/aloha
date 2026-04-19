@@ -41,6 +41,7 @@ export const routes = {
 		mastodon: "/channels/mastodon",
 		medium: "/channels/medium",
 		reddit: "/channels/reddit",
+		telegram: "/channels/telegram",
 	},
 
 	// Phase 3 — Compare + positioning
@@ -109,7 +110,6 @@ export const routes = {
 	// Phase 10 — Connect
 	connect: {
 		newsletter: "/newsletter",
-		affiliate: "/affiliate",
 		partners: "/partners",
 	},
 
@@ -155,11 +155,12 @@ export const footerLinks = {
 				{ label: "Facebook", href: routes.channels.facebook },
 				{ label: "Pinterest", href: routes.channels.pinterest },
 				{ label: "YouTube", href: routes.channels.youtube },
-				{ label: "Bluesky", href: routes.channels.bluesky },
-				{ label: "Mastodon", href: routes.channels.mastodon },
-				{ label: "Medium", href: routes.channels.medium },
-				{ label: "Reddit", href: routes.channels.reddit },
-			],
+			{ label: "Bluesky", href: routes.channels.bluesky },
+			{ label: "Mastodon", href: routes.channels.mastodon },
+			{ label: "Medium", href: routes.channels.medium },
+			{ label: "Reddit", href: routes.channels.reddit },
+			{ label: "Telegram", href: routes.channels.telegram },
+		],
 		},
 		{
 			heading: "Compare",
@@ -234,7 +235,6 @@ export const footerLinks = {
 			heading: "Connect",
 			links: [
 				{ label: "Newsletter", href: routes.connect.newsletter },
-				{ label: "Affiliate", href: routes.connect.affiliate },
 				{ label: "Partners", href: routes.connect.partners },
 			],
 		},
