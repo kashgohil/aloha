@@ -87,29 +87,14 @@ export function ScorePanel({
   const scoreBand = result ? bandFor(result.score) : null;
 
   return (
-    <div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
-      <header className="px-5 py-4 border-b border-border flex items-start gap-3">
-        <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
-          <Gauge className="w-4 h-4 text-ink" />
+    <>
+      <div className="flex items-center gap-2 px-5 pt-4 pb-3 text-[12px] text-ink/65">
+        <Gauge className="w-3.5 h-3.5 text-primary" />
+        <span>
+          Pre-publish check for {platformName} — what lands, what
+          doesn&apos;t, and a one-click fix for the weak spots.
         </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] text-ink font-medium">
-            Pre-publish check · {platformName}
-          </p>
-          <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55]">
-            A quick sanity read on your draft for this channel — what lands,
-            what doesn&apos;t, and a one-click fix for the weak spots.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close score"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-ink/50 hover:text-ink hover:bg-muted/50 transition-colors"
-        >
-          <XIcon className="w-4 h-4" />
-        </button>
-      </header>
+      </div>
 
       {state === "loading" ? (
         <div className="px-5 py-10 flex items-center justify-center text-[13px] text-ink/55">
@@ -216,7 +201,7 @@ export function ScorePanel({
           </div>
         </>
       ) : null}
-    </div>
+    </>
   );
 }
 

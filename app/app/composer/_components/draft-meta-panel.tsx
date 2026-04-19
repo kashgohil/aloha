@@ -44,22 +44,11 @@ export function DraftMetaPanel({
   if (!hasAnything) return null;
 
   return (
-    <div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
-      <header className="flex items-center justify-between gap-2 px-5 pt-4 pb-3 border-b border-border">
-        <div className="flex items-center gap-2 text-[12.5px] text-ink/70">
-          <Sparkles className="w-3.5 h-3.5 text-primary" />
-          <span className="font-medium text-ink">Muse scaffolding</span>
-          <span className="text-ink/50">— tap to swap into the draft.</span>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Hide scaffolding"
-          className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/55 hover:text-ink hover:bg-background transition-colors"
-        >
-          <XIcon className="w-3.5 h-3.5" />
-        </button>
-      </header>
+    <>
+      <div className="flex items-center gap-2 px-5 pt-4 pb-3 text-[12px] text-ink/65">
+        <Sparkles className="w-3.5 h-3.5 text-primary" />
+        <span>Muse scaffolding — tap any chip or hook to swap it in.</span>
+      </div>
 
       <div className="px-5 py-4 space-y-4">
         {meta.rationale ? (
@@ -163,7 +152,7 @@ export function DraftMetaPanel({
           </Section>
         ) : null}
       </div>
-    </div>
+    </>
   );
 }
 

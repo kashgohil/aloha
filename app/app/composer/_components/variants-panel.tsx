@@ -5,7 +5,7 @@
 // one variant card per platform in parallel. User clicks a card to accept
 // it as that platform's override.
 
-import { Check, Loader2, Wand2, X as XIcon } from "lucide-react";
+import { Check, Layers, Loader2, Wand2, X as XIcon } from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 
 export type VariantPlatform = {
@@ -165,32 +165,17 @@ export function VariantsPanel({
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
-      <header className="px-5 py-4 border-b border-border flex items-start gap-3">
-        <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
-          <Wand2 className="w-4 h-4 text-ink" />
+    <>
+      <div className="flex items-center gap-2 px-5 pt-4 pb-3 text-[12px] text-ink/65">
+        <Layers className="w-3.5 h-3.5 text-primary" />
+        <span>
+          One topic · {platforms.length} native version
+          {platforms.length === 1 ? "" : "s"}. Drafts stream in side-by-side
+          — click a card to use it as that channel&apos;s version.
         </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] text-ink font-medium">
-            One topic · {platforms.length} native version
-            {platforms.length === 1 ? "" : "s"}
-          </p>
-          <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55]">
-            Drafts stream in side-by-side. Click a card to use it as that
-            channel&apos;s version. Re-run to get different takes.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close variants"
-          className="inline-flex items-center justify-center w-9 h-9 rounded-full text-ink/50 hover:text-ink hover:bg-muted/50 transition-colors"
-        >
-          <XIcon className="w-4 h-4" />
-        </button>
-      </header>
+      </div>
 
-      <div className="px-5 py-4 border-b border-border flex items-center gap-2">
+      <div className="px-5 pb-4 border-b border-border flex items-center gap-2">
         <input
           value={topic}
           onChange={(e) => setTopic(e.target.value)}
@@ -252,7 +237,7 @@ export function VariantsPanel({
           })}
         </ul>
       )}
-    </div>
+    </>
   );
 }
 

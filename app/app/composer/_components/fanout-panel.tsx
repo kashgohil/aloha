@@ -167,46 +167,30 @@ export function FanoutPanel({
   };
 
   return (
-    <div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
-      <header className="px-5 py-4 border-b border-border flex items-start gap-3">
-        <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
-          <Sparkles className="w-4 h-4 text-ink" />
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-[14.5px] text-ink font-medium">
-            Fan out from {sourcePlatformName}
-          </p>
-          <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55]">
-            Your {sourcePlatformName} post, rewritten natively for each of the
-            other selected channels. Click a card to apply it as that
-            channel&apos;s version.
-          </p>
+    <>
+      <div className="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
+        <div className="flex items-center gap-2 text-[12px] text-ink/65">
+          <Sparkles className="w-3.5 h-3.5 text-primary shrink-0" />
+          <span>
+            Your {sourcePlatformName} post, rewritten natively for the other
+            channels. Click a card to apply it.
+          </span>
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={run}
-            disabled={running}
-            title="Regenerate"
-            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors"
-          >
-            {running ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Wand2 className="w-3.5 h-3.5" />
-            )}
-            Regenerate
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close fan-out"
-            className="inline-flex items-center justify-center w-9 h-9 rounded-full text-ink/50 hover:text-ink hover:bg-muted/50 transition-colors"
-          >
-            <XIcon className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
+        <button
+          type="button"
+          onClick={run}
+          disabled={running}
+          title="Regenerate"
+          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-border-strong text-[12.5px] font-medium text-ink hover:border-ink disabled:opacity-40 disabled:hover:border-border-strong transition-colors shrink-0"
+        >
+          {running ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : (
+            <Wand2 className="w-3.5 h-3.5" />
+          )}
+          Regenerate
+        </button>
+      </div>
 
       <div className="px-5 py-3 border-b border-border bg-peach-100/30">
         <p className="text-[11px] uppercase tracking-[0.18em] text-ink/50 mb-1">
@@ -239,7 +223,7 @@ export function FanoutPanel({
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }
 
