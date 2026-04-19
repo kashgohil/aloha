@@ -19,7 +19,17 @@ import {
 	TikTokIcon,
 	XIcon as XBrandIcon,
 } from "@/app/auth/_components/provider-icons";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { ChannelOverride, PostMedia } from "@/db/schema";
+import type { BestWindow } from "@/lib/best-time-format";
+import { formatWindow } from "@/lib/best-time-format";
+import type { EffectiveState } from "@/lib/channel-state-format";
+import { stateOr, stateStyles } from "@/lib/channel-state-format";
 import { cn } from "@/lib/utils";
 import {
 	AlertCircle,
@@ -45,16 +55,6 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import type { BestWindow } from "@/lib/best-time-format";
-import { formatWindow } from "@/lib/best-time-format";
-import type { EffectiveState } from "@/lib/channel-state-format";
-import { stateOr, stateStyles } from "@/lib/channel-state-format";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { FanoutPanel } from "./fanout-panel";
 import { ImportPanel } from "./import-panel";
 import { PreviewCard } from "./preview-card";
@@ -202,9 +202,8 @@ export function Composer({
 		? initialScheduledAt.slice(0, 16)
 		: "";
 	const [baseMedia, setBaseMedia] = useState<PostMedia[]>(initialMedia);
-	const [overrides, setOverrides] = useState<Record<string, ChannelOverride>>(
-		initialOverrides,
-	);
+	const [overrides, setOverrides] =
+		useState<Record<string, ChannelOverride>>(initialOverrides);
 	const [selected, setSelected] = useState<string[]>(() => {
 		if (initialPlatforms.length > 0) return initialPlatforms;
 		return connectedProviders.length > 0
@@ -224,7 +223,10 @@ export function Composer({
 	// Cap-exceeded server errors carry a specific message; preserve it so the
 	// user sees the real reason instead of a generic "failed" toast.
 	const messageFromErr = (err: unknown, fallback: string): string => {
-		if (err instanceof Error && err.message.startsWith("AI usage cap reached")) {
+		if (
+			err instanceof Error &&
+			err.message.startsWith("AI usage cap reached")
+		) {
 			return err.message;
 		}
 		return fallback;
@@ -240,9 +242,9 @@ export function Composer({
 	const [altTextLoading, setAltTextLoading] = useState<string | null>(null);
 	const [showImageGen, setShowImageGen] = useState(false);
 	const [imagePrompt, setImagePrompt] = useState("");
-	const [imageAspect, setImageAspect] = useState<"1:1" | "4:5" | "16:9" | "9:16">(
-		"1:1",
-	);
+	const [imageAspect, setImageAspect] = useState<
+		"1:1" | "4:5" | "16:9" | "9:16"
+	>("1:1");
 	const [isImaging, startImaging] = useTransition();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -366,7 +368,9 @@ export function Composer({
 				const refined = await refineContent(editorValue, context);
 				handleEditorChange(refined);
 			} catch (err) {
-				setFormError(messageFromErr(err, "Refine failed. Try again in a moment."));
+				setFormError(
+					messageFromErr(err, "Refine failed. Try again in a moment."),
+				);
 			}
 		});
 	};
@@ -383,7 +387,10 @@ export function Composer({
 					toast.message("No hashtag suggestions for this post.");
 				}
 			} catch (err) {
-				const msg = messageFromErr(err, "Hashtag suggest failed. Try again in a moment.");
+				const msg = messageFromErr(
+					err,
+					"Hashtag suggest failed. Try again in a moment.",
+				);
 				setFormError(msg);
 				toast.error(msg);
 			}
@@ -440,11 +447,8 @@ export function Composer({
 	// channels" is active, the first selected platform — a single score only
 	// makes sense per target, not across a fanout.
 	const scorePlatform = activePlatform ?? selectedPlatforms[0] ?? null;
-	const scoreContent = scorePlatform
-		? effectiveContent(scorePlatform.id)
-		: "";
-	const canScore =
-		scorePlatform !== null && scoreContent.trim().length >= 20;
+	const scoreContent = scorePlatform ? effectiveContent(scorePlatform.id) : "";
+	const canScore = scorePlatform !== null && scoreContent.trim().length >= 20;
 
 	const handleGenerateImage = () => {
 		if (!imagePrompt.trim() || baseMedia.length >= MAX_MEDIA) return;
@@ -465,7 +469,12 @@ export function Composer({
 				setImagePrompt("");
 				setShowImageGen(false);
 			} catch (err) {
-				setFormError(messageFromErr(err, "Image generation failed. Try again in a moment."));
+				setFormError(
+					messageFromErr(
+						err,
+						"Image generation failed. Try again in a moment.",
+					),
+				);
 			}
 		});
 	};
@@ -479,7 +488,9 @@ export function Composer({
 				prev.map((x) => (x.url === m.url ? { ...x, alt: text } : x)),
 			);
 		} catch (err) {
-			setFormError(messageFromErr(err, "Alt text failed. Try again in a moment."));
+			setFormError(
+				messageFromErr(err, "Alt text failed. Try again in a moment."),
+			);
 		} finally {
 			setAltTextLoading(null);
 		}
@@ -496,7 +507,9 @@ export function Composer({
 				setGenerateTopic("");
 				setShowGenerate(false);
 			} catch (err) {
-				setFormError(messageFromErr(err, "Generate failed. Try again in a moment."));
+				setFormError(
+					messageFromErr(err, "Generate failed. Try again in a moment."),
+				);
 			}
 		});
 	};
@@ -596,7 +609,7 @@ export function Composer({
 						) : (
 							<>
 								Compose
-								<span className="text-primary font-light"> your next one.</span>
+								<span className="text-primary"> your next one.</span>
 							</>
 						)}
 					</h1>
@@ -651,8 +664,8 @@ export function Composer({
 				>
 					<AlertCircle className="w-4 h-4 mt-[2px] text-primary shrink-0" />
 					<span className="leading-normal">
-						This post is already published. Edits won&apos;t reach
-						the networks — open it on the platform to change it.
+						This post is already published. Edits won&apos;t reach the networks
+						— open it on the platform to change it.
 					</span>
 				</div>
 			) : null}
@@ -938,7 +951,9 @@ export function Composer({
 												onClick={() => handleGenerateAltText(m)}
 												disabled={loading}
 												title={m.alt ? `Alt: ${m.alt}` : "Generate alt text"}
-												aria-label={m.alt ? "Regenerate alt text" : "Generate alt text"}
+												aria-label={
+													m.alt ? "Regenerate alt text" : "Generate alt text"
+												}
 												className={cn(
 													"absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10.5px] font-medium transition-colors",
 													m.alt
@@ -963,7 +978,10 @@ export function Composer({
 							<div className="px-5 py-4 border-t border-border bg-peach-100/40 space-y-3">
 								<div className="flex items-center gap-2 text-[12px] text-ink/65">
 									<ImagePlus className="w-3.5 h-3.5 text-primary" />
-									<span>Describe the image you want — Muse generates it in your chosen aspect.</span>
+									<span>
+										Describe the image you want — Muse generates it in your
+										chosen aspect.
+									</span>
 								</div>
 								<input
 									value={imagePrompt}
@@ -1022,12 +1040,12 @@ export function Composer({
 											disabled={isImaging || !imagePrompt.trim()}
 											className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
 										>
-										{isImaging ? (
-											<Loader2 className="w-3.5 h-3.5 animate-spin" />
-										) : (
-											<ImagePlus className="w-3.5 h-3.5" />
-										)}
-										Generate
+											{isImaging ? (
+												<Loader2 className="w-3.5 h-3.5 animate-spin" />
+											) : (
+												<ImagePlus className="w-3.5 h-3.5" />
+											)}
+											Generate
 										</button>
 									</div>
 								</div>
@@ -1061,189 +1079,190 @@ export function Composer({
 						) : null}
 
 						<TooltipProvider delay={250}>
-						<div className="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-border">
-							<input
-								ref={fileInputRef}
-								type="file"
-								accept="image/jpeg,image/png,image/webp,image/gif"
-								multiple
-								hidden
-								onChange={(e) => handleFilesSelected(e.target.files)}
-							/>
+							<div className="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-border">
+								<input
+									ref={fileInputRef}
+									type="file"
+									accept="image/jpeg,image/png,image/webp,image/gif"
+									multiple
+									hidden
+									onChange={(e) => handleFilesSelected(e.target.files)}
+								/>
 
-							{/* Media */}
-							<ToolButton
-								onClick={() => fileInputRef.current?.click()}
-								disabled={isUploading || baseMedia.length >= MAX_MEDIA}
-								label={
-									baseMedia.length >= MAX_MEDIA
-										? `Up to ${MAX_MEDIA} images`
-										: "Attach image"
-								}
-							icon={
-								isUploading ? (
-									<Loader2 className="w-4 h-4 animate-spin" />
-								) : (
-									<ImageUp className="w-4 h-4" />
-								)
-							}
-						/>
-						<ToolButton
-							onClick={() => setShowImageGen((v) => !v)}
-							disabled={baseMedia.length >= MAX_MEDIA}
-							active={showImageGen}
-							label={
-								baseMedia.length >= MAX_MEDIA
-									? `Up to ${MAX_MEDIA} images`
-									: "Generate image"
-							}
-							icon={<ImagePlus className="w-4 h-4" />}
-							/>
+								{/* Media */}
+								<ToolButton
+									onClick={() => fileInputRef.current?.click()}
+									disabled={isUploading || baseMedia.length >= MAX_MEDIA}
+									label={
+										baseMedia.length >= MAX_MEDIA
+											? `Up to ${MAX_MEDIA} images`
+											: "Attach image"
+									}
+									icon={
+										isUploading ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<ImageUp className="w-4 h-4" />
+										)
+									}
+								/>
+								<ToolButton
+									onClick={() => setShowImageGen((v) => !v)}
+									disabled={baseMedia.length >= MAX_MEDIA}
+									active={showImageGen}
+									label={
+										baseMedia.length >= MAX_MEDIA
+											? `Up to ${MAX_MEDIA} images`
+											: "Generate image"
+									}
+									icon={<ImagePlus className="w-4 h-4" />}
+								/>
 
-							<ToolDivider />
+								<ToolDivider />
 
-							<div className="px-1">
-								<CharCounter
-									length={editorValue.length}
-									limit={activeLimit}
-									tightestPlatforms={
-										activePlatform
-											? editorValue.length > activeLimit
-												? [activePlatform.name]
-												: []
-											: perPlatformOverflow.map((x) => x.platform.name)
+								<div className="px-1">
+									<CharCounter
+										length={editorValue.length}
+										limit={activeLimit}
+										tightestPlatforms={
+											activePlatform
+												? editorValue.length > activeLimit
+													? [activePlatform.name]
+													: []
+												: perPlatformOverflow.map((x) => x.platform.name)
+										}
+									/>
+								</div>
+
+								<ToolDivider />
+
+								{/* Compose */}
+								<ToolButton
+									onClick={() => {
+										setShowGenerate((v) => !v);
+										if (!showGenerate) {
+											setShowVariants(false);
+											setShowFanout(false);
+											setShowImport(false);
+											setShowScore(false);
+										}
+									}}
+									active={showGenerate}
+									label="Draft from a topic"
+									icon={<Wand2 className="w-4 h-4" />}
+								/>
+								<ToolButton
+									onClick={() => {
+										setShowVariants((v) => !v);
+										if (!showVariants) {
+											setShowGenerate(false);
+											setShowFanout(false);
+											setShowImport(false);
+											setShowScore(false);
+										}
+									}}
+									disabled={selectedPlatforms.length === 0}
+									active={showVariants}
+									label={
+										selectedPlatforms.length === 0
+											? "Select a channel first"
+											: "Draft one version per selected channel"
+									}
+									icon={<Layers className="w-4 h-4" />}
+								/>
+								<ToolButton
+									onClick={() => {
+										setShowFanout((v) => !v);
+										if (!showFanout) {
+											setShowGenerate(false);
+											setShowVariants(false);
+											setShowImport(false);
+											setShowScore(false);
+										}
+									}}
+									disabled={!canFanout}
+									active={showFanout}
+									label={
+										!fanoutSourcePlatform
+											? "Open a channel tab to fan out from"
+											: fanoutTargets.length === 0
+												? "Select another channel to fan out to"
+												: effectiveContent(fanoutSourcePlatform.id).trim()
+															.length === 0
+													? "Write something on this channel first"
+													: `Fan out this ${fanoutSourcePlatform.name} post to the other channels`
+									}
+									icon={<GitBranch className="w-4 h-4" />}
+								/>
+								<ToolButton
+									onClick={() => {
+										setShowImport((v) => !v);
+										if (!showImport) {
+											setShowGenerate(false);
+											setShowVariants(false);
+											setShowFanout(false);
+											setShowScore(false);
+										}
+									}}
+									disabled={selectedPlatforms.length === 0}
+									active={showImport}
+									label={
+										selectedPlatforms.length === 0
+											? "Select a channel first"
+											: "Import from a URL"
+									}
+									icon={<FileText className="w-4 h-4" />}
+								/>
+
+								<ToolDivider />
+
+								{/* Polish */}
+								<ToolButton
+									onClick={() => {
+										setShowScore((v) => !v);
+										if (!showScore) {
+											setShowGenerate(false);
+											setShowVariants(false);
+											setShowFanout(false);
+											setShowImport(false);
+										}
+									}}
+									disabled={!canScore}
+									active={showScore}
+									label={
+										!scorePlatform
+											? "Select a channel to score against"
+											: scoreContent.trim().length < 20
+												? "Write a bit more to score"
+												: `Score this ${scorePlatform.name} post`
+									}
+									icon={<Gauge className="w-4 h-4" />}
+								/>
+								<ToolButton
+									onClick={handleRefine}
+									disabled={isRefining || !editorValue.trim()}
+									label="Refine the current draft"
+									icon={
+										isRefining ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<Sparkles className="w-4 h-4" />
+										)
+									}
+								/>
+								<ToolButton
+									onClick={handleSuggestHashtags}
+									disabled={isHashing || !editorValue.trim()}
+									label="Suggest hashtags"
+									icon={
+										isHashing ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<Hash className="w-4 h-4" />
+										)
 									}
 								/>
 							</div>
-
-							<ToolDivider />
-
-							{/* Compose */}
-							<ToolButton
-								onClick={() => {
-									setShowGenerate((v) => !v);
-									if (!showGenerate) {
-										setShowVariants(false);
-										setShowFanout(false);
-										setShowImport(false);
-										setShowScore(false);
-									}
-								}}
-								active={showGenerate}
-								label="Draft from a topic"
-								icon={<Wand2 className="w-4 h-4" />}
-							/>
-							<ToolButton
-								onClick={() => {
-									setShowVariants((v) => !v);
-									if (!showVariants) {
-										setShowGenerate(false);
-										setShowFanout(false);
-										setShowImport(false);
-										setShowScore(false);
-									}
-								}}
-								disabled={selectedPlatforms.length === 0}
-								active={showVariants}
-								label={
-									selectedPlatforms.length === 0
-										? "Select a channel first"
-										: "Draft one version per selected channel"
-								}
-								icon={<Layers className="w-4 h-4" />}
-							/>
-							<ToolButton
-								onClick={() => {
-									setShowFanout((v) => !v);
-									if (!showFanout) {
-										setShowGenerate(false);
-										setShowVariants(false);
-										setShowImport(false);
-										setShowScore(false);
-									}
-								}}
-								disabled={!canFanout}
-								active={showFanout}
-								label={
-									!fanoutSourcePlatform
-										? "Open a channel tab to fan out from"
-										: fanoutTargets.length === 0
-											? "Select another channel to fan out to"
-											: effectiveContent(fanoutSourcePlatform.id).trim().length === 0
-												? "Write something on this channel first"
-												: `Fan out this ${fanoutSourcePlatform.name} post to the other channels`
-								}
-								icon={<GitBranch className="w-4 h-4" />}
-							/>
-							<ToolButton
-								onClick={() => {
-									setShowImport((v) => !v);
-									if (!showImport) {
-										setShowGenerate(false);
-										setShowVariants(false);
-										setShowFanout(false);
-										setShowScore(false);
-									}
-								}}
-								disabled={selectedPlatforms.length === 0}
-								active={showImport}
-								label={
-									selectedPlatforms.length === 0
-										? "Select a channel first"
-										: "Import from a URL"
-								}
-								icon={<FileText className="w-4 h-4" />}
-							/>
-
-							<ToolDivider />
-
-							{/* Polish */}
-							<ToolButton
-								onClick={() => {
-									setShowScore((v) => !v);
-									if (!showScore) {
-										setShowGenerate(false);
-										setShowVariants(false);
-										setShowFanout(false);
-										setShowImport(false);
-									}
-								}}
-								disabled={!canScore}
-								active={showScore}
-								label={
-									!scorePlatform
-										? "Select a channel to score against"
-										: scoreContent.trim().length < 20
-											? "Write a bit more to score"
-											: `Score this ${scorePlatform.name} post`
-								}
-								icon={<Gauge className="w-4 h-4" />}
-							/>
-							<ToolButton
-								onClick={handleRefine}
-								disabled={isRefining || !editorValue.trim()}
-								label="Refine the current draft"
-								icon={
-									isRefining ? (
-										<Loader2 className="w-4 h-4 animate-spin" />
-									) : (
-										<Sparkles className="w-4 h-4" />
-									)
-								}
-							/>
-							<ToolButton
-								onClick={handleSuggestHashtags}
-								disabled={isHashing || !editorValue.trim()}
-								label="Suggest hashtags"
-								icon={
-									isHashing ? (
-										<Loader2 className="w-4 h-4 animate-spin" />
-									) : (
-										<Hash className="w-4 h-4" />
-									)
-								}
-							/>
-						</div>
 						</TooltipProvider>
 					</div>
 
@@ -1516,15 +1535,13 @@ function BestWindowHint({
 	platformName: string;
 	window: BestWindow;
 }) {
-	const sampleLabel =
-		window.samples === 1 ? "post" : "posts";
+	const sampleLabel = window.samples === 1 ? "post" : "posts";
 	return (
 		<div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-peach-100/60 px-3 py-1.5 text-[12px] text-ink/75">
 			<Clock className="w-3.5 h-3.5 text-primary shrink-0" />
 			<span>
 				Best window for {platformName}:{" "}
-				<span className="font-medium text-ink">{formatWindow(window)}</span>
-				{" "}
+				<span className="font-medium text-ink">{formatWindow(window)}</span>{" "}
 				<span className="text-ink/60">
 					(+{window.deltaPct}% vs your average, based on {window.samples}{" "}
 					{sampleLabel})
