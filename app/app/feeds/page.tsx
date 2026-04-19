@@ -14,7 +14,7 @@ type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v;
 
-const ITEMS_PER_FEED = 50;
+const ITEMS_PER_FEED = 150;
 
 export default async function FeedsPage({
   searchParams,
