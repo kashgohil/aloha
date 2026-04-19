@@ -5,6 +5,8 @@ import {
 } from "@/app/actions/plan";
 import { ChannelChip, ChannelToggle } from "@/components/channel-chip";
 import { DatePicker } from "@/components/ui/date-picker";
+import { CreateDraftsSubmit } from "./_components/create-drafts-submit";
+import { DraftPlanSubmit } from "./_components/draft-plan-submit";
 import { db } from "@/db";
 import { accounts } from "@/db/schema";
 import { loadPlan, type PlanIdea } from "@/lib/ai/plan";
@@ -17,8 +19,6 @@ import {
 	Calendar as CalendarIcon,
 	Check,
 	RefreshCw,
-	Sparkles,
-	Wand2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -174,13 +174,7 @@ function PlanForm({
 							Muse uses your voice, best-time history, and recent feed items as
 							context.
 						</p>
-						<button
-							type="submit"
-							className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
-						>
-							<Wand2 className="w-4 h-4" />
-							Draft the plan
-						</button>
+						<DraftPlanSubmit />
 					</div>
 				</form>
 			)}
@@ -327,14 +321,7 @@ function PlanReview({
 						Tick the ideas you want. Each becomes a draft post scheduled for
 						noon on its day — tune the time in the composer.
 					</p>
-					<button
-						type="submit"
-						form="plan-accept-form"
-						className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
-					>
-						<Sparkles className="w-4 h-4" />
-						Create drafts
-					</button>
+					<CreateDraftsSubmit formId="plan-accept-form" />
 				</div>
 			</div>
 		</div>
