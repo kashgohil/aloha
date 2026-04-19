@@ -449,7 +449,7 @@ export const campaigns = pgTable("campaigns", {
     .default([])
     .notNull(),
   status: text("status", {
-    enum: ["draft", "ready", "running", "complete", "archived"],
+    enum: ["draft", "ready", "running", "paused", "complete", "archived"],
   })
     .default("draft")
     .notNull(),
