@@ -19,6 +19,8 @@ import {
 	TikTokIcon,
 	XIcon as XBrandIcon,
 } from "@/app/auth/_components/provider-icons";
+import { Calendar } from "@/components/ui/calendar";
+import { TimePicker } from "@/components/ui/time-picker";
 import {
 	Tooltip,
 	TooltipContent,
@@ -62,8 +64,6 @@ import { LibraryPanel } from "./library-panel";
 import { PreviewCard } from "./preview-card";
 import { ScorePanel } from "./score-panel";
 import { VariantsPanel, type VariantPlatform } from "./variants-panel";
-import { Calendar } from "@/components/ui/calendar";
-import { TimePicker } from "@/components/ui/time-picker";
 
 const PLATFORM_ICONS: Record<
 	string,
@@ -623,7 +623,7 @@ export function Composer({
 						{isEditing ? (
 							<>
 								Edit
-								<span className="text-primary font-light"> this one.</span>
+								<span className="text-primary"> this one.</span>
 							</>
 						) : (
 							<>
@@ -1505,7 +1505,7 @@ function SchedulePopover({
 	// Parse scheduledAt into date and time components
 	const selectedDate = scheduledAt ? new Date(scheduledAt) : undefined;
 	const [selectedTime, setSelectedTime] = useState<string>(
-		scheduledAt ? scheduledAt.slice(11, 16) : "12:00"
+		scheduledAt ? scheduledAt.slice(11, 16) : "12:00",
 	);
 
 	// Update time when scheduledAt changes externally
@@ -1518,7 +1518,17 @@ function SchedulePopover({
 	useEffect(() => {
 		if (!open) return;
 		const onDown = (e: MouseEvent) => {
-			if (!ref.current?.contains(e.target as Node)) setOpen(false);
+			const target = e.target as HTMLElement | null;
+			if (!target) return;
+			if (ref.current?.contains(target)) return;
+			// Ignore clicks inside portaled popups (e.g. the TimePicker hour select).
+			if (
+				target.closest(
+					'[role="listbox"],[role="option"],[role="dialog"],[data-floating-ui-portal]',
+				)
+			)
+				return;
+			setOpen(false);
 		};
 		const onKey = (e: KeyboardEvent) => {
 			if (e.key === "Escape") setOpen(false);
