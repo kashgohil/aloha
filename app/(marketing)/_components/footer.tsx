@@ -1,5 +1,5 @@
 import { footerLinks, routes } from "@/lib/routes";
-import { Rss, ShieldCheck } from "lucide-react";
+import { Mail, Rss, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { SOCIAL_ICONS } from "./social-icons";
 
@@ -69,56 +69,55 @@ export function MarketingFooter() {
 				</div>
 
 				<div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8 py-10 border-b border-border">
-					<ul aria-hidden className="flex items-center flex-wrap gap-1">
-						{SOCIAL_ICONS.map((s) => (
-							<li key={s.n}>
-								<span
-									className="w-10 h-10 grid place-items-center rounded-full border border-border-strong text-ink/70"
-									title={`${s.n} (coming soon)`}
-								>
-									<svg
-										viewBox="0 0 24 24"
-										className="w-[15px] h-[15px]"
-										fill={s.custom ? undefined : "currentColor"}
+					<ul className="flex items-center flex-wrap gap-1">
+						{SOCIAL_ICONS.filter((s) => s.n === "X" || s.n === "LinkedIn").map((s) => {
+							const href =
+								s.n === "X"
+									? "https://x.com/usealoha"
+									: "https://www.linkedin.com/company/usealoha";
+							return (
+								<li key={s.n}>
+									<a
+										href={href}
+										target="_blank"
+										rel="noreferrer me"
+										aria-label={s.n}
+										title={s.n}
+										className="w-10 h-10 grid place-items-center rounded-full border border-border-strong text-ink/70 hover:text-ink transition-colors"
 									>
-										{s.custom ?? <path d={s.path} />}
-									</svg>
-								</span>
-							</li>
-						))}
+										<svg
+											viewBox="0 0 24 24"
+											className="w-[15px] h-[15px]"
+											fill={s.custom ? undefined : "currentColor"}
+										>
+											{s.custom ?? <path d={s.path} />}
+										</svg>
+									</a>
+								</li>
+							);
+						})}
 						<li>
-							<span
-								className="w-10 h-10 grid place-items-center rounded-full border border-border-strong text-ink/70"
-								title="RSS (coming soon)"
+							<a
+								href="mailto:hello@usealoha.app"
+								aria-label="Email"
+								title="Email"
+								className="w-10 h-10 grid place-items-center rounded-full border border-border-strong text-ink/70 hover:text-ink transition-colors"
+							>
+								<Mail className="w-4 h-4" />
+							</a>
+						</li>
+						<li>
+							<a
+								href="/feed.xml"
+								aria-label="RSS feed"
+								title="RSS feed"
+								className="w-10 h-10 grid place-items-center rounded-full border border-border-strong text-ink/70 hover:text-ink transition-colors"
 							>
 								<Rss className="w-4 h-4" />
-							</span>
+							</a>
 						</li>
 					</ul>
 					<div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-[13px]">
-						<div className="inline-flex items-center gap-2">
-							<svg
-								viewBox="0 0 24 24"
-								className="w-4 h-4 text-ink/60"
-								fill="none"
-								stroke="currentColor"
-								strokeWidth="1.8"
-							>
-								<circle cx="12" cy="12" r="9.5" />
-								<path d="M3 12h18M12 2.5c3 3 3 16 0 19M12 2.5c-3 3-3 16 0 19" />
-							</svg>
-							<select
-								aria-label="Language"
-								className="bg-transparent border-0 font-medium outline-none cursor-pointer"
-							>
-								<option>English (US)</option>
-								<option>English (UK)</option>
-								<option>Français</option>
-								<option>Español</option>
-								<option>Deutsch</option>
-								<option>日本語</option>
-							</select>
-						</div>
 						<Link
 							href={routes.resources.status}
 							className="pencil-link inline-flex items-center gap-2"
@@ -137,7 +136,7 @@ export function MarketingFooter() {
 
 				<div className="py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-[12.5px] text-ink/60">
 					<p>
-						© 2026 Aloha, Inc. Made with uncomfortable amounts of
+						© 2026 Aloha Social Systems. Made with uncomfortable amounts of
 						<span className="font-display italic text-ink"> coffee</span> and
 						<span className="font-display italic text-ink"> care</span> in
 						India.
