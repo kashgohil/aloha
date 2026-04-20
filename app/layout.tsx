@@ -28,6 +28,13 @@ export const metadata: Metadata = {
 	},
 	description: DEFAULT_DESCRIPTION,
 	applicationName: SITE_NAME,
+	alternates: {
+		types: {
+			"application/atom+xml": [
+				{ url: "/feed.xml", title: `${SITE_NAME} — What's new` },
+			],
+		},
+	},
 	icons: {
 		icon: [
 			{ url: "/aloha.svg", type: "image/svg+xml" },
