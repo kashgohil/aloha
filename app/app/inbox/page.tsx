@@ -2,7 +2,7 @@ import { db } from "@/db";
 import { inboxMessages } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { InboxList } from "./_components/inbox-list";
 import { InboxThread } from "./_components/inbox-thread";
 import { InboxEmpty } from "./_components/inbox-empty";
@@ -37,25 +37,31 @@ export default async function InboxPage({
   if (filter === "replies") where.push(eq(inboxMessages.reason, "reply"));
   if (filter === "mentions") where.push(eq(inboxMessages.reason, "mention"));
 
-  const messages = await db
-    .select()
-    .from(inboxMessages)
-    .where(and(...where))
-    .orderBy(desc(inboxMessages.platformCreatedAt))
-    .limit(200);
-
-  const allForCounts = await db
-    .select({
-      isRead: inboxMessages.isRead,
-      reason: inboxMessages.reason,
-    })
-    .from(inboxMessages)
-    .where(eq(inboxMessages.userId, user.id));
+  // Messages + counts are independent — fire concurrently. Counts are
+  // computed in SQL rather than scanning the whole inbox in Node.
+  const [messages, countsRows] = await Promise.all([
+    db
+      .select()
+      .from(inboxMessages)
+      .where(and(...where))
+      .orderBy(desc(inboxMessages.platformCreatedAt))
+      .limit(200),
+    db
+      .select({
+        all: sql<number>`count(*)`,
+        unread: sql<number>`count(*) filter (where ${inboxMessages.isRead} = false)`,
+        replies: sql<number>`count(*) filter (where ${inboxMessages.reason} = 'reply')`,
+        mentions: sql<number>`count(*) filter (where ${inboxMessages.reason} = 'mention')`,
+      })
+      .from(inboxMessages)
+      .where(eq(inboxMessages.userId, user.id)),
+  ]);
+  const countRow = countsRows[0];
   const counts: Record<Filter, number> = {
-    all: allForCounts.length,
-    unread: allForCounts.filter((m) => !m.isRead).length,
-    replies: allForCounts.filter((m) => m.reason === "reply").length,
-    mentions: allForCounts.filter((m) => m.reason === "mention").length,
+    all: Number(countRow?.all ?? 0),
+    unread: Number(countRow?.unread ?? 0),
+    replies: Number(countRow?.replies ?? 0),
+    mentions: Number(countRow?.mentions ?? 0),
   };
 
   let threadMessages: typeof messages = [];
@@ -86,8 +92,12 @@ export default async function InboxPage({
             Messages
           </p>
           <h1 className="mt-3 font-display text-[44px] lg:text-[56px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
-            Inbox
+            Inbox<span className="text-primary font-light">.</span>
           </h1>
+          <p className="mt-3 text-[14px] text-ink/65 max-w-xl leading-[1.55]">
+            Replies, mentions, and DMs from your connected channels — all in
+            one place so nothing slips by.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <MarkAllReadButton />
