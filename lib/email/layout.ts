@@ -62,7 +62,7 @@ export function renderLayout({
       <table role="presentation" width="560" cellpadding="0" cellspacing="0" border="0" style="width:560px;max-width:560px;margin-top:22px;">
         <tr>
           <td align="center" style="padding:0 24px;font-size:12px;line-height:1.55;color:${COLORS.inkSoft};">
-            Aloha, Inc. · The calm social media OS<br />
+            Aloha Social Systems · The calm social media OS<br />
             You're getting this because you started creating a workspace at usealoha.app.
           </td>
         </tr>

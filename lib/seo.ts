@@ -86,7 +86,7 @@ export function organizationJsonLd() {
     "@type": "Organization",
     "@id": ORGANIZATION_ID,
     name: SITE_NAME,
-    legalName: "Aloha, Inc.",
+    legalName: "Aloha Social Systems",
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
@@ -97,7 +97,7 @@ export function organizationJsonLd() {
     description: DEFAULT_DESCRIPTION,
     slogan: SITE_TAGLINE,
     sameAs: SOCIAL_PROFILES,
-    foundingDate: "2025-03",
+    foundingDate: "2026",
     foundingLocation: {
       "@type": "Place",
       address: {

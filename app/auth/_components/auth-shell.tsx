@@ -72,7 +72,7 @@ export function AuthShell({
 				</div>
 
 				<footer className="px-6 lg:px-10 py-6 flex flex-wrap items-center justify-between gap-4 text-[12px] text-ink/55 border-t border-border">
-					<p>© {new Date().getFullYear()} Aloha, Inc.</p>
+					<p>© {new Date().getFullYear()} Aloha Social Systems</p>
 					<div className="flex items-center gap-5">
 						<Link href={routes.legal.privacy} className="pencil-link">
 							Privacy

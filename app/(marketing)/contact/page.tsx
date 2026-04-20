@@ -295,7 +295,7 @@ export default function ContactPage() {
 						</div>
 
 						<p className="mt-8 text-[13px] text-ink/55 max-w-xl">
-							For legal notices: Aloha, Inc., c/o the Bengaluru address above.
+							For legal notices: Aloha Social Systems, c/o the Bengaluru address above.
 							Registered in India.
 						</p>
 					</div>
