@@ -64,22 +64,33 @@ export default async function ComposerPage({
   if (postId) {
     // Load the post for editing. Ownership-checked. Scheduled-time stays
     // read-only for non-draft posts; content/platforms/media edits flow
-    // through updatePost.
-    const [post] = await db
-      .select({
-        id: posts.id,
-        content: posts.content,
-        platforms: posts.platforms,
-        media: posts.media,
-        channelContent: posts.channelContent,
-        status: posts.status,
-        scheduledAt: posts.scheduledAt,
-        sourceIdeaId: posts.sourceIdeaId,
-        draftMeta: posts.draftMeta,
-      })
-      .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
-      .limit(1);
+    // through updatePost. Post + its source idea are independent queries
+    // now that we know the url param; fire them together.
+    const [postRows, ideaRows] = await Promise.all([
+      db
+        .select({
+          id: posts.id,
+          content: posts.content,
+          platforms: posts.platforms,
+          media: posts.media,
+          channelContent: posts.channelContent,
+          status: posts.status,
+          scheduledAt: posts.scheduledAt,
+          sourceIdeaId: posts.sourceIdeaId,
+          draftMeta: posts.draftMeta,
+        })
+        .from(posts)
+        .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
+        .limit(1),
+      db
+        .select({ id: ideas.id, title: ideas.title, body: ideas.body })
+        .from(ideas)
+        .innerJoin(posts, eq(posts.sourceIdeaId, ideas.id))
+        .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
+        .limit(1),
+    ]);
+    const [post] = postRows;
+    const [idea] = ideaRows;
     if (post) {
       editingPostId = post.id;
       initialContent = post.content;
@@ -90,15 +101,8 @@ export default async function ComposerPage({
       initialScheduledAt = post.scheduledAt?.toISOString() ?? null;
       initialDraftMeta = post.draftMeta ?? null;
       sourceIdeaId = post.sourceIdeaId;
-      if (sourceIdeaId) {
-        const [idea] = await db
-          .select({ title: ideas.title, body: ideas.body })
-          .from(ideas)
-          .where(eq(ideas.id, sourceIdeaId))
-          .limit(1);
-        if (idea) {
-          sourceIdeaTitle = idea.title ?? idea.body.slice(0, 60);
-        }
+      if (idea) {
+        sourceIdeaTitle = idea.title ?? idea.body.slice(0, 60);
       }
     }
   } else if (ideaId) {
