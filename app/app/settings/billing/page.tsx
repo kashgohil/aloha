@@ -8,8 +8,9 @@ import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { routes } from "@/lib/routes";
 import { and, eq, notInArray } from "drizzle-orm";
-import { CheckCircle2, Sparkle } from "lucide-react";
+import { Sparkle } from "lucide-react";
 import { redirect } from "next/navigation";
+import { FlashToast } from "@/components/ui/flash-toast";
 import { ChannelAdjuster } from "./_components/channel-adjuster";
 import { DangerZone } from "./_components/danger-zone";
 import { IntervalSwitch } from "./_components/interval-switch";
@@ -20,10 +21,6 @@ import { PastDueBanner } from "./_components/past-due-banner";
 const IS_DEV = process.env.NODE_ENV === "development";
 
 export const dynamic = "force-dynamic";
-
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-const first = (v: string | string[] | undefined) =>
-	Array.isArray(v) ? v[0] : v;
 
 function formatMoney(n: number) {
 	const r = Math.round(n * 100) / 100;
@@ -38,22 +35,30 @@ function formatDate(d: Date) {
 	}).format(d);
 }
 
-export default async function BillingPage({
-	searchParams,
-}: {
-	searchParams: SearchParams;
-}) {
+export default async function BillingPage() {
 	const session = await auth();
 	if (!session?.user?.id) redirect(routes.signin);
 
 	const userId = session.user.id;
-	const params = await searchParams;
 	const sub = await getLogicalSubscription(userId);
-	const flash = first(params.success)
-		? "checkout"
-		: first(params.canceled)
-			? "canceled"
-			: null;
+	const flashToast = (
+		<FlashToast
+			entries={[
+				{
+					param: "success",
+					value: "1",
+					type: "success",
+					message: "Your subscription is up to date.",
+				},
+				{
+					param: "canceled",
+					value: "1",
+					type: "info",
+					message: "Your plan is set to cancel at the end of this period.",
+				},
+			]}
+		/>
+	);
 
 	const channelRows = await db
 		.select({ provider: accounts.provider })
@@ -97,7 +102,7 @@ export default async function BillingPage({
 	if (sub.plan === "free") {
 		return (
 			<div className="max-w-4xl space-y-8">
-				{flash ? <FlashBanner kind={flash} /> : null}
+				{flashToast}
 				<FreePlanHero connectedChannels={connectedChannels} />
 				<UpgradeBlock initialChannels={Math.max(5, connectedChannels)} />
 			</div>
@@ -118,7 +123,7 @@ export default async function BillingPage({
 	return (
 		<div className="max-w-4xl space-y-8">
 			{sub.pastDue ? <PastDueBanner /> : null}
-			{flash ? <FlashBanner kind={flash} /> : null}
+			{flashToast}
 
 			<PlanSummary
 				plan={sub.plan}
@@ -160,21 +165,6 @@ export default async function BillingPage({
 				freeTierChannels={FREE_TIER_CHANNELS}
 				currentChannels={sub.channels}
 			/>
-		</div>
-	);
-}
-
-function FlashBanner({ kind }: { kind: "checkout" | "canceled" }) {
-	const isCancel = kind === "canceled";
-	return (
-		<div
-			role="status"
-			className="flex items-start gap-3 rounded-2xl border border-peach-300 bg-peach-100 px-4 py-3 text-[13.5px] text-ink"
-		>
-			<CheckCircle2 className="w-4 h-4 mt-[2px] text-ink shrink-0" />
-			{isCancel
-				? "Your plan is set to cancel at the end of this period."
-				: "Your subscription is up to date."}
 		</div>
 	);
 }

@@ -1,4 +1,5 @@
-import { AlertCircle, CheckCircle2, Building2, Heart, Sparkles, User, Users } from "lucide-react";
+import { AlertCircle, Building2, Heart, Sparkles, User, Users } from "lucide-react";
+import { FlashToast } from "@/components/ui/flash-toast";
 import { getCurrentUser } from "@/lib/current-user";
 import { updateProfile } from "../actions";
 import { TimezoneSelect } from "@/app/auth/onboarding/_components/timezone-select";
@@ -14,10 +15,6 @@ const ROLES = [
   { value: "agency", label: "Agency", hint: "Many clients", Icon: Building2 },
   { value: "nonprofit", label: "Nonprofit", hint: "Mission-first", Icon: Heart },
 ] as const;
-
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-const first = (v: string | string[] | undefined) =>
-  Array.isArray(v) ? v[0] : v;
 
 function getTimezones(): string[] {
   const supported = (
@@ -40,27 +37,22 @@ function getTimezones(): string[] {
       ];
 }
 
-export default async function ProfileSettingsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function ProfileSettingsPage() {
   const user = (await getCurrentUser())!;
-  const params = await searchParams;
-  const saved = first(params.saved) === "1";
   const zones = getTimezones();
 
   return (
     <div className="max-w-4xl space-y-6">
-      {saved ? (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-2xl border border-peach-300 bg-peach-100 px-4 py-3 text-[13.5px] text-ink"
-        >
-          <CheckCircle2 className="w-4 h-4 mt-[2px] text-ink shrink-0" />
-          Your profile is up to date.
-        </div>
-      ) : null}
+      <FlashToast
+        entries={[
+          {
+            param: "saved",
+            value: "1",
+            type: "success",
+            message: "Profile saved.",
+          },
+        ]}
+      />
 
       <form action={updateProfile}>
         <Section

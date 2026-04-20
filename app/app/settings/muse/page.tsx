@@ -13,6 +13,7 @@ import {
 } from "@/app/actions/corpus";
 import { loadCurrentVoice } from "@/lib/ai/voice";
 import { getCurrentUser } from "@/lib/current-user";
+import { FlashToast } from "@/components/ui/flash-toast";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
 import { Slider } from "./_components/slider";
 import { SyncNotionButton } from "./_components/sync-button";
@@ -24,17 +25,8 @@ export const maxDuration = 300;
 
 const RECENT_SAMPLE_LIMIT = 20;
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-const firstParam = (v: string | string[] | undefined) =>
-  Array.isArray(v) ? v[0] : v;
-
-export default async function MuseSettingsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function MuseSettingsPage() {
   const user = (await getCurrentUser())!;
-  const params = await searchParams;
 
   const [voice, recentSamples, notion, corpusRows] = await Promise.all([
     loadCurrentVoice(user.id),
@@ -72,8 +64,6 @@ export default async function MuseSettingsPage({
       .orderBy(desc(brandCorpus.fetchedAt)),
   ]);
 
-  const notionFlash = firstParam(params.notion);
-
   const currentTone = (voice?.tone ?? {}) as {
     summary?: string;
     descriptors?: string[];
@@ -97,18 +87,25 @@ export default async function MuseSettingsPage({
         </p>
       </div>
 
-      {notionFlash === "connected" ? (
-        <p className="rounded-2xl border border-primary/40 bg-primary-soft/50 px-4 py-3 text-[13px] text-ink">
-          Notion workspace connected. Run a sync below to pull your pages into
-          the corpus.
-        </p>
-      ) : null}
-      {notionFlash === "error" ? (
-        <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-[13px] text-red-700">
-          Couldn&apos;t connect Notion. Try again — if it keeps failing, make
-          sure your integration has OAuth enabled and the redirect URI matches.
-        </p>
-      ) : null}
+      <FlashToast
+        entries={[
+          {
+            param: "notion",
+            value: "connected",
+            type: "success",
+            message:
+              "Notion connected. Run a sync below to pull your pages into the corpus.",
+          },
+          {
+            param: "notion",
+            value: "error",
+            type: "error",
+            message:
+              "Couldn't connect Notion. Make sure OAuth is enabled and the redirect URI matches.",
+          },
+        ]}
+      />
+
 
       <KnowledgeSources notion={notion} corpus={corpusRows} />
 

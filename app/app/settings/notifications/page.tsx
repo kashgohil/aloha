@@ -5,18 +5,11 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { updateNotificationPreferences } from "../actions";
 import { cn } from "@/lib/utils";
+import { FlashToast } from "@/components/ui/flash-toast";
 
 export const dynamic = "force-dynamic";
 
-type SearchParams = Promise<Record<string, string | string[] | undefined>>;
-const first = (v: string | string[] | undefined) =>
-  Array.isArray(v) ? v[0] : v;
-
-export default async function NotificationsSettingsPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function NotificationsSettingsPage() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
@@ -36,20 +29,18 @@ export default async function NotificationsSettingsPage({
     notifyInboxSyncIssues: true,
   };
 
-  const params = await searchParams;
-  const saved = first(params.saved) === "1";
-
   return (
     <div className="max-w-4xl space-y-6">
-      {saved ? (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-2xl border border-peach-300 bg-peach-100 px-4 py-3 text-[13.5px] text-ink"
-        >
-          <CheckCircle2 className="w-4 h-4 mt-[2px] text-ink shrink-0" />
-          Notification preferences saved.
-        </div>
-      ) : null}
+      <FlashToast
+        entries={[
+          {
+            param: "saved",
+            value: "1",
+            type: "success",
+            message: "Notification preferences saved.",
+          },
+        ]}
+      />
 
       <form action={updateNotificationPreferences}>
         <Section
