@@ -42,7 +42,7 @@ export default async function LibraryPage() {
       <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-            {user.workspaceName ?? "Your workspace"}
+            Library
           </p>
           <h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
             Library<span className="text-primary font-light">.</span>
