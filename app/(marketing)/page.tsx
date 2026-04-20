@@ -250,16 +250,23 @@ export default function LandingPage() {
 				<div className="py-20 pb-28 sm:py-24 sm:pb-32 lg:py-32 lg:pb-40 bg-background wavy">
 					<div className="max-w-4xl mx-auto px-6 text-center">
 						<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/65 mb-6 sm:mb-8">
-							Why we built this
+							Why I built this
 						</p>
 						<blockquote className="font-display text-[26px] sm:text-[42px] lg:text-[54px] leading-[1.15] sm:leading-[1.08] tracking-[-0.02em] text-ink">
-							I started Aloha the week a founder I loved quietly
-							<span className="text-primary"> quit posting. </span>
-							Not because she stopped having things to say — because the tools
-							had made the saying{" "}
-							<span className="text-peach-400">joyless</span>. I'm trying to
-							undo that.
+							I started Aloha because I wanted to
+							<span className="text-primary"> post reliably </span>
+							across every platform I cared about — and nothing I tried would
+							actually <span className="text-peach-400">teach me the craft</span>{" "}
+							behind doing it well. So I'm building the tool I kept looking for.
 						</blockquote>
+						<p className="mt-8 max-w-2xl mx-auto text-[15px] sm:text-[16.5px] text-ink/75 leading-[1.65]">
+							Every other app I tried was a queue with a clock on it. None of
+							them helped me find my voice, shape a week of posts around a
+							single idea, or learn why a Tuesday caption outperformed a
+							Thursday one. Aloha is the opposite of that — a patient operator
+							that schedules on your behalf and, quietly, makes you a better
+							writer while it does.
+						</p>
 						<div className="mt-10 flex items-center justify-center gap-3 text-[13px] text-ink/70">
 							<span className="w-8 h-px bg-ink/30" />
 							<span className="font-display text-[15px] text-ink">
@@ -859,6 +866,11 @@ export default function LandingPage() {
 								tag: "AI-ready · Connect soon",
 								status: "ai-ready" as const,
 							},
+							{
+								n: "Telegram",
+								tag: "AI-ready · Connect soon",
+								status: "ai-ready" as const,
+							},
 						].map((c) => {
 							const icon = SOCIAL_ICONS.find((i) => i.n === c.n);
 							const isLive = c.status === "live";
@@ -908,10 +920,6 @@ export default function LandingPage() {
 							<span className="font-medium text-ink">AI-ready</span> — Generate
 							now, connect soon
 						</span>
-						<span className="inline-flex items-center gap-2 ml-auto">
-							<Sparkle className="w-3.5 h-3.5 text-primary shrink-0" />
-							Coming: Substack Notes
-						</span>
 					</div>
 				</div>
 			</section>
@@ -921,9 +929,9 @@ export default function LandingPage() {
 				<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-16 sm:py-20 lg:py-24 grid grid-cols-2 lg:grid-cols-4 lg:divide-x divide-white/20 gap-y-10 gap-x-6">
 					{[
 						{ v: "Apr '26", l: "Public launch", s: "fresh out of beta" },
-						{ v: "Solo", l: "One builder", s: "from Bengaluru, India" },
+						{ v: "Solo", l: "One builder", s: "from India" },
 						{ v: "Free", l: "Forever tier", s: "three channels, no card" },
-						{ v: "Soon", l: "Status page", s: "live health at /status" },
+						{ v: "12", l: "Channels covered", s: "generate for all, publish to live" },
 					].map((s, i) => (
 						<div
 							key={i}
@@ -948,17 +956,17 @@ export default function LandingPage() {
 					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 						<div className="max-w-3xl mb-16">
 							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
-								Early days
+								What you get on day one
 							</p>
 							<h2 className="font-display text-[30px] sm:text-[36px] lg:text-[52px] leading-[1.05] sm:leading-none tracking-[-0.02em]">
-								No user stories to share
-								<span className="text-primary"> yet.</span>
+								Quiet promises, kept
+								<span className="text-primary"> from the first login.</span>
 							</h2>
 							<p className="mt-6 text-[16px] sm:text-[17px] text-ink/75 leading-[1.6] max-w-2xl">
-								Aloha just launched. When real creators send something worth
-								quoting, I'll put it here — nothing paid, nothing invented.
-								Until then, here's what you'd actually see if you signed up
-								today.
+								Aloha is young, and that's the point — everything on this page
+								is shipping, not roadmap. Testimonials will land here when
+								creators send things worth quoting (nothing paid, nothing
+								invented). In the meantime, here's the shape of the deal.
 							</p>
 						</div>
 

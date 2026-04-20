@@ -20,29 +20,32 @@ export const metadata = makeMetadata({
 });
 
 const FAST_FACTS = [
-	{ v: "2025", l: "founded" },
+	{ v: "2026", l: "founded" },
 	{ v: "1", l: "person · founder-operator" },
-	{ v: "Bengaluru", l: "India · home base" },
+	{ v: "India", l: "home base" },
 	{ v: "Apr '26", l: "public launch" },
 ];
 
 const DOWNLOADS = [
 	{
 		h: "Full brand kit",
-		p: "Logo pack (SVG + PNG), wordmark variants, color palette tokens, usage don'ts. 14 MB zip.",
+		p: "Logo (SVG + PNG), favicon, and the full screenshot pack in one zip.",
 		cta: "Download kit.zip",
+		href: "/press/aloha-brand-kit.zip",
 		tone: "bg-peach-200",
 	},
 	{
 		h: "Logo — wordmark",
-		p: "Fraunces wordmark + indigo period. Primary on cream, inverse on ink. SVG.",
+		p: "Fraunces wordmark + indigo period. SVG for print and web.",
 		cta: "Logo (SVG)",
+		href: "/press/aloha-logo.svg",
 		tone: "bg-peach-100",
 	},
 	{
 		h: "Screenshot pack",
-		p: "Composer, Calendar, Inbox, Logic Matrix, Analytics. Cropped 16:10 and 9:16 for mobile press.",
+		p: "Composer, Calendar, Inbox, Logic Matrix, Analytics — WebP originals in one zip.",
 		cta: "Screenshots.zip",
+		href: "/press/screenshots.zip",
 		tone: "bg-primary-soft",
 	},
 ];
@@ -51,12 +54,12 @@ const QUOTES = [
 	{
 		by: "Kashyap Gohil, founder",
 		role: "Everything",
-		body: "The category is loud. The tools should help you post less, not more. That's the shape of what I'm building.",
+		body: "I treat the export button as the feature. If a customer can leave on any Tuesday afternoon, I earn the stay every month.",
 	},
 	{
 		by: "Kashyap Gohil, founder",
 		role: "Everything",
-		body: "I treat the export button as the feature. If a customer can leave on any Tuesday afternoon, I earn the stay every month.",
+		body: "The category is loud. The tools should help you post less, not more. That's the shape of what I'm building.",
 	},
 ];
 
@@ -149,15 +152,14 @@ export default function PressPage() {
 								code.
 							</p>
 							<p>
-								Founded in 2025 in Bengaluru by Kashyap Gohil, Aloha was built
-								to be the quiet alternative in a loud category. The product
-								entered public beta in Q1 2026 and opened to the public in
-								April 2026.
+								Founded in 2026 in India by Kashyap Gohil, Aloha was built to be
+								the quiet alternative in a loud category. The product entered
+								public beta in Q1 2026 and opened to the public in April 2026.
 							</p>
 							<p>
-								Aloha is an indie, bootstrapped project — one person, one
-								desk, one roadmap. No outside investors, no growth-loop
-								mechanics, no referral programme.
+								Aloha is an indie, bootstrapped project — one person, one desk,
+								one roadmap. No outside investors, no growth-loop mechanics, no
+								referral programme.
 							</p>
 						</div>
 					</div>
@@ -235,21 +237,22 @@ export default function PressPage() {
 									<p className="mt-3 text-[13.5px] text-ink/75 leading-[1.55]">
 										{d.p}
 									</p>
-									<button
-										type="button"
+									<a
+										href={d.href}
+										download
 										className="mt-auto self-start flex items-center gap-2 h-10 px-5 rounded-full bg-ink text-background text-[12.5px] font-medium hover:bg-primary transition-colors"
 									>
 										<Download className="w-3.5 h-3.5" />
 										{d.cta}
-									</button>
+									</a>
 								</article>
 							))}
 						</div>
 
 						<p className="mt-10 text-[12.5px] text-ink/55 max-w-xl font-mono">
-							Asset links in this kit currently resolve to placeholder zips
-							(press @ usealoha.app to request the real files while we migrate
-							the download CDN).
+							Need something else — a specific crop, a higher-res logo, or a
+							vector icon? Email press@usealoha.app and you'll get it back
+							within the business day.
 						</p>
 					</div>
 				</section>
@@ -336,8 +339,8 @@ export default function PressPage() {
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
 							{QUOTES.map((q, i) => (
 								<figure
-									key={q.by}
-									className={`p-8 lg:p-10 rounded-3xl ${i === 0 ? "bg-peach-200" : "bg-primary-soft"} flex flex-col`}
+									key={`${q.by}-${i}`}
+									className={`p-8 lg:p-10 rounded-3xl ${i === 0 ? "bg-peach-300" : "bg-primary-soft"} flex flex-col`}
 								>
 									<Quote className="w-7 h-7 text-ink/40 mb-5" />
 									<blockquote className="font-display text-[22px] lg:text-[26px] leading-[1.2] tracking-[-0.005em] text-ink">
@@ -363,38 +366,36 @@ export default function PressPage() {
 					className="absolute inset-0 opacity-20 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="max-w-[1180px] mx-auto px-6 lg:px-10">
-					<div className="p-10 lg:p-14 rounded-3xl overflow-hidden relative">
-						<div className="relative grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-8 items-center">
-							<div className="col-span-12 lg:col-span-8">
-								<Newspaper className="w-7 h-7 text-peach-300 mb-5" />
-								<h2 className="font-display text-[32px] lg:text-[44px] leading-[1.05] tracking-[-0.015em]">
-									Direct to a human,
-									<br />
-									<span className="text-peach-300">
-										same day in business hours.
-									</span>
-								</h2>
-								<p className="mt-5 text-[15px] text-background-elev/75 leading-[1.6] max-w-xl">
-									No form. No triage. Press requests land in the founder's
-									inbox and get a reply the same day during business hours.
-								</p>
-							</div>
-							<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
-								<a
-									href="mailto:press@usealoha.app"
-									className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-primary text-background text-[14px] font-medium hover:bg-primary/90 transition-colors"
-								>
-									press@usealoha.app
-									<ArrowRight className="w-4 h-4" />
-								</a>
-								<a
-									href="https://twitter.com/alohasocial"
-									className="pencil-link inline-flex items-center gap-2 text-[13.5px]"
-								>
-									@alohasocial on X
-									<ArrowUpRight className="w-3.5 h-3.5" />
-								</a>
-							</div>
+					<div className="relative grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-8 items-center">
+						<div className="col-span-12 lg:col-span-8">
+							<Newspaper className="w-7 h-7 text-peach-300 mb-5" />
+							<h2 className="font-display text-[32px] lg:text-[44px] leading-[1.05] tracking-[-0.015em]">
+								Direct to a human,
+								<br />
+								<span className="text-peach-300">
+									same day in business hours.
+								</span>
+							</h2>
+							<p className="mt-5 text-[15px] text-background-elev/75 leading-[1.6] max-w-xl">
+								No form. No triage. Press requests land in the founder's inbox
+								and get a reply the same day during business hours.
+							</p>
+						</div>
+						<div className="col-span-12 lg:col-span-4 flex flex-col gap-3 lg:items-end">
+							<a
+								href="mailto:press@usealoha.app"
+								className="inline-flex items-center gap-2 h-12 px-6 rounded-full bg-primary text-background text-[14px] font-medium hover:bg-primary/90 transition-colors"
+							>
+								press@usealoha.app
+								<ArrowRight className="w-4 h-4" />
+							</a>
+							<a
+								href="https://twitter.com/alohasocial"
+								className="pencil-link inline-flex items-center gap-2 text-[13.5px]"
+							>
+								@alohasocial on X
+								<ArrowUpRight className="w-3.5 h-3.5" />
+							</a>
 						</div>
 					</div>
 				</div>
