@@ -233,7 +233,7 @@ export function PricingComingSoon() {
 								<span className="text-peach-300">Muse is on the way.</span>
 							</h2>
 						</div>
-						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
+						<div className="col-span-8 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<Link
 								href={routes.signup}
 								className="inline-flex items-center gap-2 h-14 px-7 rounded-full text-background font-medium text-[15px] bg-primary transition-colors"

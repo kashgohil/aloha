@@ -5,10 +5,10 @@ import {
 	ArrowUpRight,
 	Check,
 	Download,
-	MessageSquareQuote,
 	Sparkle,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -197,8 +197,8 @@ export default function AnalyticsPage() {
 							<ul className="mt-8 space-y-3 text-[14.5px] text-ink/85">
 								{[
 									"Best-time windows by channel, updated weekly.",
-									"Repeatability score — distinguishes one-off spikes from patterns.",
-									"Cohort views: new followers vs. returning, without shady pixels.",
+									"Repeatability score — distinguishes one-off spikes from patterns (after 8 weeks of data).",
+									"Top posts surfaced with the exact line that carried them.",
 								].map((f) => (
 									<li key={f} className="flex items-start gap-3">
 										<Check
@@ -214,8 +214,8 @@ export default function AnalyticsPage() {
 						<div className="col-span-12 lg:col-span-6">
 							<ScreenshotPlaceholder
 								id="insights"
-								label="Insights panel — a weekly note that names the three posts that carried the lift."
-								notes="Needed: screenshot of Analytics > Insights. Shows a Friday weekly-note card with 'top three' thumbnails, a repeatability badge (Likely / Lucky / One-off), and a 'copy the pattern' CTA. 5:3 crop."
+								label="Dashboard — reach, engagement, and the cards that surface what to do next."
+								notes="Needed: /app/dashboard screenshot. Show reach + engagement cards with weekly deltas, the channels card, and the knowledge card visible. 5:3 crop."
 								aspect="aspect-[5/3]"
 								tone="bg-peach-100"
 							/>
@@ -235,13 +235,13 @@ export default function AnalyticsPage() {
 							<h2 className="font-display text-[36px] lg:text-[52px] leading-[1.02] tracking-[-0.02em]">
 								Which channel
 								<br />
-								<span className="text-primary">earns its hour?</span>
+								<span className="text-primary">earns its slot?</span>
 							</h2>
 						</div>
 						<p className="col-span-12 lg:col-span-5 lg:col-start-8 text-[16px] text-ink/70 leading-[1.6] self-end">
-							Compare reach per hour of work, not reach per post. You'll find
-							that one channel repays 3× what it asks and another is a polite
-							time-sink. Aloha just shows the math.
+							Reach per post, per channel, with a 12-week delta. You'll find
+							that one channel pays back 3× what another does — and that the
+							polite time-sinks stand out quickly. Aloha just shows the math.
 						</p>
 					</div>
 
@@ -251,7 +251,7 @@ export default function AnalyticsPage() {
 							{
 								n: "LinkedIn",
 								v: "4,820",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "+31%",
 								tone: "bg-primary-soft",
 								span: "lg:col-span-5",
@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
 							{
 								n: "Instagram",
 								v: "2,140",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "+8%",
 								tone: "bg-peach-200",
 								span: "lg:col-span-4",
@@ -267,7 +267,7 @@ export default function AnalyticsPage() {
 							{
 								n: "X",
 								v: "1,680",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "-2%",
 								tone: "bg-peach-100",
 								span: "lg:col-span-3",
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
 							{
 								n: "Threads",
 								v: "1,210",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "+44%",
 								tone: "bg-peach-300",
 								span: "lg:col-span-3",
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
 							{
 								n: "TikTok",
 								v: "3,540",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "+12%",
 								tone: "bg-peach-400",
 								span: "lg:col-span-4",
@@ -291,7 +291,7 @@ export default function AnalyticsPage() {
 							{
 								n: "YouTube",
 								v: "6,022",
-								s: "reach / hour of work",
+								s: "reach / post",
 								delta: "+19%",
 								tone: "bg-primary-soft",
 								span: "lg:col-span-5",
@@ -331,9 +331,10 @@ export default function AnalyticsPage() {
 							<ScreenshotPlaceholder
 								id="export"
 								label="Export panel — CSV, JSON, or a Notion-friendly markdown digest."
-								notes="Needed: screenshot of Analytics > Export. Three radio options (CSV / JSON / Markdown digest), date-range picker, 'include rejected posts' toggle. 4:3 crop, primary-soft bg."
+								notes="Coming soon. No analytics export surface shipped yet; placeholder stays illustrative until it does."
 								aspect="aspect-[4/3]"
 								tone="bg-primary-soft"
+								comingSoon
 							/>
 						</div>
 
@@ -373,32 +374,51 @@ export default function AnalyticsPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="relative bg-ink">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2.5 opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-24 lg:py-28 bg-primary-soft wavy">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
-						<figure className="relative bg-primary-soft rounded-3xl p-10 lg:p-14">
-							<MessageSquareQuote className="w-8 h-8 text-primary/60 mb-6" />
-							<blockquote className="font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"The analytics export alone paid for a year. My CFO agrees (I am
-								the CFO)."
-							</blockquote>
-							<figcaption className="mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-ink text-background-elev font-display flex items-center justify-center">
-									N
-								</span>
-								<div>
-									<p className="font-medium">Noah C.</p>
-									<p className="text-[13px] text-ink/60">
-										Indie consultancy · 5K on LinkedIn
-									</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
+						<FeatureDetails
+							eyebrow="On the dashboard"
+							heading={
+								<>
+									Numbers that lead somewhere.
+									<br />
+									<span className="text-primary">Not a vanity wall.</span>
+								</>
+							}
+							intro="Every card answers a question you'd actually ask on a Monday. Context first, chart second — never the other way around."
+							details={[
+								{
+									title: "Reach card",
+									body: "Weekly delta measured against the trailing four weeks, not a twelve-month mean. You see movement you can act on, not noise.",
+								},
+								{
+									title: "Engagement that names the hook",
+									body: "The top three posts with the exact line that carried them. Copy the pattern, don't reverse-engineer it blind.",
+								},
+								{
+									title: "Channel breakdown",
+									body: "Which network earned its slot this week, and which one you can skip guilt-free. Per-channel deltas on one row.",
+								},
+								{
+									title: "Feed digest",
+									body: "What your audience is actually reading — separate from what you posted. Borrowed curiosity, not just your own.",
+								},
+								{
+									title: "Knowledge card",
+									body: "Patterns Muse has noticed across your writing. Click to turn any of them straight into a composer prompt.",
+								},
+								{
+									title: "Active campaign tracking",
+									body: "Progress against the brief you set when you started the campaign. No drift, no orphaned posts, no open loops.",
+								},
+							]}
+						/>
 					</div>
 				</section>
 			</section>
@@ -421,14 +441,14 @@ export default function AnalyticsPage() {
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<Link
 								href={routes.signin}
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-ink text-background font-medium text-[15px] hover:bg-primary transition-colors"
+								className="inline-flex items-center gap-2 h-14 px-7 rounded-full font-medium text-[15px] bg-primary transition-colors"
 							>
 								Start free — no card
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<Link
 								href={routes.tools.bestTimeFinder}
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								Try the free best-time finder
 								<ArrowUpRight className="w-4 h-4" />

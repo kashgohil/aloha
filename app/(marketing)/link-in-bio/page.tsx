@@ -1,14 +1,8 @@
 import { routes } from "@/lib/routes";
 import { makeMetadata } from "@/lib/seo";
-import {
-	ArrowRight,
-	ArrowUpRight,
-	Check,
-	MessageSquareQuote,
-	Palette,
-	Users,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, Check, Palette, Users } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -229,9 +223,10 @@ export default function LinkInBioPage() {
 							<ScreenshotPlaceholder
 								id="design"
 								label="Design panel — type scale, colour, and link-cap shape controls."
-								notes="Needed: screenshot of Audience/Links > Design. Left sidebar has font picker, colour swatches, shape options (pill/square/rounded/outline), spacing slider. Right side is a live preview phone. 16:10 crop."
+								notes="Coming soon. In-app design editor isn't shipped yet; placeholder stays illustrative until the custom-theming UI lands."
 								aspect="aspect-[16/10]"
 								tone="bg-peach-100"
+								comingSoon
 							/>
 						</div>
 					</div>
@@ -299,9 +294,10 @@ export default function LinkInBioPage() {
 							<ScreenshotPlaceholder
 								id="link-analytics"
 								label="Per-link analytics — clicks, sources, and the three links that earn their real estate."
-								notes="Needed: screenshot of Audience/Links > Analytics. Shows a stacked bar chart per link, a 'top three' list, and a subtle source-breakdown (Instagram / Newsletter / Direct). 4:3 crop, primary-soft bg."
+								notes="Coming soon. Per-link click tracking + source breakdown isn't shipped yet; placeholder stays illustrative until it lands."
 								aspect="aspect-[4/3]"
 								tone="bg-primary-soft"
+								comingSoon
 							/>
 						</div>
 
@@ -341,33 +337,53 @@ export default function LinkInBioPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="bg-ink relative">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2! opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-24 lg:py-28 pb-32 lg:pb-40 bg-peach-300 wavy">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10">
-						<figure className="relative bg-peach-300 rounded-3xl p-10 lg:p-14">
-							<MessageSquareQuote className="w-8 h-8 text-ink/40 mb-6" />
-							<blockquote className="font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"The link page finally stopped looking like everyone else's. I
-								got a compliment on it. Like, unsolicited, in a DM. That doesn't
-								happen with Linktree."
-							</blockquote>
-							<figcaption className="mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-ink text-background-elev font-display flex items-center justify-center">
-									A
-								</span>
-								<div>
-									<p className="font-medium">Ainslee D.</p>
-									<p className="text-[13px] text-ink/60">
-										Studio owner · 14K on Instagram
-									</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
+						<FeatureDetails
+							eyebrow="On your public page"
+							heading={
+								<>
+									A page that reads
+									<br />
+									<span className="text-primary">
+										like the rest of your work.
+									</span>
+								</>
+							}
+							intro="Live at aloha.sh/u/your-handle the day you sign up. Lightweight, fast, and nothing you have to design from scratch."
+							details={[
+								{
+									title: "Live on day one",
+									body: "Your profile at /u/your-handle exists the moment you verify your email. No theme picker, no empty state — it just works.",
+								},
+								{
+									title: "Bio + channel links",
+									body: "List every place you post in one tap-sized page. Order them the way you actually want strangers to find you.",
+								},
+								{
+									title: "Pinned posts",
+									body: "Surface the three pieces of work you'd want a visitor to read first. Swap them as the work changes.",
+								},
+								{
+									title: "Newsletter capture",
+									body: "Collect an email without sending readers to a second tool. Broadcasts ship from the same workspace.",
+								},
+								{
+									title: "Honest unsubscribe",
+									body: "Every send carries a one-click unsubscribe link. Trust travels; you'd rather lose a reader than a reputation.",
+								},
+								{
+									title: "Fast by default",
+									body: "No third-party widgets, no bloat, no cookie banners. The page looks like the rest of Aloha and loads like it too.",
+								},
+							]}
+						/>
 					</div>
 				</section>
 			</section>

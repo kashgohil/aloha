@@ -60,7 +60,7 @@ export default function LandingPage() {
 			<section className="bg-peach-200 wavy min-h-[calc(100vh-72px)]">
 				<div className="relative flex-1 max-w-[1320px] w-full mx-auto px-6 lg:px-10 pt-16 lg:pt-28 pb-20 lg:pb-32 grid grid-cols-12 gap-x-0 gap-y-12 lg:gap-8 items-end">
 					<div className="col-span-12 lg:col-span-7 relative">
-						<div className="inline-flex items-center gap-2 mb-6 lg:mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/60">
+						<div className="inline-flex items-center gap-2 mb-6 lg:mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70">
 							The calm social media OS
 						</div>
 
@@ -68,7 +68,7 @@ export default function LandingPage() {
 							Show up
 							<br />
 							everywhere
-							<span className="text-ink/20">,</span>
+							<span className="text-ink/70">,</span>
 							<br />
 							<span className="text-primary font-light">without losing</span>
 							<br />
@@ -105,36 +105,21 @@ export default function LandingPage() {
 							<div className="rounded-3xl bg-background-elev border border-border-strong shadow-[0_30px_60px_-20px_rgba(23,20,18,0.25)] overflow-hidden">
 								{/* top bar */}
 								<div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 border-b border-border bg-muted/40">
-									<div className="flex items-center gap-2 text-[10px] sm:text-[10.5px] font-mono uppercase tracking-[0.14em] sm:tracking-[0.18em] text-ink/60 min-w-0">
+									<div className="flex items-center gap-2 text-[10px] sm:text-[10.5px] font-mono uppercase tracking-[0.14em] sm:tracking-[0.18em] text-ink/70 min-w-0">
 										<span className="relative flex w-2 h-2 shrink-0">
 											<span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
 											<span className="relative w-2 h-2 rounded-full bg-primary" />
 										</span>
 										<span className="truncate">campaign · monday note</span>
 									</div>
-									<span className="text-[10px] sm:text-[10.5px] text-ink/50 font-mono shrink-0">
+									<span className="text-[10px] sm:text-[10.5px] text-ink/65 font-mono shrink-0">
 										TUE · 13 APR
 									</span>
 								</div>
 
 								{/* hero image — editorial */}
 								<div className="aspect-5/4 bg-primary-soft relative overflow-hidden">
-									{/* grain-ish noise via svg */}
-									<svg
-										aria-hidden
-										viewBox="0 0 400 320"
-										className="absolute inset-0 w-full h-full opacity-20 mix-blend-multiply"
-									>
-										<filter id="grain">
-											<feTurbulence
-												type="fractalNoise"
-												baseFrequency="0.9"
-												numOctaves="2"
-											/>
-										</filter>
-										<rect width="100%" height="100%" filter="url(#grain)" />
-									</svg>
-									<span className="absolute top-4 left-5 text-[10px] font-mono uppercase tracking-[0.2em] text-primary-deep/70">
+									<span className="absolute top-4 left-5 text-[10px] font-mono uppercase tracking-[0.2em] text-primary-deep/80">
 										Field No. 041
 									</span>
 									<span className="absolute top-4 right-5 w-8 h-8 rounded-full border border-primary-deep/30 grid place-items-center text-primary-deep/70 font-display text-[15px]">
@@ -161,10 +146,10 @@ export default function LandingPage() {
 								{/* distribution table */}
 								<div className="px-5 pt-4 pb-5">
 									<div className="flex items-center justify-between mb-3">
-										<p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink/50">
+										<p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink/65">
 											Shipping to
 										</p>
-										<p className="text-[10px] font-mono text-ink/40">
+										<p className="text-[10px] font-mono text-ink/70">
 											4 networks · on-voice · Muse
 										</p>
 									</div>
@@ -208,12 +193,12 @@ export default function LandingPage() {
 														<span className="font-medium text-ink sm:w-[84px] sm:shrink-0 block">
 															{p.n}
 														</span>
-														<span className="text-ink/55 text-[11.5px] sm:text-[12px] block sm:truncate leading-snug">
+														<span className="text-ink/70 text-[11.5px] sm:text-[12px] block sm:truncate leading-snug">
 															{p.meta}
 														</span>
 													</div>
 												</div>
-												<span className="text-[11.5px] text-ink/55 font-mono shrink-0 mt-0.5">
+												<span className="text-[11.5px] text-ink/70 font-mono shrink-0 mt-0.5">
 													{p.t}
 												</span>
 											</li>
@@ -223,18 +208,21 @@ export default function LandingPage() {
 
 								{/* footer */}
 								<div className="px-4 sm:px-5 py-3 border-t border-border bg-muted/40 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-									<span className="text-[11px] text-ink/55">ready to ship</span>
+									<span className="text-[11px] text-ink/70">ready to ship</span>
 									<div className="flex items-center gap-3 flex-wrap">
-										<a
-											href="#"
-											className="text-[11.5px] text-ink/70 pencil-link"
+										<span
+											aria-hidden
+											className="text-[11.5px] text-ink/70 pencil-link pointer-events-none"
 										>
 											Preview each
-										</a>
-										<button className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 rounded-full bg-ink text-background text-[11.5px] font-medium">
+										</span>
+										<span
+											aria-hidden
+											className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 rounded-full bg-ink text-background text-[11.5px] font-medium pointer-events-none"
+										>
 											Schedule all
 											<ArrowRight className="w-3 h-3" />
-										</button>
+										</span>
 									</div>
 								</div>
 							</div>
@@ -248,7 +236,7 @@ export default function LandingPage() {
 								<span className="text-[11.5px] font-medium">
 									+248 impressions
 								</span>
-								<span className="text-[11px] text-ink/50 font-mono">
+								<span className="text-[11px] text-ink/65 font-mono">
 									LinkedIn · 2h
 								</span>
 							</div>
@@ -261,7 +249,7 @@ export default function LandingPage() {
 			<section className="bg-peach-200">
 				<div className="py-20 pb-28 sm:py-24 sm:pb-32 lg:py-32 lg:pb-40 bg-background wavy">
 					<div className="max-w-4xl mx-auto px-6 text-center">
-						<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/50 mb-6 sm:mb-8">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/65 mb-6 sm:mb-8">
 							Why we built this
 						</p>
 						<blockquote className="font-display text-[26px] sm:text-[42px] lg:text-[54px] leading-[1.15] sm:leading-[1.08] tracking-[-0.02em] text-ink">
@@ -272,7 +260,7 @@ export default function LandingPage() {
 							<span className="text-peach-400">joyless</span>. I'm trying to
 							undo that.
 						</blockquote>
-						<div className="mt-10 flex items-center justify-center gap-3 text-[13px] text-ink/60">
+						<div className="mt-10 flex items-center justify-center gap-3 text-[13px] text-ink/70">
 							<span className="w-8 h-px bg-ink/30" />
 							<span className="font-display text-[15px] text-ink">
 								kash, founder
@@ -288,7 +276,7 @@ export default function LandingPage() {
 				<div className="bg-peach-200 pb-8 wavy">
 					<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-20 lg:py-32 grid grid-cols-12 gap-x-0 gap-y-10 lg:gap-10 items-center">
 						<div className="col-span-12 lg:col-span-5">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-6">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-6">
 								Publish
 							</p>
 							<h2 className="font-display text-[36px] sm:text-[44px] lg:text-[64px] leading-[0.96] tracking-[-0.025em] text-ink">
@@ -334,14 +322,14 @@ export default function LandingPage() {
 							<div className="rounded-3xl bg-background-elev border border-ink/10 shadow-[0_30px_60px_-28px_rgba(23,20,18,0.25)] p-4 sm:p-5 lg:p-7 overflow-hidden">
 								<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
 									<div>
-										<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/50">
+										<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/65">
 											This week
 										</p>
 										<p className="font-display text-[22px] leading-tight">
 											April 13 — 19
 										</p>
 									</div>
-									<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11.5px] sm:text-[12px] text-ink/60">
+									<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11.5px] sm:text-[12px] text-ink/70">
 										<span className="inline-flex items-center gap-1.5">
 											<span className="w-2 h-2 rounded-full bg-primary" />{" "}
 											Scheduled
@@ -401,7 +389,7 @@ export default function LandingPage() {
 															className="py-3 flex items-start gap-3 first:pt-0 last:pb-0"
 														>
 															<div className="w-12 shrink-0 pt-0.5">
-																<p className="text-[9.5px] font-semibold tracking-[0.15em] text-ink/50">
+																<p className="text-[9.5px] font-semibold tracking-[0.15em] text-ink/65">
 																	{d}
 																</p>
 																<p className="font-display text-[18px] leading-none mt-0.5 text-ink">
@@ -410,7 +398,7 @@ export default function LandingPage() {
 															</div>
 															<div className="flex-1 min-w-0 flex flex-wrap gap-1.5">
 																{items.length === 0 ? (
-																	<span className="text-[11.5px] text-ink/35 italic mt-1">
+																	<span className="text-[11.5px] text-ink/70 italic mt-1">
 																		— rest day
 																	</span>
 																) : (
@@ -439,7 +427,7 @@ export default function LandingPage() {
 													return (
 														<div key={d} className="space-y-2 min-w-0">
 															<div className="flex items-baseline justify-between">
-																<span className="text-[10px] font-semibold tracking-[0.15em] text-ink/50">
+																<span className="text-[10px] font-semibold tracking-[0.15em] text-ink/65">
 																	{d}
 																</span>
 																<span className="font-display text-[14px] text-ink">
@@ -477,7 +465,7 @@ export default function LandingPage() {
 				<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-20 lg:py-28 pb-32 lg:pb-40">
 					<div className="grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-10 items-end mb-10 lg:mb-14">
 						<div className="col-span-12 lg:col-span-7">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4 inline-flex items-center gap-2">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4 inline-flex items-center gap-2">
 								<Sparkle className="w-3 h-3 text-primary" />
 								Meet Muse
 							</p>
@@ -550,11 +538,11 @@ export default function LandingPage() {
 							<div className="rounded-3xl bg-background-elev border border-border p-5 sm:p-7 lg:p-9 overflow-hidden">
 								<div className="flex items-start justify-between mb-6">
 									<div>
-										<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/50">
+										<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/65">
 											Reach · last 30 days
 										</p>
 										<p className="font-display text-[40px] leading-none mt-2">
-											421.8<span className="text-ink/30">K</span>
+											421.8<span className="text-ink/70">K</span>
 										</p>
 									</div>
 									<span className="inline-flex items-center gap-1 text-[12px] font-semibold text-primary bg-primary-soft px-2.5 py-1 rounded-full">
@@ -563,7 +551,11 @@ export default function LandingPage() {
 								</div>
 
 								{/* bar chart, pure svg */}
-								<svg viewBox="0 0 600 180" className="w-full h-44">
+								<svg
+									aria-hidden
+									viewBox="0 0 600 180"
+									className="w-full h-44"
+								>
 									{Array.from({ length: 30 }).map((_, i) => {
 										const h =
 											40 + Math.abs(Math.sin(i * 0.7)) * 110 + (i % 4) * 6;
@@ -599,13 +591,13 @@ export default function LandingPage() {
 											key={i}
 											className="sm:px-5 sm:first:pl-0 sm:last:pr-0 min-w-0"
 										>
-											<p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-ink/50">
+											<p className="text-[10.5px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] sm:tracking-[0.2em] text-ink/65">
 												{s.l}
 											</p>
 											<p className="font-display text-[18px] sm:text-[22px] mt-1">
 												{s.v}
 											</p>
-											<p className="text-[12px] text-ink/60 mt-0.5">{s.d}</p>
+											<p className="text-[12px] text-ink/70 mt-0.5">{s.d}</p>
 										</div>
 									))}
 								</div>
@@ -613,7 +605,7 @@ export default function LandingPage() {
 						</div>
 
 						<div className="col-span-12 lg:col-span-5 order-1 lg:order-2 lg:pl-8">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-6">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-6">
 								Analyze
 							</p>
 							<h2 className="font-display text-[36px] sm:text-[44px] lg:text-[64px] leading-[0.96] tracking-[-0.025em] text-ink">
@@ -651,11 +643,11 @@ export default function LandingPage() {
 									},
 								].map((x) => (
 									<div key={x.n} className="border-t border-ink/15 pt-3">
-										<p className="font-display text-[13px] text-ink/50">
+										<p className="font-display text-[13px] text-ink/65">
 											{x.n}
 										</p>
 										<p className="mt-1 font-medium text-[15px]">{x.t}</p>
-										<p className="mt-1 text-[13px] text-ink/60 leading-snug">
+										<p className="mt-1 text-[13px] text-ink/70 leading-snug">
 											{x.d}
 										</p>
 									</div>
@@ -681,18 +673,18 @@ export default function LandingPage() {
 								<br />
 								<span className="text-peach-300">every week after.</span>
 							</h2>
-							<p className="mt-8 max-w-[480px] text-[16.5px] leading-[1.55] text-background-elev/70">
+							<p className="mt-8 max-w-[480px] text-[16.5px] leading-[1.55] text-background-elev/80">
 								The Logic Matrix is a drag-to-connect flow for the things you'd
 								otherwise forget to do — welcome DMs, cross-posts, re-queues,
 								warm replies to comments that deserve one.
 							</p>
-							<a
-								href="#"
+							<Link
+								href={routes.product.logicMatrix}
 								className="pencil-link inline-flex mt-10 items-center gap-2 text-[15px] font-medium text-peach-300"
 							>
 								Poke at a live blueprint
 								<ArrowUpRight className="w-4 h-4" />
-							</a>
+							</Link>
 						</div>
 
 						<div className="col-span-12 lg:col-span-7">
@@ -749,7 +741,7 @@ export default function LandingPage() {
 										</div>
 									))}
 								</div>
-								<div className="relative mt-6 flex items-center justify-between text-[12px] text-background-elev/60 font-mono">
+								<div className="relative mt-6 flex items-center justify-between text-[12px] text-background-elev/75 font-mono">
 									<span>RUNNING — last tick 3s ago</span>
 									<span>17 people in flight</span>
 								</div>
@@ -768,7 +760,7 @@ export default function LandingPage() {
 						</div>
 
 						<div className="col-span-12 lg:col-span-5 lg:pl-6">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/60 mb-6">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-6">
 								Engage
 							</p>
 							<h2 className="font-display text-[36px] sm:text-[44px] lg:text-[64px] leading-[0.96] tracking-[-0.025em] text-ink">
@@ -793,7 +785,7 @@ export default function LandingPage() {
 				<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 					<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-10">
 						<div>
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
 								Channels
 							</p>
 							<h2 className="font-display text-[30px] sm:text-[36px] lg:text-[48px] leading-[1.05] sm:leading-none tracking-[-0.02em] max-w-xl">
@@ -801,7 +793,7 @@ export default function LandingPage() {
 								<span className="text-primary"> we already live there.</span>
 							</h2>
 						</div>
-						<p className="text-[14px] text-ink/60 max-w-sm">
+						<p className="text-[14px] text-ink/70 max-w-sm">
 							Generate content for all twelve platforms. Connect and
 							auto-publish for the ones marked{" "}
 							<span className="inline-flex items-center gap-1">
@@ -891,7 +883,7 @@ export default function LandingPage() {
 											<p className="font-display text-[20px] sm:text-[24px] lg:text-[26px] leading-none tracking-[-0.015em] break-words">
 												{c.n}
 											</p>
-											<p className="mt-1.5 sm:mt-2 text-[12px] sm:text-[12.5px] text-ink/55">
+											<p className="mt-1.5 sm:mt-2 text-[12px] sm:text-[12.5px] text-ink/70">
 												{c.tag}
 											</p>
 										</div>
@@ -905,7 +897,7 @@ export default function LandingPage() {
 							);
 						})}
 					</ul>
-					<div className="mt-8 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-4 gap-y-2">
+					<div className="mt-8 text-[13px] text-ink/70 flex flex-wrap items-center gap-x-4 gap-y-2">
 						<span className="inline-flex items-center gap-2">
 							<span className="w-2 h-2 rounded-full bg-ink" />
 							<span className="font-medium text-ink">Live</span> — Connect &
@@ -941,7 +933,7 @@ export default function LandingPage() {
 								{s.v}
 							</p>
 							<p className="mt-3 text-[13px] font-medium">{s.l}</p>
-							<p className="text-[12px] text-white/60">{s.s}</p>
+							<p className="text-[12px] text-white/80">{s.s}</p>
 						</div>
 					))}
 				</div>
@@ -955,7 +947,7 @@ export default function LandingPage() {
 				>
 					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 						<div className="max-w-3xl mb-16">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
 								Early days
 							</p>
 							<h2 className="font-display text-[30px] sm:text-[36px] lg:text-[52px] leading-[1.05] sm:leading-none tracking-[-0.02em]">
@@ -1005,7 +997,7 @@ export default function LandingPage() {
 						<div className="mt-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pt-10 border-t border-border">
 							<p className="font-display text-[22px] lg:text-[26px] leading-[1.2] tracking-[-0.01em] max-w-xl">
 								Want to be the first name here?
-								<span className="text-ink/55"> Free tier, no card.</span>
+								<span className="text-ink/70"> Free tier, no card.</span>
 							</p>
 							<div className="flex items-center gap-5">
 								<Link
@@ -1029,7 +1021,7 @@ export default function LandingPage() {
 				<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 					<div className="grid grid-cols-12 gap-x-0 gap-y-6 lg:gap-10 mb-12 lg:mb-14">
 						<div className="col-span-12 lg:col-span-5">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
 								Pricing
 							</p>
 							<h2 className="font-display text-[32px] sm:text-[40px] lg:text-[56px] leading-[0.98] tracking-[-0.02em]">
@@ -1082,7 +1074,7 @@ export default function LandingPage() {
 							<div className="mt-8 pt-6 border-t border-ink/10">
 								<p className="text-[12.5px] text-ink/65 mb-4">
 									<span className="font-medium text-ink">Free forever</span>
-									<span className="text-ink/45"> · no card, no expiry</span>
+									<span className="text-ink/65"> · no card, no expiry</span>
 								</p>
 								<Link
 									href={routes.signup}
@@ -1133,7 +1125,7 @@ export default function LandingPage() {
 									<span className="font-medium text-ink">
 										Join the Muse beta wishlist
 									</span>
-									<span className="text-ink/45">
+									<span className="text-ink/65">
 										{" "}
 										· we'll pick select participants
 									</span>
@@ -1149,14 +1141,14 @@ export default function LandingPage() {
 						</article>
 					</div>
 
-					<p className="mt-10 text-[13px] text-ink/60 flex flex-wrap items-center gap-x-6 gap-y-2">
+					<p className="mt-10 text-[13px] text-ink/70 flex flex-wrap items-center gap-x-6 gap-y-2">
 						<span>
 							<span className="font-display text-ink">
 								Free tier works for every channel we support
 							</span>
-							<span className="text-ink/55"> — no card, no expiry.</span>
+							<span className="text-ink/70"> — no card, no expiry.</span>
 						</span>
-						<span className="text-ink/30">·</span>
+						<span className="text-ink/70">·</span>
 						<span>
 							Muse and Broadcasts are invite-only during beta. Paid tiers to
 							follow.
@@ -1174,7 +1166,7 @@ export default function LandingPage() {
 					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
 						<div className="flex flex-col md:flex-row md:items-end md:justify-between mb-10 gap-4">
 							<div>
-								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
 									Field notes
 								</p>
 								<h2 className="font-display text-[30px] sm:text-[36px] lg:text-[48px] leading-[1.05] sm:leading-none tracking-[-0.02em]">
@@ -1183,12 +1175,12 @@ export default function LandingPage() {
 									<span className="text-primary">not ourselves.</span>
 								</h2>
 							</div>
-							<a
-								href="#"
+							<Link
+								href={routes.resources.index}
 								className="pencil-link inline-flex items-center gap-2 text-[14px] font-medium self-start md:self-auto"
 							>
 								Read all field notes <ArrowUpRight className="w-4 h-4" />
-							</a>
+							</Link>
 						</div>
 
 						<div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
@@ -1215,7 +1207,11 @@ export default function LandingPage() {
 									bg: "bg-peach-200",
 								},
 							].map((r, i) => (
-								<a key={i} href="#" className="group block">
+								<Link
+									key={i}
+									href={routes.resources.index}
+									className="group block"
+								>
 									<div
 										className={`aspect-4/3 rounded-2xl ${r.bg} flex items-end p-6 relative overflow-hidden`}
 									>
@@ -1232,10 +1228,10 @@ export default function LandingPage() {
 									<p className="mt-2 text-[14px] text-ink/65 leading-normal">
 										{r.d}
 									</p>
-									<p className="mt-3 text-[12px] text-ink/50 font-mono">
+									<p className="mt-3 text-[12px] text-ink/65 font-mono">
 										{r.read} read
 									</p>
-								</a>
+								</Link>
 							))}
 						</div>
 					</div>
@@ -1251,7 +1247,7 @@ export default function LandingPage() {
 				<div className="bg-primary-soft py-24 pb-28 lg:py-28 lg:pb-32 wavy">
 					<div className="max-w-[1100px] mx-auto px-6 lg:px-10 grid grid-cols-12 gap-x-0 gap-y-8 lg:gap-10">
 						<div className="col-span-12 lg:col-span-4">
-							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-4">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-4">
 								FAQ
 							</p>
 							<h2 className="font-display text-[30px] sm:text-[36px] lg:text-[44px] leading-[1.05] sm:leading-[1.02] tracking-[-0.02em]">
@@ -1304,11 +1300,11 @@ export default function LandingPage() {
 							Start free
 							<ArrowRight className="w-4 h-4" />
 						</Link>
-						<p className="text-[12px] text-background-elev/50 font-mono">
+						<p className="text-[12px] text-background-elev/75 font-mono">
 							or &nbsp;
-							<a href="#" className="pencil-link">
+							<Link href={routes.company.contact} className="pencil-link">
 								book a 20-min walkthrough →
-							</a>
+							</Link>
 						</p>
 					</div>
 				</div>

@@ -161,9 +161,10 @@ export default function MigrationGuidePage() {
             <ScreenshotPlaceholder
               id="import-panel"
               label="Import preview — Buffer rows on the left, Aloha draft previews on the right."
-              notes="Needed: screenshot of Settings > Import > Preview. Two columns, row-matched, with channel icons and status chips (imported / needs-review / skipped). 16:10 crop, background-elev bg preserved."
+              notes="Coming soon. Bulk importer UI isn't shipped yet; single-post import lives inside the composer. Placeholder stays illustrative until the migration tool lands."
               aspect="aspect-[16/10]"
               tone="bg-peach-100"
+              comingSoon
             />
           </div>
         </div>

@@ -5,12 +5,12 @@ import {
 	ArrowUpRight,
 	Check,
 	FileText,
-	MessageSquareQuote,
 	Sparkle,
 	Users,
 	Wand2,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -72,12 +72,13 @@ export default function ComposerPage() {
 						</h1>
 
 						<p className="mt-8 max-w-[520px] text-[17px] lg:text-[18px] leading-[1.55] text-ink/70">
-							Composer is the editor; <span className="font-medium text-ink">Muse</span>{" "}
-							is the voice model inside it. Muse learns your cadence — the way
-							you start sentences, when you dash, how long you go before a
-							break — and rewrites a single draft into native posts for each
-							network. Long for LinkedIn. Sharp for X. Soft for Instagram.
-							Your voice, eight ways, no mush.
+							Composer is the editor;{" "}
+							<span className="font-medium text-ink">Muse</span> is the voice
+							model inside it. Muse learns your cadence — the way you start
+							sentences, when you dash, how long you go before a break — and
+							rewrites a single draft into native posts for each network. Long
+							for LinkedIn. Sharp for X. Soft for Instagram. Your voice, eight
+							ways, no mush.
 						</p>
 
 						<div className="mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
@@ -231,7 +232,7 @@ export default function ComposerPage() {
 						<div className="col-span-12 lg:col-span-5 order-2 lg:order-1">
 							<ScreenshotPlaceholder
 								label="Muse — the voice model reads your best posts and copies the patterns."
-								notes="Needed: screenshot of Composer > Muse tab. Shows trained-on count, sample posts list with 'use / ignore' toggles, tone sliders (formal ←→ casual, short ←→ long, emoji density), and a 'Try a rewrite' button. Keep the cream bg, rounded-3xl. Crop to 5:3."
+								notes="Needed: /app/settings/muse screenshot. Shows the trained-on count, sample posts with toggles, and the tone sliders. 5:4 crop, cream bg preserved."
 								aspect="aspect-[5/4]"
 								tone="bg-peach-100"
 							/>
@@ -458,10 +459,11 @@ export default function ComposerPage() {
 
 						<div className="col-span-12 lg:col-span-6">
 							<ScreenshotPlaceholder
-								label="Approvals queue — editor's view of three drafts awaiting sign-off."
-								notes="Needed: screenshot of Composer > Approvals tab. Shows 3 draft cards with author avatar, per-channel previews collapsed, inline comment count, 'approve / request changes' buttons. Include one draft with a suggestion thread open. 5:3 crop."
+								label="Approvals queue — editor's view of drafts awaiting sign-off."
+								notes="Coming soon. Approvals/comment-thread workflow isn't shipped yet; placeholder stays illustrative until the feature lands."
 								aspect="aspect-[5/3]"
 								tone="bg-peach-100"
+								comingSoon
 							/>
 						</div>
 					</div>
@@ -551,31 +553,51 @@ export default function ComposerPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="relative bg-ink">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2.5! opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<div className="bg-background py-24 pb-32 lg:pb-40 lg:py-28 wavy">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10">
-						<figure className="relative rounded-3xl p-10 lg:p-14 overflow-hidden">
-							<MessageSquareQuote className="relative w-8 h-8 text-primary mb-6" />
-							<blockquote className="relative font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"Muse writes in my cadence now. My editor can't always tell
-								which drafts I wrote and which Aloha did — and she's been
-								editing me for four years."
-							</blockquote>
-							<figcaption className="relative mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-primary text-primary-foreground font-display flex items-center justify-center">
-									P
-								</span>
-								<div>
-									<p className="font-medium">Priya N.</p>
-									<p className="text-[13px]">Ghostwriter · 38K on LinkedIn</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
+						<FeatureDetails
+							eyebrow="Under the hood"
+							heading={
+								<>
+									What the Composer actually does,
+									<br />
+									<span className="text-primary">without asking twice.</span>
+								</>
+							}
+							intro="A single editor with the panels that matter stitched in — scoring, variants, fanout, scheduling. No mode-switching, no second tab."
+							details={[
+								{
+									title: "Voice-match score",
+									body: "Every draft gets a live match percentage and a tone read. Muse pulls from your last 200 best-performing posts so the bar is yours, not a template's.",
+								},
+								{
+									title: "Per-channel rewrites",
+									body: "The fanout panel drafts native variants for each connected channel — length, cadence, and platform convention, all respected, no copy-paste gymnastics.",
+								},
+								{
+									title: "Variants on demand",
+									body: "Ask for another angle and get three rewrites side-by-side. Keep one, fork another, ditch the rest.",
+								},
+								{
+									title: "Library at your elbow",
+									body: "Pull a past post, an asset, or a saved idea into the editor without leaving the page. Nothing you've written ever has to be retyped.",
+								},
+								{
+									title: "Preview-accurate",
+									body: "See how LinkedIn, X, Instagram, and Threads will actually render your post — line breaks, link cards, truncation — before you schedule it.",
+								},
+								{
+									title: "Schedule in place",
+									body: "Pick a slot from inside the composer; the calendar updates without a round-trip. Ship the whole set in one move.",
+								},
+							]}
+						/>
 					</div>
 				</div>
 			</section>
@@ -596,14 +618,14 @@ export default function ComposerPage() {
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<Link
 								href={routes.signin}
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-ink text-background font-medium text-[15px] hover:bg-primary transition-colors"
+								className="inline-flex items-center gap-2 h-14 px-7 rounded-full font-medium text-[15px] bg-primary transition-colors"
 							>
 								Start free — no card
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<Link
 								href={routes.for.teams}
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								<Users className="w-4 h-4" />
 								Working with a team? Read this

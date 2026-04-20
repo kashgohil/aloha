@@ -5,10 +5,10 @@ import {
 	ArrowUpRight,
 	Check,
 	GitBranch,
-	MessageSquareQuote,
 	Shield,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -365,9 +365,10 @@ export default function LogicMatrixPage() {
 							<ScreenshotPlaceholder
 								id="safety"
 								label="Safety panel — rate limits, allowlist, and the human-approve toggle."
-								notes="Needed: screenshot of Matrix > Safety. Shows per-hour rate limit slider, recipient allowlist/blocklist, quiet-hours window, 'approve before send' default toggle (on). 4:3 crop."
+								notes="Coming soon. Automation safety controls (rate limit, allowlist, quiet hours) aren't shipped in the builder yet; placeholder stays illustrative until they land."
 								aspect="aspect-[4/3]"
 								tone="bg-peach-100"
+								comingSoon
 							/>
 						</div>
 
@@ -408,31 +409,51 @@ export default function LogicMatrixPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="bg-ink relative">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2.5! opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-24 lg:py-28 bg-peach-200 pb-32 lg:pb-40 wavy">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10">
-						<figure className="relative bg-peach-200 rounded-3xl p-10 lg:p-14">
-							<MessageSquareQuote className="w-8 h-8 text-ink/40 mb-6" />
-							<blockquote className="font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"The automation matrix saved me 11 hours last month. I checked."
-							</blockquote>
-							<figcaption className="mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-ink text-background-elev font-display flex items-center justify-center">
-									L
-								</span>
-								<div>
-									<p className="font-medium">Leah S.</p>
-									<p className="text-[13px] text-ink/60">
-										Agency owner · 6 clients
-									</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
+						<FeatureDetails
+							eyebrow="Inside the Matrix"
+							heading={
+								<>
+									Automation that still
+									<br />
+									<span className="text-primary">asks before it speaks.</span>
+								</>
+							}
+							intro="Triggers, conditions, and actions on a canvas you can actually read. Every action node can require a human before it ships."
+							details={[
+								{
+									title: "Trigger → condition → action",
+									body: "Three primitives, connected on a Reactflow canvas. The shape of the logic maps to the shape on screen; nothing is hidden in menus.",
+								},
+								{
+									title: "Starter templates",
+									body: "Clone a welcome DM, a cross-post, an auto-thanks, a first-reply watcher. Tweak the copy and the rules; ship in minutes, not afternoons.",
+								},
+								{
+									title: "Human in the loop",
+									body: "Flip the approve-first chip on any action node. Aloha drafts; you press send — or schedule it, or discard it, or rewrite it.",
+								},
+								{
+									title: "Run history",
+									body: "Every execution logged with the full payload. Click a run to see what triggered, what matched, and what happened next.",
+								},
+								{
+									title: "Manual trigger",
+									body: "Fire a matrix once on demand when you need the behaviour but not the schedule. Great for testing; great for one-off sends.",
+								},
+								{
+									title: "Pause without tearing down",
+									body: "Freeze a single branch when it misbehaves. The rest of the graph keeps working; you fix the node, unpause, move on.",
+								},
+							]}
+						/>
 					</div>
 				</section>
 			</section>
@@ -455,14 +476,14 @@ export default function LogicMatrixPage() {
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<Link
 								href={routes.signin}
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-ink text-background font-medium text-[15px] hover:bg-primary transition-colors"
+								className="inline-flex items-center gap-2 h-14 px-7 rounded-full font-medium text-[15px] bg-primary transition-colors"
 							>
 								Start free — no card
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<Link
 								href={routes.resources.templates}
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								Browse matrix templates
 								<ArrowUpRight className="w-4 h-4" />

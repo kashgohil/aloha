@@ -10,7 +10,6 @@ import {
 	Sparkle,
 	Users,
 } from "lucide-react";
-import Link from "next/link";
 
 export const metadata = makeMetadata({
 	title: "Partners — agencies, integrations, and solution builders",
@@ -448,9 +447,7 @@ export default function PartnersPage() {
 							<h2 className="font-display text-[36px] sm:text-[48px] lg:text-[64px] leading-none tracking-[-0.02em]">
 								Running an agency or tool?
 								<br />
-								<span className="text-peach-300">
-									Let's talk.
-								</span>
+								<span className="text-peach-300">Let's talk.</span>
 							</h2>
 						</div>
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">

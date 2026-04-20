@@ -5,11 +5,11 @@ import {
 	ArrowUpRight,
 	Check,
 	Inbox as InboxIcon,
-	MessageSquareQuote,
 	Sparkle,
 	Users,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -240,8 +240,8 @@ export default function InboxPage() {
 						<div className="col-span-12 lg:col-span-6">
 							<ScreenshotPlaceholder
 								id="triage"
-								label="Triage view with three buckets — Questions, Praise, Needs-review."
-								notes="Needed: screenshot of Inbox > Triage. Kanban-style columns with coloured chips per channel and a sender-history annotation ('new' / 'returning' / 'customer'). 5:3 crop."
+								label="Unified inbox — every channel's comments and DMs in one list."
+								notes="Needed: /app/inbox screenshot. Two-pane layout — thread list on the left with channel chips, open thread + reply form on the right. 5:3 crop."
 								aspect="aspect-[5/3]"
 								tone="bg-peach-100"
 							/>
@@ -347,9 +347,10 @@ export default function InboxPage() {
 							<ScreenshotPlaceholder
 								id="assign"
 								label="Assignment view — a thread routed to a teammate with SLA chip."
-								notes="Needed: screenshot of Inbox thread detail with 'Assigned to: Maya R.' and an SLA-remaining chip ('replies in 42m'). Include the @mention typeahead open. 4:3 crop."
+								notes="Coming soon. Team assignment, SLA chips, and @mention typeahead aren't shipped yet; placeholder stays illustrative until the teams workflow lands."
 								aspect="aspect-[4/3]"
 								tone="bg-primary-soft"
+								comingSoon
 							/>
 						</div>
 
@@ -397,32 +398,51 @@ export default function InboxPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="bg-ink relative">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2! opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-24 lg:py-28 pb-32 lg:pb-40 wavy bg-peach-200">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10">
-						<figure className="relative rounded-3xl p-10 lg:p-14">
-							<MessageSquareQuote className="w-8 h-8 text-primary/60 mb-6" />
-							<blockquote className="font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"Finally a tool that doesn't make me feel like I'm running a
-								call center."
-							</blockquote>
-							<figcaption className="mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-ink text-background-elev font-display flex items-center justify-center">
-									A
-								</span>
-								<div>
-									<p className="font-medium">Ainslee D.</p>
-									<p className="text-[13px] text-ink/60">
-										Studio owner · 14K on Instagram
-									</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10">
+						<FeatureDetails
+							eyebrow="How the Inbox works"
+							heading={
+								<>
+									Every channel, one quiet list,
+									<br />
+									<span className="text-primary">still your voice.</span>
+								</>
+							}
+							intro="A triage surface built around replying well, not replying fast. Aloha suggests; you decide; nothing sends itself."
+							details={[
+								{
+									title: "Unified across channels",
+									body: "Comments, DMs, and mentions from Instagram, LinkedIn, X, Threads, and every channel you've connected — in one feed, newest first.",
+								},
+								{
+									title: "Sender history on the card",
+									body: "'Returning,' 'new,' or 'customer' — context is already visible before you click into the thread, so you're not keeping it in your head.",
+								},
+								{
+									title: "Drafts in your voice",
+									body: "Muse suggests a reply that sounds like you, not a support script. You accept, tweak, or ignore — nothing ships without a human press.",
+								},
+								{
+									title: "Reply, then move on",
+									body: "Mark done, snooze until later, or route back to the composer when a message deserves a whole post instead of a one-liner.",
+								},
+								{
+									title: "Channel filter",
+									body: "Triage Instagram when you're in Instagram mode. Bring the rest back when you have the head-space.",
+								},
+								{
+									title: "No auto-replies by default",
+									body: "If you want the bot behaviour, wire it up in the Logic Matrix with approval chips. The Inbox itself never speaks for you unasked.",
+								},
+							]}
+						/>
 					</div>
 				</section>
 			</section>

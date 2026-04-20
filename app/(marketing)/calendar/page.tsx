@@ -6,10 +6,10 @@ import {
 	ArrowUpRight,
 	CalendarDays,
 	Check,
-	MessageSquareQuote,
 	Move,
 } from "lucide-react";
 import Link from "next/link";
+import { FeatureDetails } from "../_components/feature-details";
 import { ScreenshotPlaceholder } from "../_components/screenshot-placeholder";
 
 export const metadata = makeMetadata({
@@ -367,9 +367,10 @@ export default function CalendarPage() {
 							<ScreenshotPlaceholder
 								id="cadence"
 								label="Cadence settings — per-channel 'one a day, skip Sundays'."
-								notes="Needed: screenshot of Calendar > Cadence. Shows per-channel cards with weekly frequency dial, quiet-hour bars (gray), preferred slots (primary). 4:3 crop."
+								notes="Coming soon. No dedicated cadence surface yet — channel defaults live in settings/channels, but the weekly-frequency + quiet-hours UI hasn't shipped."
 								aspect="aspect-[4/3]"
 								tone="bg-primary-soft"
+								comingSoon
 							/>
 						</div>
 
@@ -417,32 +418,51 @@ export default function CalendarPage() {
 				</section>
 			</section>
 
-			{/* ─── TESTIMONIAL ──────────────────────────────────────────────── */}
+			{/* ─── FEATURE DETAILS ──────────────────────────────────────────── */}
 			<section className="bg-ink relative">
 				<div
 					aria-hidden
 					className="absolute inset-0 top-2! opacity-10 bg-[radial-gradient(var(--peach-300)_1px,transparent_1px)] bg-size-[28px_28px]"
 				/>
 				<section className="py-24 lg:py-28 bg-peach-200 wavy">
-					<div className="max-w-[1100px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
-						<figure className="relative bg-peach-200 rounded-3xl p-10 lg:p-14 overflow-hidden">
-							<MessageSquareQuote className="w-8 h-8 text-ink/40 mb-6" />
-							<blockquote className="font-display text-[26px] lg:text-[34px] leading-[1.2] tracking-[-0.015em] max-w-3xl">
-								"Our Monday stand-up used to be 'what are we posting this week.'
-								Now it's 'what did we learn last week.' The calendar did that."
-							</blockquote>
-							<figcaption className="mt-8 flex items-center gap-4">
-								<span className="w-11 h-11 rounded-full bg-ink text-background-elev font-display flex items-center justify-center">
-									M
-								</span>
-								<div>
-									<p className="font-medium">Maya R.</p>
-									<p className="text-[13px] text-ink/60">
-										Head of content · Fermi
-									</p>
-								</div>
-							</figcaption>
-						</figure>
+					<div className="max-w-[1320px] mx-auto px-6 lg:px-10 pb-8 lg:pb-12">
+						<FeatureDetails
+							eyebrow="What ships with Calendar"
+							heading={
+								<>
+									A week of every channel,
+									<br />
+									<span className="text-primary">in one calm grid.</span>
+								</>
+							}
+							intro="Not a timeline plug-in. The calendar is how you think in weeks — drag, filter, triage, and ship without opening six tabs."
+							details={[
+								{
+									title: "Week + month views",
+									body: "Switch with one key. The grid keeps its shape so your eye isn't re-learning the layout every time you zoom out.",
+								},
+								{
+									title: "Drag to reschedule",
+									body: "Grab a post, drop it where it fits. A snap-to-best-time guide lines the drop up with your cadence, not the clock.",
+								},
+								{
+									title: "Channel filter",
+									body: "Focus on LinkedIn when you're in LinkedIn mode. Bring the rest back when you want the whole weather map.",
+								},
+								{
+									title: "Status at a glance",
+									body: "Draft, scheduled, published, failed — coloured chips on each post. You can triage a week without opening a single card.",
+								},
+								{
+									title: "Conflict-aware",
+									body: "We warn you before you queue three LinkedIn posts in an hour, or ship to a channel that's mid-outage.",
+								},
+								{
+									title: "Quiet hours respected",
+									body: "Nothing ships overnight unless you say so. The same rule applies to every automation; the calendar doesn't break it on a whim.",
+								},
+							]}
+						/>
 					</div>
 				</section>
 			</section>
@@ -467,14 +487,14 @@ export default function CalendarPage() {
 						<div className="col-span-12 lg:col-span-4 flex flex-col gap-4 lg:items-end">
 							<Link
 								href={routes.signin}
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-ink text-background font-medium text-[15px] hover:bg-primary transition-colors"
+								className="inline-flex items-center gap-2 h-14 px-7 rounded-full font-medium text-[15px] bg-primary transition-colors"
 							>
 								Start free — no card
 								<ArrowRight className="w-4 h-4" />
 							</Link>
 							<Link
 								href={routes.product.composer}
-								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium text-ink"
+								className="pencil-link inline-flex items-center gap-2 text-[14.5px] font-medium"
 							>
 								Pair it with the Composer
 								<ArrowUpRight className="w-4 h-4" />
