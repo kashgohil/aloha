@@ -24,6 +24,7 @@ export const routes = {
 		inbox: "/inbox",
 		linkInBio: "/link-in-bio",
 		whatsNew: "/whats-new",
+		roadmap: "/roadmap",
 	},
 
 	// Phase 2 — Channels
@@ -138,6 +139,7 @@ export const footerLinks = {
 				{ label: "Inbox", href: routes.product.inbox },
 				{ label: "Link-in-bio", href: routes.product.linkInBio },
 				{ label: "What's new", href: routes.product.whatsNew },
+				{ label: "Roadmap", href: routes.product.roadmap },
 			],
 		},
 		{
