@@ -1,7 +1,6 @@
 import createMDX from "@next/mdx";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
-import { withAxiom } from "next-axiom";
 
 const nextConfig: NextConfig = {
 	pageExtensions: ["ts", "tsx", "mdx"],
@@ -9,7 +8,7 @@ const nextConfig: NextConfig = {
 
 const withMDX = createMDX({});
 
-const configured = withAxiom(withMDX(nextConfig));
+const configured = withMDX(nextConfig);
 
 const sentryEnabled =
 	Boolean(process.env.SENTRY_AUTH_TOKEN) &&

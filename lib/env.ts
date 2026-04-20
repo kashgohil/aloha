@@ -101,14 +101,6 @@ const envSchema = z.object({
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
-
-  // Axiom — log aggregation via next-axiom SDK. Both must be set for
-  // logs to ship; without them next-axiom silently no-ops.
-  NEXT_PUBLIC_AXIOM_DATASET: z.string().optional(),
-  NEXT_PUBLIC_AXIOM_TOKEN: z.string().optional(),
-  NEXT_PUBLIC_AXIOM_LOG_LEVEL: z
-    .enum(["debug", "info", "warn", "error"])
-    .optional(),
 });
 
 // Validate process.env
