@@ -45,19 +45,22 @@ export default async function AutomationsPage({
 		? TEMPLATES[selected.kind as AutomationKind]
 		: null;
 
-	const stats = await getRunStats(myAutomations.map((a) => a.id));
-	const selectedRuns: RunView[] = selected
-		? (await getRecentRuns(selected.id)).map((r) => ({
-				id: r.id,
-				status: r.status,
-				startedAt: r.startedAt,
-				finishedAt: r.finishedAt,
-				stepResults: r.stepResults,
-				error: r.error,
-				trigger: r.trigger,
-				resumeAt: r.resumeAt,
-			}))
-		: [];
+	// Stats (for every automation) and recent runs (for the selected one)
+	// are independent of each other and can run concurrently.
+	const [stats, selectedRunsRaw] = await Promise.all([
+		getRunStats(myAutomations.map((a) => a.id)),
+		selected ? getRecentRuns(selected.id) : Promise.resolve([]),
+	]);
+	const selectedRuns: RunView[] = selectedRunsRaw.map((r) => ({
+		id: r.id,
+		status: r.status,
+		startedAt: r.startedAt,
+		finishedAt: r.finishedAt,
+		stepResults: r.stepResults,
+		error: r.error,
+		trigger: r.trigger,
+		resumeAt: r.resumeAt,
+	}));
 	const selectedSteps = selected ? resolveSteps(selected) : [];
 	const devMode = process.env.NODE_ENV !== "production";
 
@@ -67,7 +70,7 @@ export default async function AutomationsPage({
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-						{user.workspaceName ?? "Your workspace"} · quiet automations
+						Quiet automations
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
 						Logic Matrix,
