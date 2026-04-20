@@ -75,10 +75,10 @@ export function CalendarView({
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-						{workspaceName ?? "Your workspace"} · {tz}
+						Calendar · {tz}
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
-						{header.main} <span className="text-primary">{header.accent}</span>
+						{header.main} <span className="text-primary">{header.accent}<span className="font-light">.</span></span>
 					</h1>
 					<p className="mt-3 text-[14px] text-ink/65">{subLabel}</p>
 				</div>

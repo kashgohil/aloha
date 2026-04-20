@@ -12,6 +12,10 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
 					Keep your workspace
 					<span className="text-primary font-light"> in order.</span>
 				</h1>
+				<p className="mt-3 text-[14px] text-ink/65 max-w-xl leading-[1.55]">
+					Your profile, channels, notifications, billing, and Muse
+					preferences — tune them here.
+				</p>
 			</header>
 
 			<SettingsNav />

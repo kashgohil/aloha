@@ -63,12 +63,11 @@ export default async function DashboardPage() {
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-						{user.workspaceName ?? "Your workspace"} ·{" "}
 						{formatToday(new Date(), tz)}
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[56px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
 						{greeting}, <span className="text-primary">{firstName}</span>
-						<span className="text-ink/25">.</span>
+						<span className="text-primary font-light">.</span>
 					</h1>
 					<p className="mt-3 text-[15px] text-ink/65 max-w-xl leading-[1.55]">
 						Here&apos;s what&apos;s on your calendar and what&apos;s landed
