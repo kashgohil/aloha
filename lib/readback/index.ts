@@ -11,7 +11,9 @@
 // account within the cron window and honor 429 Retry-After.
 
 import { eq, sql } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 import { db } from "@/db";
+import { reachTag } from "@/lib/reach-cache";
 import {
   accounts,
   aiJobs,
@@ -253,6 +255,12 @@ async function upsertBatch(
           updatedAt: sqlExcluded("updatedAt"),
         },
       });
+  }
+
+  if (insightRows.length > 0) {
+    // "max" → stale-while-revalidate; next dashboard visit refetches
+    // without blocking on the cron job.
+    revalidateTag(reachTag(userId), "max");
   }
 
   return {
