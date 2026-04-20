@@ -1,30 +1,28 @@
 import { cache } from "react";
-import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
-import { db } from "@/db";
-import { users } from "@/db/schema";
 
-// Memoized per-request. Returns null if unauthenticated.
+// Memoized per-request. Reads the JWT session directly — no DB hit.
+// Fields are populated in the jwt callback on sign-in and refreshed via
+// `unstable_update` after profile/workspace/timezone mutations.
 export const getCurrentUser = cache(async () => {
   const session = await auth();
-  if (!session?.user?.id) return null;
+  const user = session?.user;
+  if (!user?.id) return null;
 
-  const [row] = await db
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      image: users.image,
-      workspaceName: users.workspaceName,
-      role: users.role,
-      timezone: users.timezone,
-      onboardedAt: users.onboardedAt,
-    })
-    .from(users)
-    .where(eq(users.id, session.user.id))
-    .limit(1);
+  // Email is NOT NULL in the users table and is always set on the token
+  // during sign-in, so this narrowing is safe.
+  if (!user.email) return null;
 
-  return row ?? null;
+  return {
+    id: user.id,
+    name: user.name ?? null,
+    email: user.email,
+    image: user.image ?? null,
+    workspaceName: user.workspaceName,
+    role: user.role,
+    timezone: user.timezone,
+    onboardedAt: user.onboardedAt,
+  };
 });
 
 export type CurrentUser = NonNullable<
