@@ -3,7 +3,7 @@
 import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
+import { auth, unstable_update } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 
@@ -50,6 +50,7 @@ export async function saveWorkspace(formData: FormData) {
     .set({ workspaceName: name, role, updatedAt: new Date() })
     .where(eq(users.id, userId));
 
+  await unstable_update({ user: {} });
   revalidatePath("/auth/onboarding", "layout");
   redirect("/auth/onboarding/preferences");
 }
@@ -70,6 +71,7 @@ export async function finishOnboarding(formData: FormData) {
     })
     .where(eq(users.id, userId));
 
+  await unstable_update({ user: {} });
   revalidatePath("/app", "layout");
   redirect("/app/dashboard");
 }

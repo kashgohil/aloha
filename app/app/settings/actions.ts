@@ -3,7 +3,7 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { auth, signIn } from "@/auth";
+import { auth, signIn, unstable_update } from "@/auth";
 import { db } from "@/db";
 import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials } from "@/db/schema";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
@@ -75,6 +75,7 @@ export async function updateProfile(formData: FormData) {
     })
     .where(eq(users.id, userId));
 
+  await unstable_update({ user: {} });
   revalidatePath("/app", "layout");
   redirect("/app/settings/profile?saved=1");
 }
