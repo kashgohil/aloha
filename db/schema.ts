@@ -1011,6 +1011,8 @@ export const aiJobs = pgTable("ai_jobs", {
 // Cached per-post analytics pulled from each connected platform. One row per
 // (user, platform, remotePostId). `postId` links back to our own `posts` when
 // the post was published through Aloha; null for pre-Aloha history.
+// Retention: marketing promises 24 months on every plan — see
+// lib/analytics/retention.ts. Do not add a pruner that violates that window.
 export const platformInsights = pgTable(
   "platform_insights",
   {
