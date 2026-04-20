@@ -20,6 +20,7 @@ import {
 
 export const linkedinReadbackAdapter: ReadbackAdapter = {
   platform: "linkedin",
+  source: { kind: "oauth", oauthProvider: "linkedin" },
   async fetch(_ctx: ReadbackContext): Promise<ReadbackBatch> {
     throw new ReadbackGatedError(
       "linkedin",

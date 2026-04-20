@@ -39,7 +39,9 @@ const TWEET_FIELDS = "created_at,public_metrics";
 
 export const xReadbackAdapter: ReadbackAdapter = {
   platform: "twitter",
+  source: { kind: "oauth", oauthProvider: "twitter" },
   async fetch(ctx: ReadbackContext): Promise<ReadbackBatch> {
+    if (!ctx.account) throw new Error("X read-back: missing OAuth account");
     const xUserId = ctx.account.providerAccountId;
     const url = new URL(`https://api.x.com/2/users/${xUserId}/tweets`);
     url.searchParams.set("max_results", String(MAX_RESULTS));

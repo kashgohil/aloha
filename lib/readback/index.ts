@@ -15,18 +15,27 @@ import { db } from "@/db";
 import {
   accounts,
   aiJobs,
+  blueskyCredentials,
   platformContentCache,
   platformInsights,
 } from "@/db/schema";
 import { getFreshToken } from "@/lib/publishers/tokens";
-import type { ReadbackAdapter, ReadbackBatch } from "./types";
+import type {
+  ReadbackAdapter,
+  ReadbackBatch,
+  ReadbackContext,
+} from "./types";
 import { ReadbackGatedError } from "./types";
-import { xReadbackAdapter } from "./x";
+import { blueskyReadbackAdapter } from "./bluesky";
 import { linkedinReadbackAdapter } from "./linkedin";
+import { threadsReadbackAdapter } from "./threads";
+import { xReadbackAdapter } from "./x";
 
 const ADAPTERS: Record<string, ReadbackAdapter> = {
   twitter: xReadbackAdapter,
   linkedin: linkedinReadbackAdapter,
+  bluesky: blueskyReadbackAdapter,
+  threads: threadsReadbackAdapter,
 };
 
 type RefreshableProvider = Parameters<typeof getFreshToken>[1];
@@ -59,8 +68,8 @@ export async function runReadbackForAccount(
   const jobId = await startJob(userId, platform);
 
   try {
-    const account = await getFreshToken(userId, platform as RefreshableProvider);
-    const batch = await adapter.fetch({ userId, account });
+    const ctx = await buildContext(userId, adapter);
+    const batch = await adapter.fetch(ctx);
     const { itemsCached, insightsUpserted } = await upsertBatch(
       userId,
       platform,
@@ -100,21 +109,79 @@ export async function runReadbackForAccount(
 }
 
 export async function runReadbackAllAccounts(): Promise<ReadbackOutcome[]> {
-  const rows = await db
-    .select({
-      userId: accounts.userId,
-      provider: accounts.provider,
-    })
+  const pairs: Array<{ userId: string; platform: string }> = [];
+
+  // OAuth-source adapters: look up the OAuth provider (may differ from the
+  // platform key — Threads reuses the Facebook account).
+  const oauthRows = await db
+    .select({ userId: accounts.userId, provider: accounts.provider })
     .from(accounts)
     .where(eq(accounts.reauthRequired, false));
+  const oauthPairs = new Set(
+    oauthRows.map((r) => `${r.userId}:${r.provider}`),
+  );
+  for (const adapter of Object.values(ADAPTERS)) {
+    if (adapter.source.kind !== "oauth") continue;
+    for (const row of oauthRows) {
+      if (
+        row.provider === adapter.source.oauthProvider &&
+        oauthPairs.has(`${row.userId}:${row.provider}`)
+      ) {
+        pairs.push({ userId: row.userId, platform: adapter.platform });
+      }
+    }
+  }
 
-  const pairs = rows.filter((r) => r.provider in ADAPTERS);
+  // Credential-source adapters.
+  for (const adapter of Object.values(ADAPTERS)) {
+    if (adapter.source.kind !== "bluesky_creds") continue;
+    const bsRows = await db
+      .select({ userId: blueskyCredentials.userId })
+      .from(blueskyCredentials);
+    for (const row of bsRows) {
+      pairs.push({ userId: row.userId, platform: adapter.platform });
+    }
+  }
 
   const outcomes: ReadbackOutcome[] = [];
   for (const pair of pairs) {
-    outcomes.push(await runReadbackForAccount(pair.userId, pair.provider));
+    outcomes.push(await runReadbackForAccount(pair.userId, pair.platform));
   }
   return outcomes;
+}
+
+async function buildContext(
+  userId: string,
+  adapter: ReadbackAdapter,
+): Promise<ReadbackContext> {
+  if (adapter.source.kind === "oauth") {
+    const account = await getFreshToken(
+      userId,
+      adapter.source.oauthProvider as RefreshableProvider,
+    );
+    return { userId, account };
+  }
+  // bluesky_creds
+  const [row] = await db
+    .select({
+      handle: blueskyCredentials.handle,
+      appPassword: blueskyCredentials.appPassword,
+      did: blueskyCredentials.did,
+    })
+    .from(blueskyCredentials)
+    .where(eq(blueskyCredentials.userId, userId))
+    .limit(1);
+  if (!row) {
+    throw new Error(`Bluesky credentials missing for user ${userId}`);
+  }
+  return {
+    userId,
+    blueskyCreds: {
+      handle: row.handle,
+      appPassword: row.appPassword,
+      did: row.did,
+    },
+  };
 }
 
 async function upsertBatch(

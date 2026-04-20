@@ -5,6 +5,14 @@
 import type { PostMedia } from "@/db/schema";
 import type { ProviderAccount } from "@/lib/publishers/tokens";
 
+// How an adapter discovers the credentials it needs:
+//   - "oauth": read accounts table using `oauthProvider` (may differ from
+//     the platform key — Threads reuses the Facebook OAuth token).
+//   - "bluesky_creds": read blueskyCredentials table (app-password flow).
+export type ReadbackSource =
+  | { kind: "oauth"; oauthProvider: string }
+  | { kind: "bluesky_creds" };
+
 export type ReadbackItem = {
   remotePostId: string;
   content: string;
@@ -21,9 +29,18 @@ export type ReadbackBatch = {
   items: ReadbackItem[];
 };
 
+export type BlueskyCreds = {
+  handle: string;
+  appPassword: string;
+  did: string | null;
+};
+
 export type ReadbackContext = {
-  account: ProviderAccount;
   userId: string;
+  // Present when the adapter declares `source.kind === "oauth"`.
+  account?: ProviderAccount;
+  // Present when the adapter declares `source.kind === "bluesky_creds"`.
+  blueskyCreds?: BlueskyCreds;
   // Optional: only fetch items newer than this cursor. The dispatcher doesn't
   // require it — adapters that can honor it save rate-limit budget.
   since?: Date;
@@ -31,6 +48,7 @@ export type ReadbackContext = {
 
 export interface ReadbackAdapter {
   platform: string;
+  source: ReadbackSource;
   fetch(ctx: ReadbackContext): Promise<ReadbackBatch>;
 }
 
