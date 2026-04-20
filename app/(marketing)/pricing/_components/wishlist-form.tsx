@@ -4,9 +4,17 @@ import { useState, useTransition } from "react";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { joinWishlist } from "@/app/actions/wishlist";
 
-export function WishlistForm() {
+type Prefill = { name: string; email: string };
+
+export function WishlistForm({
+  prefill,
+  alreadyJoined = false,
+}: {
+  prefill?: Prefill;
+  alreadyJoined?: boolean;
+} = {}) {
   const [isPending, startTransition] = useTransition();
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState(alreadyJoined);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = (formData: FormData) => {
@@ -27,8 +35,45 @@ export function WishlistForm() {
         <span className="inline-grid place-items-center w-8 h-8 rounded-full bg-primary/15">
           <Check className="w-4 h-4 text-primary" strokeWidth={2.5} />
         </span>
-        You're on the list. We'll reach out when beta spots open.
+        {alreadyJoined
+          ? "You're already on the wishlist. We'll reach out when beta spots open."
+          : "You're on the list. We'll reach out when beta spots open."}
       </div>
+    );
+  }
+
+  if (prefill) {
+    return (
+      <form action={handleSubmit} className="space-y-3">
+        <input type="hidden" name="name" value={prefill.name} />
+        <input type="hidden" name="email" value={prefill.email} />
+        <div className="text-[13px] text-ink/65">
+          Signed in as{" "}
+          <span className="text-ink font-medium">{prefill.name}</span>{" "}
+          <span className="text-ink/45">({prefill.email})</span>
+        </div>
+        <textarea
+          name="message"
+          placeholder="What would you use Muse for? (optional)"
+          rows={3}
+          className="w-full px-4 py-3 rounded-xl bg-background border border-border-strong text-[14px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink resize-none transition-colors"
+        />
+        {error ? (
+          <p className="text-[13px] text-primary-deep">{error}</p>
+        ) : null}
+        <button
+          type="submit"
+          disabled={isPending}
+          className="inline-flex items-center gap-2 h-11 px-6 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary disabled:opacity-40 transition-colors"
+        >
+          {isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <ArrowRight className="w-4 h-4" />
+          )}
+          Join the wishlist
+        </button>
+      </form>
     );
   }
 

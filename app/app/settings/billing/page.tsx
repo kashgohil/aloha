@@ -2,7 +2,7 @@ import { PricingCalculator } from "@/app/(marketing)/pricing/_components/pricing
 import { WishlistForm } from "@/app/(marketing)/pricing/_components/wishlist-form";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { accounts } from "@/db/schema";
+import { accounts, users, wishlist } from "@/db/schema";
 import { effectivePrice, FREE_TIER_CHANNELS } from "@/lib/billing/pricing";
 import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
@@ -67,10 +67,29 @@ export default async function BillingPage({
 	const connectedChannels = channelRows.length;
 
 	if (!IS_DEV) {
+		const [userRow] = await db
+			.select({ name: users.name, email: users.email })
+			.from(users)
+			.where(eq(users.id, userId))
+			.limit(1);
+		const email = userRow?.email ?? "";
+		const name = userRow?.name?.trim() || email.split("@")[0] || "";
+		const existing = email
+			? await db
+					.select({ id: wishlist.id })
+					.from(wishlist)
+					.where(eq(wishlist.email, email))
+					.limit(1)
+			: [];
+		const alreadyJoined = existing.length > 0;
+
 		return (
 			<div className="max-w-4xl space-y-8">
 				<FreePlanHero connectedChannels={connectedChannels} />
-				<BillingComingSoon />
+				<BillingComingSoon
+					prefill={email ? { name, email } : undefined}
+					alreadyJoined={alreadyJoined}
+				/>
 			</div>
 		);
 	}
@@ -293,7 +312,13 @@ function PlanSummary({
 	);
 }
 
-function BillingComingSoon() {
+function BillingComingSoon({
+	prefill,
+	alreadyJoined,
+}: {
+	prefill?: { name: string; email: string };
+	alreadyJoined: boolean;
+}) {
 	return (
 		<div className="max-w-4xl space-y-8">
 			<section className="rounded-3xl bg-background-elev border border-border p-8 lg:p-10">
@@ -324,13 +349,15 @@ function BillingComingSoon() {
 				<div className="mt-8 pt-6 border-t border-ink/10">
 					<p className="text-[12.5px] text-ink/65 mb-4">
 						<span className="font-medium text-ink">
-							Join the Muse beta wishlist
+							{alreadyJoined
+								? "You're on the Muse beta wishlist"
+								: "Join the Muse beta wishlist"}
 						</span>
 						<span className="text-ink/45">
 							{" "}· we'll pick select participants
 						</span>
 					</p>
-					<WishlistForm />
+					<WishlistForm prefill={prefill} alreadyJoined={alreadyJoined} />
 				</div>
 			</section>
 		</div>
