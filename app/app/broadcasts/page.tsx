@@ -21,24 +21,30 @@ export const dynamic = "force-dynamic";
 
 export default async function BroadcastsPage() {
   const user = (await getCurrentUser())!;
-  const entitled = await hasBroadcastEntitlement(user.id);
+
+  // Entitlement check and the broadcasts list both depend only on
+  // user.id — fire concurrently. If not entitled the rows are discarded,
+  // but the wasted work is negligible and the happy path avoids a
+  // serial round-trip.
+  const [entitled, rows] = await Promise.all([
+    hasBroadcastEntitlement(user.id),
+    db
+      .select()
+      .from(broadcasts)
+      .where(eq(broadcasts.userId, user.id))
+      .orderBy(desc(broadcasts.createdAt)),
+  ]);
 
   if (!entitled) {
     return <LockedState workspaceName={user.workspaceName ?? null} />;
   }
-
-  const rows = await db
-    .select()
-    .from(broadcasts)
-    .where(eq(broadcasts.userId, user.id))
-    .orderBy(desc(broadcasts.createdAt));
 
   return (
     <div className="space-y-10">
       <header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-            {user.workspaceName ?? "Your workspace"} · broadcasts
+            Broadcasts
           </p>
           <h1 className="mt-3 font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
             Write once,
@@ -193,7 +199,7 @@ function LockedState({ workspaceName }: { workspaceName: string | null }) {
     <div className="space-y-10">
       <header className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
-          {workspaceName ?? "Your workspace"} · broadcasts
+          Broadcasts
         </p>
         <h1 className="font-display text-[44px] lg:text-[52px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
           Email, the
