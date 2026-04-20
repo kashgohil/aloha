@@ -8,6 +8,17 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loader2, Pause, Play, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
+
+function isRedirectError(err: unknown): boolean {
+  return (
+    typeof err === "object" &&
+    err !== null &&
+    "digest" in err &&
+    typeof (err as { digest?: unknown }).digest === "string" &&
+    (err as { digest: string }).digest.startsWith("NEXT_REDIRECT")
+  );
+}
 
 type DialogKind = "pause" | "delete" | null;
 
@@ -26,15 +37,26 @@ export function CampaignControls({
 
   const runAction = (
     action: (fd: FormData) => Promise<void> | void,
+    labels: { loading: string; success: string },
   ) => {
     const fd = new FormData();
     fd.append("campaignId", campaignId);
+    const toastId = toast.loading(labels.loading);
     startTransition(async () => {
       try {
         await action(fd);
-      } catch {
-        // Server actions that call `redirect` throw NEXT_REDIRECT — ignore.
-        // Any real error surfaces in the server log; the UI just stays put.
+        toast.success(labels.success, { id: toastId });
+      } catch (err) {
+        // Server actions that call `redirect` throw NEXT_REDIRECT — the
+        // action still succeeded, so show success.
+        if (isRedirectError(err)) {
+          toast.success(labels.success, { id: toastId });
+        } else {
+          toast.error(
+            err instanceof Error ? err.message : "Something went wrong.",
+            { id: toastId },
+          );
+        }
       }
     });
   };
@@ -44,7 +66,12 @@ export function CampaignControls({
       {paused ? (
         <button
           type="button"
-          onClick={() => runAction(resumeCampaignAction)}
+          onClick={() =>
+            runAction(resumeCampaignAction, {
+              loading: "Resuming campaign…",
+              success: "Campaign resumed.",
+            })
+          }
           disabled={isPending}
           className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-ink text-background text-[12.5px] font-medium hover:bg-primary disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:bg-ink transition-colors"
         >
@@ -80,7 +107,12 @@ export function CampaignControls({
       <ConfirmDialog
         isOpen={dialog === "pause"}
         onClose={() => setDialog(null)}
-        onConfirm={() => runAction(pauseCampaignAction)}
+        onConfirm={() =>
+          runAction(pauseCampaignAction, {
+            loading: "Pausing campaign…",
+            success: "Campaign paused.",
+          })
+        }
         title="Pause this campaign?"
         description={
           <span className="block space-y-2">
@@ -103,7 +135,12 @@ export function CampaignControls({
       <ConfirmDialog
         isOpen={dialog === "delete"}
         onClose={() => setDialog(null)}
-        onConfirm={() => runAction(deleteCampaignAction)}
+        onConfirm={() =>
+          runAction(deleteCampaignAction, {
+            loading: "Deleting campaign…",
+            success: "Campaign deleted.",
+          })
+        }
         title="Delete this campaign?"
         description={
           <span className="block space-y-2">

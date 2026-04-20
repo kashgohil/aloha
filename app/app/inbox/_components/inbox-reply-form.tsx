@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition, useState } from "react";
+import { toast } from "sonner";
 import { sendReply } from "@/app/actions/inbox";
 import { Send } from "lucide-react";
 
@@ -12,9 +13,18 @@ export function InboxReplyForm({ messageId }: { messageId: string }) {
     e.preventDefault();
     if (!content.trim() || pending) return;
 
+    const toastId = toast.loading("Sending reply…");
     startTransition(async () => {
-      await sendReply(messageId, content.trim());
-      setContent("");
+      try {
+        await sendReply(messageId, content.trim());
+        toast.success("Reply sent.", { id: toastId });
+        setContent("");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Couldn't send reply.",
+          { id: toastId },
+        );
+      }
     });
   }
 

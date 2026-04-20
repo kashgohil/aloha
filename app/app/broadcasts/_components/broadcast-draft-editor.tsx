@@ -3,6 +3,7 @@
 import { AtSign, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { toast } from "sonner";
 import {
   draftBroadcastWithMuse,
   updateBroadcastDraft,
@@ -59,6 +60,7 @@ export function BroadcastDraftEditor({
     event.preventDefault();
     setSaveState("saving");
     setSaveError(null);
+    const toastId = toast.loading("Saving draft…");
     const fd = new FormData();
     fd.set("id", id);
     fd.set("subject", subject);
@@ -70,16 +72,20 @@ export function BroadcastDraftEditor({
     fd.set("replyTo", replyTo);
     try {
       await updateBroadcastDraft(fd);
+      toast.success("Draft saved.", { id: toastId });
       setSaveState("saved");
       setTimeout(() => setSaveState("idle"), 1800);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Couldn't save.");
+      const msg = err instanceof Error ? err.message : "Couldn't save.";
+      toast.error(msg, { id: toastId });
+      setSaveError(msg);
       setSaveState("error");
     }
   }
 
   function handleMuse() {
     setMuseError(null);
+    const toastId = toast.loading("Drafting with Muse…");
     startMuse(async () => {
       const fd = new FormData();
       fd.set("id", id);
@@ -90,10 +96,12 @@ export function BroadcastDraftEditor({
         setPreheader(draft.preheader);
         setBody(draft.body);
         setMuseOpen(false);
+        toast.success("Draft ready.", { id: toastId });
       } catch (err) {
-        setMuseError(
-          err instanceof Error ? err.message : "Muse couldn't draft this.",
-        );
+        const msg =
+          err instanceof Error ? err.message : "Muse couldn't draft this.";
+        toast.error(msg, { id: toastId });
+        setMuseError(msg);
       }
     });
   }

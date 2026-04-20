@@ -2,6 +2,7 @@
 
 import { Send } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { sendBroadcastNow } from "@/app/actions/broadcasts";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -19,13 +20,17 @@ export function SendBroadcastButton({
   async function handleConfirm() {
     setPending(true);
     setError(null);
+    const toastId = toast.loading("Queueing broadcast…");
     try {
       const fd = new FormData();
       fd.append("id", id);
       await sendBroadcastNow(fd);
+      toast.success("Broadcast queued.", { id: toastId });
       setOpen(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      const msg = err instanceof Error ? err.message : "Something went wrong.";
+      toast.error(msg, { id: toastId });
+      setError(msg);
     } finally {
       setPending(false);
     }

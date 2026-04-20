@@ -554,6 +554,7 @@ export function Composer({
 	const handleGenerate = () => {
 		if (!generateTopic.trim()) return;
 		setFormError(null);
+		const toastId = toast.loading("Drafting with Muse…");
 		startGenerating(async () => {
 			try {
 				const context = activePlatform?.id ?? selected[0] ?? "general";
@@ -572,10 +573,14 @@ export function Composer({
 				setShowDraftMeta(true);
 				setGenerateTopic("");
 				setShowGenerate(false);
+				toast.success("Draft ready.", { id: toastId });
 			} catch (err) {
-				setFormError(
-					messageFromErr(err, "Generate failed. Try again in a moment."),
+				const msg = messageFromErr(
+					err,
+					"Generate failed. Try again in a moment.",
 				);
+				toast.error(msg, { id: toastId });
+				setFormError(msg);
 			}
 		});
 	};
@@ -625,6 +630,7 @@ export function Composer({
 	const handleSaveDraft = () => {
 		if (!canSubmit || isReadOnly) return;
 		setFormError(null);
+		const toastId = toast.loading("Saving draft…");
 		startSaving(async () => {
 			try {
 				if (editingPostId) {
@@ -638,8 +644,10 @@ export function Composer({
 				} else {
 					await saveDraft(buildPayload());
 				}
+				toast.success("Draft saved.", { id: toastId });
 				router.push("/app/dashboard");
 			} catch {
+				toast.error("Couldn't save. Please try again.", { id: toastId });
 				setFormError("Couldn't save. Please try again.");
 			}
 		});
@@ -648,6 +656,7 @@ export function Composer({
 	const handleSchedule = () => {
 		if (!canSubmit || !scheduledAt || isReadOnly) return;
 		setFormError(null);
+		const toastId = toast.loading("Scheduling…");
 		startPublishing(async () => {
 			try {
 				const when = tzLocalInputToUtcDate(scheduledAt, author.timezone);
@@ -662,8 +671,12 @@ export function Composer({
 						scheduledAt: when,
 					});
 				}
+				toast.success("Post scheduled.", { id: toastId });
 				router.push("/app/dashboard");
 			} catch {
+				toast.error("Couldn't schedule. Check the time and try again.", {
+					id: toastId,
+				});
 				setFormError("Couldn't schedule. Check the time and try again.");
 			}
 		});
@@ -672,6 +685,7 @@ export function Composer({
 	const handlePublishNow = () => {
 		if (!canSubmit || isReadOnly) return;
 		setFormError(null);
+		const toastId = toast.loading("Publishing…");
 		startPublishing(async () => {
 			try {
 				const when = new Date();
@@ -683,8 +697,10 @@ export function Composer({
 				} else {
 					await schedulePost({ ...buildPayload(), scheduledAt: when });
 				}
+				toast.success("Publishing now.", { id: toastId });
 				router.push("/app/dashboard");
 			} catch {
+				toast.error("Couldn't publish. Please try again.", { id: toastId });
 				setFormError("Couldn't publish. Please try again.");
 			}
 		});
