@@ -102,18 +102,8 @@ export default async function PostsPage({
 	// Parse selected channels from URL
 	const selectedChannels = parseChannels(params.channels);
 
-	// Get user's connected channels for the filter UI
-	// Filter out auth-only providers (not social media channels)
-	const AUTH_PROVIDERS = ["google", "github"] as const;
-	const userAccounts = await db
-		.select({ provider: accounts.provider })
-		.from(accounts)
-		.where(eq(accounts.userId, user.id));
-	const connectedChannels = userAccounts
-		.map((a) => a.provider)
-		.filter((p): p is string => !AUTH_PROVIDERS.includes(p as typeof AUTH_PROVIDERS[number]));
-
 	// Build query conditions
+	const AUTH_PROVIDERS = ["google", "github"] as const;
 	const where = [eq(posts.userId, user.id)];
 	if (filter !== "all") {
 		where.push(eq(posts.status, filter));
@@ -129,23 +119,8 @@ export default async function PostsPage({
 		}
 	}
 
-	const rows = await db
-		.select({
-			id: posts.id,
-			content: posts.content,
-			platforms: posts.platforms,
-			status: posts.status,
-			scheduledAt: posts.scheduledAt,
-			publishedAt: posts.publishedAt,
-			createdAt: posts.createdAt,
-		})
-		.from(posts)
-		.where(and(...where))
-		.orderBy(desc(posts.updatedAt))
-		.limit(100);
-
-	// Get counts for status tabs (filtered by channels if selected)
-	// Include deleted posts in counts so the "deleted" tab shows accurate count
+	// Counts are filtered by channels (if selected) but cover all statuses,
+	// so "deleted" reflects accurately.
 	const countWhere = [eq(posts.userId, user.id)];
 	if (selectedChannels.length > 0) {
 		const channelCondition = arrayOverlaps(posts.platforms, selectedChannels);
@@ -154,15 +129,42 @@ export default async function PostsPage({
 		}
 	}
 
-	// Get individual status counts using SQL aggregation
-	const statusAgg = await db
-		.select({
-			status: posts.status,
-			count: sql<number>`count(*)::int`,
-		})
-		.from(posts)
-		.where(and(...countWhere))
-		.groupBy(posts.status);
+	// Fire posts list + status aggregation + account providers concurrently.
+	const [userAccounts, rows, statusAgg] = await Promise.all([
+		db
+			.select({ provider: accounts.provider })
+			.from(accounts)
+			.where(eq(accounts.userId, user.id)),
+		db
+			.select({
+				id: posts.id,
+				content: posts.content,
+				platforms: posts.platforms,
+				status: posts.status,
+				scheduledAt: posts.scheduledAt,
+				publishedAt: posts.publishedAt,
+				createdAt: posts.createdAt,
+			})
+			.from(posts)
+			.where(and(...where))
+			.orderBy(desc(posts.updatedAt))
+			.limit(100),
+		db
+			.select({
+				status: posts.status,
+				count: sql<number>`count(*)::int`,
+			})
+			.from(posts)
+			.where(and(...countWhere))
+			.groupBy(posts.status),
+	]);
+
+	const connectedChannels = userAccounts
+		.map((a) => a.provider)
+		.filter(
+			(p): p is string =>
+				!AUTH_PROVIDERS.includes(p as (typeof AUTH_PROVIDERS)[number]),
+		);
 
 	const countByStatus = Object.fromEntries(
 		statusAgg.map((r) => [r.status, r.count]),
@@ -216,8 +218,12 @@ export default async function PostsPage({
 						Content
 					</p>
 					<h1 className="mt-3 font-display text-[44px] lg:text-[56px] leading-[1.02] tracking-[-0.03em] text-ink font-normal">
-						Posts
+						Posts<span className="text-primary font-light">.</span>
 					</h1>
+					<p className="mt-3 text-[14px] text-ink/65 max-w-xl leading-[1.55]">
+						Everything you&apos;ve drafted, scheduled, and shipped — filtered
+						by status or channel, ready to edit or repost.
+					</p>
 				</div>
 				<Link
 					href="/app/composer"
