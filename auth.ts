@@ -1,6 +1,7 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import type { Provider } from "next-auth/providers";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
+import authConfig from "./auth.config";
 import { db } from "./db";
 import {
   accounts,
@@ -31,7 +32,8 @@ const credentialsSchema = z.object({
   password: z.string().min(1),
 });
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
+  ...authConfig,
   adapter: DrizzleAdapter(db, {
     usersTable: users,
     accountsTable: accounts,
@@ -39,9 +41,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     verificationTokensTable: verificationTokens,
     authenticatorsTable: authenticators,
   }),
-  secret: env.AUTH_SECRET,
   debug: process.env.NODE_ENV !== "production",
-  session: { strategy: "jwt" },
   providers: [
     Credentials({
       name: "Email",
@@ -332,22 +332,70 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }]
       : []),
   ] as Provider[],
-  pages: {
-    signIn: "/auth/signin",
-    error: "/auth/error",
-    verifyRequest: "/auth/verify-request",
-    newUser: "/auth/onboarding/workspace",
-  },
   callbacks: {
-    async jwt({ token, user }) {
-      if (user?.id) token.sub = user.id;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
+    ...authConfig.callbacks,
+    // Runs only on sign-in (`user` present) and on `unstable_update`
+    // (`trigger === "update"`). Hydrates the JWT with user-row fields
+    // so getCurrentUser() can skip the DB on subsequent requests.
+    async jwt({ token, user, trigger, session }) {
+      if (user?.id) {
+        token.sub = user.id;
+        const [row] = await db
+          .select({
+            name: users.name,
+            email: users.email,
+            image: users.image,
+            workspaceName: users.workspaceName,
+            role: users.role,
+            timezone: users.timezone,
+            onboardedAt: users.onboardedAt,
+          })
+          .from(users)
+          .where(eq(users.id, user.id))
+          .limit(1);
+        if (row) {
+          token.name = row.name;
+          token.email = row.email;
+          token.picture = row.image;
+          token.workspaceName = row.workspaceName;
+          token.role = row.role;
+          token.timezone = row.timezone;
+          token.onboardedAt = row.onboardedAt
+            ? row.onboardedAt.toISOString()
+            : null;
+        }
       }
-      return session;
+
+      if (trigger === "update" && token.sub) {
+        // Refetch fresh fields from DB. Cheaper than trusting client-supplied
+        // `session` payload and keeps a single source of truth.
+        const [row] = await db
+          .select({
+            name: users.name,
+            image: users.image,
+            workspaceName: users.workspaceName,
+            role: users.role,
+            timezone: users.timezone,
+            onboardedAt: users.onboardedAt,
+          })
+          .from(users)
+          .where(eq(users.id, token.sub))
+          .limit(1);
+        if (row) {
+          token.name = row.name;
+          token.picture = row.image;
+          token.workspaceName = row.workspaceName;
+          token.role = row.role;
+          token.timezone = row.timezone;
+          token.onboardedAt = row.onboardedAt
+            ? row.onboardedAt.toISOString()
+            : null;
+        }
+        // Avoid unused-var warning; session payload is ignored by design.
+        void session;
+      }
+
+      return token;
     },
   },
   events: {
