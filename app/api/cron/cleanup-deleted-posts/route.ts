@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import { posts } from "@/db/schema";
 import { and, eq, lt, sql } from "drizzle-orm";
 import { env } from "@/lib/env";
@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
 			message: `Permanently deleted ${postsToDelete.length} posts older than 30 days`,
 		});
 	} catch (error) {
-		Sentry.captureException(error, { tags: { source: "cron.cleanup-deleted-posts" } });
+		await captureException(error, { tags: { source: "cron.cleanup-deleted-posts" } });
 		console.error("Cleanup job failed:", error);
 		return NextResponse.json(
 			{

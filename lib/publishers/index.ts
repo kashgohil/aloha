@@ -6,9 +6,9 @@
 // "published" with publishedAt set to the earliest success. Only an
 // all-platforms-failed outcome is marked "failed".
 
-import * as Sentry from "@sentry/nextjs";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import { accounts, postDeliveries, posts, telegramCredentials, type PostMedia } from "@/db/schema";
 import { decideForPublish } from "@/lib/channel-state";
 import { sendManualAssistReminderForDelivery } from "@/lib/manual-assist";
@@ -120,7 +120,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				try {
 					await sendManualAssistReminderForDelivery(postId, platform);
 				} catch (err) {
-					Sentry.captureException(err, {
+					await captureException(err, {
 						tags: { source: "publishers.manual-assist", platform },
 						extra: { postId },
 					});

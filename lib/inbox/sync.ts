@@ -1,5 +1,5 @@
-import * as Sentry from "@sentry/nextjs";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import { inboxMessages, inboxSyncCursors } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { fetchBlueskyNotifications } from "./bluesky";
@@ -56,7 +56,7 @@ export async function syncInbox(
     messages = result.messages;
     newCursor = result.newCursor;
   } catch (err) {
-    Sentry.captureException(err, {
+    await captureException(err, {
       tags: { source: "inbox.sync", platform },
       extra: { userId },
     });

@@ -1,8 +1,8 @@
 import "server-only";
 
-import * as Sentry from "@sentry/nextjs";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import {
   automationRuns,
   automations,
@@ -178,7 +178,7 @@ export async function executeRun({
       if (result.output !== undefined) accumulated[step.id] = result.output;
       cursor = nextInTrunk(trunk, step.id);
     } catch (err) {
-      Sentry.captureException(err, {
+      await captureException(err, {
         tags: { source: "automations.executor", phase: "trunk" },
         extra: { runId, automationId, stepId: step.id, stepKind: step.kind },
       });
@@ -246,7 +246,7 @@ async function runBranch(
         });
       }
     } catch (err) {
-      Sentry.captureException(err, {
+      await captureException(err, {
         tags: { source: "automations.executor", phase: "branch" },
         extra: { automationId: ctx.automationId, stepId: step.id, stepKind: step.kind },
       });

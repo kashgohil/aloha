@@ -1,6 +1,6 @@
 import { Receiver } from "@upstash/qstash";
-import * as Sentry from "@sentry/nextjs";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import { posts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ success: true, summary });
   } catch (error) {
-    Sentry.captureException(error, {
+    await captureException(error, {
       tags: { source: "qstash.publish" },
       extra: { postId },
     });

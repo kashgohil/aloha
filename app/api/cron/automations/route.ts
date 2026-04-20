@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as Sentry from "@sentry/nextjs";
 import { and, eq, lte } from "drizzle-orm";
 import { db } from "@/db";
+import { captureException } from "@/lib/logger";
 import { automationRuns, automations } from "@/db/schema";
 import { env } from "@/lib/env";
 import { resolveSteps } from "@/app/app/automations/_lib/steps";
@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       });
       resumed.push(run.id);
     } catch (err) {
-      Sentry.captureException(err, {
+      await captureException(err, {
         tags: { source: "cron.automations", phase: "resume" },
         extra: { runId: run.id, automationId: automation.id },
       });
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
       });
       fired.push(automation.id);
     } catch (err) {
-      Sentry.captureException(err, {
+      await captureException(err, {
         tags: { source: "cron.automations", phase: "fire" },
         extra: { automationId: automation.id },
       });

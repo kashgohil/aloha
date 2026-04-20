@@ -1,6 +1,6 @@
 import { Receiver } from "@upstash/qstash";
-import * as Sentry from "@sentry/nextjs";
 import { and, eq, sql } from "drizzle-orm";
+import { captureException } from "@/lib/logger";
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
 
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       })
       .where(eq(broadcastSends.id, sendId));
   } catch (err) {
-    Sentry.captureException(err, {
+    await captureException(err, {
       tags: { source: "qstash.broadcast-send" },
       extra: { sendId, broadcastId: send.broadcastId },
     });
