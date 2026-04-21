@@ -14,6 +14,7 @@ import { db } from "@/db";
 import { env } from "@/lib/env";
 import { assertCostCap } from "./cost-cap";
 import { logGeneration } from "./generations";
+import { langfuse, scheduleLangfuseFlush } from "./langfuse";
 import { requireSafePrompt } from "./moderation";
 
 export type ImageAspect = "1:1" | "4:5" | "16:9" | "9:16";
@@ -62,6 +63,17 @@ export async function generateImage(
   const aspect = input.aspect ?? "1:1";
   const dims = DIMENSIONS[aspect];
 
+  const trace = langfuse?.trace({
+    name: "composer.image",
+    userId: input.userId,
+    metadata: { aspect, model: IMAGE_MODEL },
+  });
+  const generation = trace?.generation({
+    name: "composer.image",
+    model: IMAGE_MODEL,
+    input: { prompt, aspect },
+  });
+
   const start = Date.now();
   let bytes: ArrayBuffer;
   let mimeType: string;
@@ -72,6 +84,7 @@ export async function generateImage(
   } catch (err) {
     const latencyMs = Date.now() - start;
     const message = err instanceof Error ? err.message : String(err);
+    generation?.end({ level: "ERROR", statusMessage: message });
     await logGeneration({
       userId: input.userId,
       feature: "composer.image",
@@ -84,7 +97,9 @@ export async function generateImage(
       latencyMs,
       status: "error",
       errorMessage: message,
+      langfuseTraceId: trace?.id,
     });
+    await scheduleLangfuseFlush();
     throw err;
   }
 
@@ -95,6 +110,11 @@ export async function generateImage(
     access: "public",
     contentType: mimeType,
     token: env.BLOB_READ_WRITE_TOKEN,
+  });
+
+  generation?.end({
+    output: { url: blob.url, mimeType, width: dims.width, height: dims.height },
+    usage: { totalCost: IMAGE_COST_MICROS / 1_000_000 },
   });
 
   const generationId = await logGeneration({
@@ -108,7 +128,9 @@ export async function generateImage(
     costMicros: IMAGE_COST_MICROS,
     latencyMs,
     status: "ok",
+    langfuseTraceId: trace?.id,
   });
+  await scheduleLangfuseFlush();
 
   const [asset] = await db
     .insert(assets)

@@ -10,6 +10,7 @@ import { openRouterChat, openRouterChatStream } from "./openrouter";
 import { loadTemplate } from "./templates";
 import { logGeneration } from "./generations";
 import { assertCostCap } from "./cost-cap";
+import { langfuse, scheduleLangfuseFlush } from "./langfuse";
 
 export type GenerateInput = {
   userId: string;
@@ -55,6 +56,21 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
         ]
       : input.userMessage;
 
+  const trace = langfuse?.trace({
+    name: `${input.feature}:${template.name}`,
+    userId: input.userId,
+    metadata: { templateVersion: template.version },
+  });
+  const generation = trace?.generation({
+    name: input.feature,
+    model,
+    input: { system: systemPrompt, user: userContent },
+    modelParameters: {
+      temperature: input.temperature ?? 0.7,
+      maxTokens: input.maxTokens ?? null,
+    },
+  });
+
   try {
     const { text, tokensIn, tokensOut, raw } = await openRouterChat({
       model,
@@ -67,6 +83,16 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
     });
     const latencyMs = Date.now() - start;
     const costMicros = costMicrosFor(model, tokensIn, tokensOut);
+
+    generation?.end({
+      output: text,
+      usage: {
+        input: tokensIn,
+        output: tokensOut,
+        unit: "TOKENS",
+        totalCost: costMicros / 1_000_000,
+      },
+    });
 
     const generationId = await logGeneration({
       userId: input.userId,
@@ -81,6 +107,7 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
       costMicros,
       latencyMs,
       status: "ok",
+      langfuseTraceId: trace?.id,
     });
 
     return {
@@ -95,6 +122,7 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
   } catch (err) {
     const latencyMs = Date.now() - start;
     const message = err instanceof Error ? err.message : String(err);
+    generation?.end({ level: "ERROR", statusMessage: message });
     await logGeneration({
       userId: input.userId,
       feature: input.feature,
@@ -109,8 +137,11 @@ export async function generate(input: GenerateInput): Promise<GenerateResult> {
       latencyMs,
       status: "error",
       errorMessage: message,
+      langfuseTraceId: trace?.id,
     });
     throw err;
+  } finally {
+    await scheduleLangfuseFlush();
   }
 }
 
@@ -173,6 +204,21 @@ export async function generateStream(
     maxTokens: input.maxTokens,
   });
 
+  const trace = langfuse?.trace({
+    name: `${input.feature}:${template.name}`,
+    userId: input.userId,
+    metadata: { templateVersion: template.version, streaming: true },
+  });
+  const generation = trace?.generation({
+    name: input.feature,
+    model,
+    input: { system: systemPrompt, user: userContent },
+    modelParameters: {
+      temperature: input.temperature ?? 0.7,
+      maxTokens: input.maxTokens ?? null,
+    },
+  });
+
   async function* iterate(): AsyncIterable<string> {
     let fullText = "";
     let tokensIn = 0;
@@ -189,6 +235,15 @@ export async function generateStream(
       }
       const latencyMs = Date.now() - start;
       const costMicros = costMicrosFor(model, tokensIn, tokensOut);
+      generation?.end({
+        output: fullText,
+        usage: {
+          input: tokensIn,
+          output: tokensOut,
+          unit: "TOKENS",
+          totalCost: costMicros / 1_000_000,
+        },
+      });
       const generationId = await logGeneration({
         userId: input.userId,
         feature: input.feature,
@@ -202,6 +257,7 @@ export async function generateStream(
         costMicros,
         latencyMs,
         status: "ok",
+        langfuseTraceId: trace?.id,
       });
       resolveDone({
         text: fullText,
@@ -215,6 +271,11 @@ export async function generateStream(
     } catch (err) {
       const latencyMs = Date.now() - start;
       const message = err instanceof Error ? err.message : String(err);
+      generation?.end({
+        level: "ERROR",
+        statusMessage: message,
+        output: fullText,
+      });
       await logGeneration({
         userId: input.userId,
         feature: input.feature,
@@ -229,9 +290,12 @@ export async function generateStream(
         latencyMs,
         status: "error",
         errorMessage: message,
+        langfuseTraceId: trace?.id,
       });
       rejectDone(err);
       throw err;
+    } finally {
+      await scheduleLangfuseFlush();
     }
   }
 
