@@ -26,6 +26,7 @@ import Google from "next-auth/providers/google";
 import TikTok from "next-auth/providers/tiktok";
 import Medium from "next-auth/providers/medium";
 import { OAUTH_CHANNEL_PROVIDERS } from "@/lib/configured-providers";
+import { refreshOAuthChannelProfile } from "@/lib/channels/profiles";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -475,6 +476,11 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
           console.error("[threads] long-lived token exchange failed", err);
         }
       }
+
+      // Cache profile details (avatar, handle, follower count) so the
+      // channel list + composer can render them without re-hitting the API.
+      // Swallowed on failure — a missing profile never blocks connection.
+      await refreshOAuthChannelProfile(user.id, account.provider);
     },
     async signIn({ user, account }) {
       if (!user.id || !account?.provider) return;
