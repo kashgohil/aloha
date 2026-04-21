@@ -27,7 +27,17 @@ export type ConditionContext = RunContext & {
   step: StoredFlowStep;
 };
 
-export type ConditionHandler = (ctx: ConditionContext) => Promise<boolean>;
+// Conditions may return a bare boolean (simple matchers like keyword_match)
+// or an object carrying side-channel details (threshold comparisons want
+// to surface the actual numbers so a downstream alert step can quote them
+// in its body). The executor normalizes both shapes.
+export type ConditionResult =
+  | boolean
+  | { matched: boolean; details?: Record<string, unknown> };
+
+export type ConditionHandler = (
+  ctx: ConditionContext,
+) => Promise<ConditionResult>;
 
 // ── Registries ───────────────────────────────────────────────────────────
 

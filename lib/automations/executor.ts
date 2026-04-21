@@ -14,6 +14,18 @@ import { getActionHandler, getConditionHandler } from "./registry";
 // before the stubs module so duplicate registration throws during
 // development if a handler + stub coexist (rather than silently masking).
 import "./handlers/add-tag";
+import "./handlers/approval-status";
+import "./handlers/find-stale-subscribers";
+import "./handlers/keyword-match";
+import "./handlers/muse-draft-post";
+import "./handlers/publish-post";
+import "./handlers/rate-over-threshold";
+import "./handlers/repost-top";
+import "./handlers/save-as-draft";
+import "./handlers/send-alert";
+import "./handlers/send-broadcast";
+import "./handlers/send-digest-email";
+import "./handlers/send-email";
 import "./handlers/stubs";
 
 const MAX_STEPS_PER_RUN = 25;
@@ -126,21 +138,25 @@ export async function executeRun({
         if (!handler) {
           throw new Error(`No condition handler for "${step.kind}"`);
         }
-        const matched = await handler({
+        const raw = await handler({
           automationId,
           userId,
           trigger,
           snapshot: accumulated,
           step,
         });
+        const matched = typeof raw === "boolean" ? raw : raw.matched;
+        const details =
+          typeof raw === "boolean" ? {} : (raw.details ?? {});
+        const output = { matched, ...details };
         stepResults.push({
           stepId: step.id,
           status: "success",
           startedAt: startedAt.toISOString(),
           finishedAt: new Date().toISOString(),
-          output: { matched },
+          output,
         });
-        accumulated[step.id] = { matched };
+        accumulated[step.id] = output;
 
         const branchIds = matched ? step.branches?.yes : step.branches?.no;
         if (branchIds && branchIds.length > 0) {
