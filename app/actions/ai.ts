@@ -241,6 +241,7 @@ export async function generateAltText(
 ): Promise<string> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await requireMuseAccess(user.id);
   if (!imageUrl) throw new Error("Image URL is required");
 
   await registerPrompts();
@@ -320,6 +321,7 @@ export async function scorePost(
 ): Promise<PostScore> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await requireMuseAccess(user.id);
   if (!content.trim()) throw new Error("Nothing to score yet.");
 
   await registerPrompts();
