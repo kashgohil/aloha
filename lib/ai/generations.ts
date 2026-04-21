@@ -5,6 +5,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { generations } from "@/db/schema";
+import { langfuse } from "./langfuse";
 
 export type LogGenerationInput = {
   userId: string;
@@ -21,6 +22,7 @@ export type LogGenerationInput = {
   status: "ok" | "error" | "moderated";
   errorCode?: string;
   errorMessage?: string;
+  langfuseTraceId?: string;
 };
 
 export async function logGeneration(
@@ -43,6 +45,7 @@ export async function logGeneration(
       status: entry.status,
       errorCode: entry.errorCode,
       errorMessage: entry.errorMessage?.slice(0, 2000),
+      langfuseTraceId: entry.langfuseTraceId,
     })
     .returning({ id: generations.id });
   return row.id;
@@ -52,8 +55,26 @@ export async function recordFeedback(
   generationId: string,
   feedback: "accepted" | "edited" | "rejected",
 ): Promise<void> {
-  await db
+  // Numeric score so Langfuse can aggregate: accepted=1, edited=0.5, rejected=0.
+  const scoreValue =
+    feedback === "accepted" ? 1 : feedback === "edited" ? 0.5 : 0;
+
+  const [row] = await db
     .update(generations)
     .set({ feedback, feedbackAt: new Date() })
-    .where(eq(generations.id, generationId));
+    .where(eq(generations.id, generationId))
+    .returning({ langfuseTraceId: generations.langfuseTraceId });
+
+  if (langfuse && row?.langfuseTraceId) {
+    try {
+      langfuse.score({
+        traceId: row.langfuseTraceId,
+        name: "user_feedback",
+        value: scoreValue,
+        comment: feedback,
+      });
+    } catch {
+      // Observability must never break the caller.
+    }
+  }
 }
