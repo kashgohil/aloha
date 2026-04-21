@@ -5,7 +5,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn, unstable_update } from "@/auth";
 import { db } from "@/db";
-import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials } from "@/db/schema";
+import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials, channelNotifications } from "@/db/schema";
+import { sendEmail } from "@/lib/email/send";
+import { channelNotificationEmail } from "@/lib/email/templates/channel-notification";
+import { channelLabel } from "@/components/channel-chip";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
 import { syncChannelQuantity } from "@/lib/billing/service";
@@ -427,15 +430,40 @@ export async function updateNotificationPreferences(formData: FormData) {
 }
 
 // Notify user when a platform becomes available for connection.
-// Stores their interest so we can email them when approval lands.
+// Stores their interest and emails them a confirmation. Subsequent clicks
+// for the same channel are no-ops (no duplicate confirmations).
 export async function notifyWhenAvailable(formData: FormData) {
   const userId = await requireUserId();
   const provider = String(formData.get("provider") ?? "");
   if (!provider) throw new Error("provider is required");
 
-  // TODO: Store notification preference in database
-  // For now, just revalidate to show feedback
-  console.log(`[notify] User ${userId} wants to be notified when ${provider} becomes available`);
-  
+  const inserted = await db
+    .insert(channelNotifications)
+    .values({ userId, channel: provider })
+    .onConflictDoNothing({
+      target: [channelNotifications.userId, channelNotifications.channel],
+    })
+    .returning({ id: channelNotifications.id });
+
+  if (inserted.length > 0) {
+    const [user] = await db
+      .select({ email: users.email, name: users.name })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (user?.email) {
+      const tpl = channelNotificationEmail({
+        name: user.name,
+        channelLabel: channelLabel(provider),
+      });
+      try {
+        await sendEmail({ to: user.email, ...tpl });
+      } catch (err) {
+        console.error("[notify] confirmation email failed", err);
+      }
+    }
+  }
+
   revalidatePath("/app/settings/channels");
 }
