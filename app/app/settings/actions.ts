@@ -163,7 +163,12 @@ async function currentChannelCount(userId: string): Promise<number> {
       .where(eq(telegramCredentials.userId, userId))
       .limit(1),
   ]);
-  return oauthRows.length + (blueskyRow ? 1 : 0) + (mastodonRow ? 1 : 0) + (telegramRow ? 1 : 0);
+  return (
+    oauthRows.length +
+    blueskyRow.length +
+    mastodonRow.length +
+    telegramRow.length
+  );
 }
 
 export async function connectBluesky(
