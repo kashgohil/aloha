@@ -15,6 +15,8 @@ import {
 	telegramCredentials,
 } from "@/db/schema";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
+import { getLogicalSubscription } from "@/lib/billing/service";
 import { PLATFORM_GATING } from "@/lib/channel-state";
 import { getCurrentUser } from "@/lib/current-user";
 import { getReachLast7Days } from "@/lib/reach-cache";
@@ -148,6 +150,9 @@ async function DashboardContent({
 		inboxTotals,
 		notionRows,
 		notionDocCount,
+		subscribedFeeds,
+		logicalSub,
+		museInvited,
 	] = await Promise.all([
 		db
 			.select({
@@ -352,6 +357,23 @@ async function DashboardContent({
 			.where(
 				and(eq(brandCorpus.userId, user.id), eq(brandCorpus.source, "notion")),
 			),
+
+		// Subscribed feed sources — used by FeedDigestCard to show *what*
+		// the user is following, not just a static unread count.
+		db
+			.select({
+				id: feeds.id,
+				title: feeds.title,
+				iconUrl: feeds.iconUrl,
+				siteUrl: feeds.siteUrl,
+			})
+			.from(feeds)
+			.where(eq(feeds.userId, user.id))
+			.orderBy(desc(feeds.lastFetchedAt))
+			.limit(12),
+
+		getLogicalSubscription(user.id),
+		hasMuseInviteEntitlement(user.id),
 	]);
 
 	const counts = countsRows[0];
@@ -411,6 +433,7 @@ async function DashboardContent({
 	const totalInboxCount = Number(inboxTotals[0]?.total ?? 0);
 	const notion = notionRows[0] ?? null;
 	const notionDocs = Number(notionDocCount[0]?.total ?? 0);
+	const museEnabled = logicalSub.museEnabled || museInvited;
 
 	// ── View ────────────────────────────────────────────────────────────
 	const stats = [
@@ -577,14 +600,16 @@ async function DashboardContent({
 
 					<ChannelsCard providers={allProviders} />
 
-					<KnowledgeCard
-						connected={!!notion}
-						workspaceName={notion?.workspaceName ?? null}
-						reauthRequired={notion?.reauthRequired ?? false}
-						lastSyncedAt={notion?.lastSyncedAt ?? null}
-						docCount={notionDocs}
-						tz={tz}
-					/>
+					{museEnabled ? (
+						<KnowledgeCard
+							connected={!!notion}
+							workspaceName={notion?.workspaceName ?? null}
+							reauthRequired={notion?.reauthRequired ?? false}
+							lastSyncedAt={notion?.lastSyncedAt ?? null}
+							docCount={notionDocs}
+							tz={tz}
+						/>
+					) : null}
 
 					{readbackConnected.length > 0 ? (
 						<ReachCard
@@ -604,6 +629,7 @@ async function DashboardContent({
 							unread={unreadFeedCount}
 							total={totalFeedCount}
 							items={latestFeedItems}
+							sources={subscribedFeeds}
 						/>
 					) : null}
 
