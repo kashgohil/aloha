@@ -103,6 +103,7 @@ export default async function BroadcastsPage() {
             <li key={b.id}>
               <Link
                 href={`/app/broadcasts/${b.id}`}
+                prefetch={false}
                 className="block rounded-3xl border border-border bg-background-elev px-6 py-5 transition-colors"
               >
                 <div className="flex items-start justify-between gap-4">

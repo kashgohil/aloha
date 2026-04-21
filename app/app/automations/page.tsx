@@ -116,6 +116,7 @@ export default async function AutomationsPage({
 									<li key={a.id}>
 										<Link
 											href={`/app/automations?id=${a.id}`}
+											prefetch={false}
 											className={cn(
 												"group block rounded-2xl border p-4 transition-colors",
 												isActive

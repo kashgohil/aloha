@@ -109,6 +109,7 @@ export default async function CampaignsPage() {
 							<li key={c.id}>
 								<Link
 									href={`/app/campaigns/${c.id}`}
+									prefetch={false}
 									className="block rounded-2xl border border-border-strong bg-background-elev p-5 hover:bg-muted/30 transition-colors"
 								>
 									<div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink/55">

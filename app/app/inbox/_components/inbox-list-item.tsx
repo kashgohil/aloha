@@ -38,6 +38,7 @@ export function InboxListItem({
     <li>
       <Link
         href={`/app/inbox?selected=${id}`}
+        prefetch={false}
         className={cn(
           "group flex items-start gap-3.5 px-4 py-3.5 transition-colors",
           isSelected

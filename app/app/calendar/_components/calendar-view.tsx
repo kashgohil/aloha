@@ -229,6 +229,7 @@ function MonthView({
 								{dayPosts.length > 0 ? (
 									<Link
 										href={`/app/composer?day=${cell.key}`}
+										prefetch={false}
 										className="text-[11px] text-ink/40 hover:text-ink transition-colors"
 										aria-label={`Add post on ${cell.key}`}
 									>
@@ -242,6 +243,7 @@ function MonthView({
 									<li key={p.id}>
 										<Link
 											href={`/app/composer?post=${p.id}`}
+											prefetch={false}
 											className={cn(
 												"group block px-2 py-1.5 rounded-lg border text-[11.5px] leading-[1.35]",
 												postChipClasses(p.status),
@@ -431,6 +433,7 @@ function TimeGridView({
 								>
 									<Link
 										href={`/app/composer?post=${p.id}`}
+										prefetch={false}
 										className={cn(
 											"group block px-2 py-1.5 rounded-lg border text-[11.5px] leading-[1.35] shadow-sm",
 											postChipClasses(p.status),

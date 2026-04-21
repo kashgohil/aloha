@@ -196,6 +196,7 @@ export function PostsList({
 						>
 							<Link
 								href={`/app/composer?post=${p.id}`}
+								prefetch={false}
 								className="flex items-start gap-4 pl-12 pr-14 py-4 hover:bg-muted/40 transition-colors"
 							>
 								<div className="w-[100px] shrink-0 space-y-1.5">
