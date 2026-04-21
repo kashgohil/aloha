@@ -1,29 +1,66 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNotNull, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { users } from "@/db/schema";
-import { env } from "@/lib/env";
+import { featureAccess } from "@/db/schema";
 
-// Muse entitlement is currently allowlist-based in prod: pricing isn't
-// live yet, so MUSE_ALLOWLIST (comma-separated emails) acts as an
-// invite-only gate. When the Polar basic_muse SKU goes live, the Polar
-// subscription check in getEntitlements takes over — this helper
-// remains as an override for comped accounts.
-export async function hasMuseAllowlistEntitlement(userId: string): Promise<boolean> {
-  const allowlist = (env.MUSE_ALLOWLIST ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
+export const MUSE_FEATURE = "muse";
 
-  if (allowlist.length === 0) return false;
-
+// Invite-gated while the basic_muse SKU isn't live. Access is granted by
+// flipping grantedAt on feature_access; Polar subscription bundles take
+// over in getEntitlements once pricing is active, and this helper remains
+// as the override for comped accounts.
+export async function hasMuseInviteEntitlement(userId: string): Promise<boolean> {
   const [row] = await db
-    .select({ email: users.email })
-    .from(users)
-    .where(eq(users.id, userId))
+    .select({ id: featureAccess.id })
+    .from(featureAccess)
+    .where(
+      and(
+        eq(featureAccess.userId, userId),
+        eq(featureAccess.feature, MUSE_FEATURE),
+        isNotNull(featureAccess.grantedAt),
+        isNull(featureAccess.revokedAt),
+      ),
+    )
     .limit(1);
-  if (!row?.email) return false;
+  return Boolean(row);
+}
 
-  return allowlist.includes(row.email.toLowerCase());
+export async function getMuseAccessState(userId: string): Promise<{
+  granted: boolean;
+  requestedAt: Date | null;
+}> {
+  const [row] = await db
+    .select({
+      grantedAt: featureAccess.grantedAt,
+      revokedAt: featureAccess.revokedAt,
+      requestedAt: featureAccess.requestedAt,
+    })
+    .from(featureAccess)
+    .where(
+      and(
+        eq(featureAccess.userId, userId),
+        eq(featureAccess.feature, MUSE_FEATURE),
+      ),
+    )
+    .limit(1);
+
+  if (!row) return { granted: false, requestedAt: null };
+  const granted = Boolean(row.grantedAt && !row.revokedAt);
+  return { granted, requestedAt: row.requestedAt };
+}
+
+export class MuseAccessRequiredError extends Error {
+  constructor() {
+    super("Muse access required");
+    this.name = "MuseAccessRequiredError";
+  }
+}
+
+// Throws when the caller doesn't have Muse access. Server actions and
+// protected routes use this as a single-line guard; catch it at the UI
+// boundary if you want to redirect to the request-access page.
+export async function requireMuseAccess(userId: string): Promise<void> {
+  const ok = await hasMuseInviteEntitlement(userId);
+  if (!ok) throw new MuseAccessRequiredError();
 }

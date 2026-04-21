@@ -2,7 +2,7 @@
 // Muse-powered composer flows, etc). Always derive entitlements through
 // this — never read the subscriptions table directly.
 
-import { hasMuseAllowlistEntitlement } from "./muse";
+import { hasMuseInviteEntitlement } from "./muse";
 import { FREE_TIER_CHANNELS } from "./pricing";
 import { getLogicalSubscription } from "./service";
 
@@ -21,10 +21,10 @@ export async function getEntitlements(
 	const sub = await getLogicalSubscription(userId);
 
 	if (sub.plan === "free") {
-		const museAllowlisted = await hasMuseAllowlistEntitlement(userId);
+		const museInvited = await hasMuseInviteEntitlement(userId);
 		return {
 			plan: "free",
-			museEnabled: museAllowlisted,
+			museEnabled: museInvited,
 			channelLimit: FREE_TIER_CHANNELS,
 			channelsRemaining: Math.max(0, FREE_TIER_CHANNELS - currentChannels),
 			currentChannels,
