@@ -28,6 +28,7 @@ export type BroadcastDraftEditorProps = {
   };
   verifiedDomains: DomainOption[];
   fallbackFromName: string;
+  museAccess: boolean;
 };
 
 export function BroadcastDraftEditor({
@@ -35,6 +36,7 @@ export function BroadcastDraftEditor({
   initial,
   verifiedDomains,
   fallbackFromName,
+  museAccess,
 }: BroadcastDraftEditorProps) {
   const [subject, setSubject] = useState(initial.subject);
   const [preheader, setPreheader] = useState(initial.preheader);
@@ -198,17 +200,19 @@ export function BroadcastDraftEditor({
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
             Message
           </p>
-          <button
-            type="button"
-            onClick={() => setMuseOpen((v) => !v)}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border-strong text-[12px] font-medium text-ink hover:bg-peach-100/60 transition-colors"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-primary" />
-            Draft with Muse
-          </button>
+          {museAccess ? (
+            <button
+              type="button"
+              onClick={() => setMuseOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full border border-border-strong text-[12px] font-medium text-ink hover:bg-peach-100/60 transition-colors"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              Draft with Muse
+            </button>
+          ) : null}
         </div>
 
-        {museOpen ? (
+        {museAccess && museOpen ? (
           <div className="px-6 py-5 border-b border-border bg-muted/30 space-y-3">
             <label className="block text-[13px] font-medium text-ink">
               What's the email about?

@@ -5,6 +5,7 @@ import {
   sendingDomains,
   subscribers,
 } from "@/db/schema";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { and, eq, sql } from "drizzle-orm";
 import {
@@ -30,6 +31,8 @@ export default async function BroadcastDetailPage(props: {
     where: and(eq(broadcasts.id, id), eq(broadcasts.userId, user.id)),
   });
   if (!b) notFound();
+
+  const museAccess = await hasMuseInviteEntitlement(user.id);
 
   const domains = await db
     .select()
@@ -94,6 +97,7 @@ export default async function BroadcastDetailPage(props: {
               domain: d.domain,
             }))}
             fallbackFromName={user.workspaceName ?? user.name ?? ""}
+            museAccess={museAccess}
           />
         </>
       ) : (

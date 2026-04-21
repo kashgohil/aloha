@@ -10,6 +10,7 @@ import { db } from "@/db";
 import { broadcasts, sendingDomains, subscribers } from "@/db/schema";
 import { generateBroadcastDraft } from "@/lib/ai/broadcast";
 import { requireBroadcastEntitlement } from "@/lib/billing/broadcasts";
+import { requireMuseAccess } from "@/lib/billing/muse";
 import { env } from "@/lib/env";
 
 const qstashClient = new Client({
@@ -121,6 +122,7 @@ export async function draftBroadcastWithMuse(formData: FormData): Promise<{
 }> {
   const userId = await requireUserId();
   await requireBroadcastEntitlement(userId);
+  await requireMuseAccess(userId);
   const id = String(formData.get("id") ?? "");
   const brief = String(formData.get("brief") ?? "").trim();
   if (!id) throw new Error("Missing id");
