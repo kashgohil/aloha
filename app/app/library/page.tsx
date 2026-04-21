@@ -1,9 +1,16 @@
 import { and, desc, eq } from "drizzle-orm";
-import { ImageIcon, PenSquare, Sparkles } from "lucide-react";
+import { ImageIcon, Lock, PenSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/db";
 import { assets } from "@/db/schema";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CopyPromptButton } from "./_components/copy-prompt";
 import { DeleteAssetButton } from "./_components/delete-confirm";
 
@@ -21,6 +28,7 @@ type Row = {
 
 export default async function LibraryPage() {
   const user = (await getCurrentUser())!;
+  const museAccess = await hasMuseInviteEntitlement(user.id);
 
   const rows: Row[] = await db
     .select({
@@ -53,13 +61,34 @@ export default async function LibraryPage() {
           </p>
         </div>
         <div>
-          <Link
-            href="/app/composer"
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
-          >
-            <Sparkles className="w-4 h-4" />
-            Generate new
-          </Link>
+          {museAccess ? (
+            <Link
+              href="/app/composer"
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
+            >
+              <Sparkles className="w-4 h-4" />
+              Generate new
+            </Link>
+          ) : (
+            <TooltipProvider delay={150}>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Link
+                      href="/app/settings/muse"
+                      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink/30 text-background text-[13px] font-medium"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Generate new
+                    </Link>
+                  }
+                />
+                <TooltipContent side="bottom" className="max-w-[240px] text-center">
+                  Image generation is a Muse feature. Request access to unlock it.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </div>
       </header>
 
