@@ -1,15 +1,17 @@
 import Link from "next/link";
 import { and, eq, notInArray } from "drizzle-orm";
-import { ArrowUpRight, Bell, BookOpen, Clock, Lock, Plus, ShieldCheck, Sparkle } from "lucide-react";
+import { ArrowUpRight, Bell, BookOpen, Clock, Lock, Plus, RefreshCw, ShieldCheck, Sparkle } from "lucide-react";
 import { db } from "@/db";
 import {
   accounts,
   blueskyCredentials,
   channelNotifications,
+  channelProfiles,
   channelStates,
   mastodonCredentials,
   telegramCredentials,
 } from "@/db/schema";
+import { ChannelIdentity, type ChannelProfileView } from "@/components/channel-identity";
 import { MastodonListItem } from "./_components/mastodon-list-item";
 import { BlueskyListItem } from "./_components/bluesky-list-item";
 import { TelegramListItem } from "./_components/telegram-list-item";
@@ -24,7 +26,7 @@ import {
 import { getCurrentUser } from "@/lib/current-user";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
-import { connectChannel, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
+import { connectChannel, refreshChannelProfileAction, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
 import { DisconnectChannelButton } from "./_components/disconnect-confirm";
 import {
@@ -268,7 +270,7 @@ export default async function ChannelsSettingsPage({
 }) {
   const user = (await getCurrentUser())!;
 
-  const [rows, blueskyRows, mastodonRows, telegramRows, stateRows, notifyRows] = await Promise.all([
+  const [rows, blueskyRows, mastodonRows, telegramRows, stateRows, notifyRows, profileRows] = await Promise.all([
     db
       .select({
         provider: accounts.provider,
@@ -309,8 +311,22 @@ export default async function ChannelsSettingsPage({
       .select({ channel: channelNotifications.channel })
       .from(channelNotifications)
       .where(eq(channelNotifications.userId, user.id)),
+    db
+      .select({
+        channel: channelProfiles.channel,
+        displayName: channelProfiles.displayName,
+        handle: channelProfiles.handle,
+        avatarUrl: channelProfiles.avatarUrl,
+        profileUrl: channelProfiles.profileUrl,
+        followerCount: channelProfiles.followerCount,
+      })
+      .from(channelProfiles)
+      .where(eq(channelProfiles.userId, user.id)),
   ]);
   const notifiedChannels = new Set(notifyRows.map((r) => r.channel));
+  const profileByChannel = new Map<string, ChannelProfileView>(
+    profileRows.map((p) => [p.channel, p as ChannelProfileView]),
+  );
 
   const connected = new Set(rows.map((r) => r.provider));
   if (blueskyRows.length > 0) {
@@ -405,6 +421,7 @@ export default async function ChannelsSettingsPage({
                 isSoon={isSoon}
                 isApprovalNeeded={isApprovalNeeded}
                 atLimit={atLimit && entitlements.plan === "free"}
+                profile={profileByChannel.get("mastodon") ?? null}
               />
             );
           }
@@ -416,6 +433,7 @@ export default async function ChannelsSettingsPage({
                 isConnected={connected.has("bluesky")}
                 needsReauth={needsReauth.has("bluesky")}
                 atLimit={atLimit && entitlements.plan === "free"}
+                profile={profileByChannel.get("bluesky") ?? null}
               />
             );
           }
@@ -427,6 +445,7 @@ export default async function ChannelsSettingsPage({
                 isConnected={connected.has("telegram")}
                 needsReauth={needsReauth.has("telegram")}
                 atLimit={atLimit && entitlements.plan === "free"}
+                profile={profileByChannel.get("telegram") ?? null}
               />
             );
           }
@@ -437,6 +456,7 @@ export default async function ChannelsSettingsPage({
           const isUnconfigured = !isConnected && !isSoon && !isProviderConfigured(p.id);
           const isLocked = !isConnected && !isSoon && !isApprovalNeeded && !isUnconfigured && atLimit && entitlements.plan === "free";
           const isReauth = isConnected && needsReauth.has(p.id);
+          const profile = isConnected ? profileByChannel.get(p.id) ?? null : null;
           return (
             <li
               key={p.id}
@@ -486,6 +506,28 @@ export default async function ChannelsSettingsPage({
                     ? "Your token expired or was revoked. Reconnect to resume publishing."
                     : p.purpose}
                 </p>
+                {profile && (profile.handle || profile.displayName || profile.avatarUrl) ? (
+                  <div className="mt-2">
+                    {profile.profileUrl ? (
+                      <a
+                        href={profile.profileUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2 py-1 hover:bg-muted/40 transition-colors"
+                      >
+                        <ChannelIdentity
+                          profile={{ ...profile, channel: p.id }}
+                          size="sm"
+                        />
+                      </a>
+                    ) : (
+                      <ChannelIdentity
+                        profile={{ ...profile, channel: p.id }}
+                        size="sm"
+                      />
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               <div className="shrink-0">
@@ -536,7 +578,19 @@ export default async function ChannelsSettingsPage({
                           Reconnect
                         </button>
                       </form>
-                    ) : null}
+                    ) : (
+                      <form action={refreshChannelProfileAction}>
+                        <input type="hidden" name="provider" value={p.id} />
+                        <button
+                          type="submit"
+                          title="Refresh profile details"
+                          aria-label={`Refresh ${p.name} profile`}
+                          className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-border-strong text-ink/70 hover:text-ink hover:border-ink transition-colors"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                      </form>
+                    )}
                     <DisconnectChannelButton provider={p.id} />
                   </div>
                 ) : isLocked ? (

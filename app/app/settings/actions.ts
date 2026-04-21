@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn, unstable_update } from "@/auth";
 import { db } from "@/db";
-import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials, channelNotifications } from "@/db/schema";
+import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCredentials, channelNotifications, channelProfiles } from "@/db/schema";
 import { sendEmail } from "@/lib/email/send";
 import { channelNotificationEmail } from "@/lib/email/templates/channel-notification";
 import { channelLabel } from "@/components/channel-chip";
@@ -15,6 +15,7 @@ import { syncChannelQuantity } from "@/lib/billing/service";
 import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
 import { startTelegramAuth, completeTelegramAuth } from "@/lib/publishers/telegram";
+import { upsertChannelProfile, refreshChannelProfile } from "@/lib/channels/profiles";
 
 const VALID_PUBLISH_MODES: readonly PublishMode[] = [
   "auto",
@@ -102,6 +103,51 @@ export async function connectChannel(formData: FormData) {
   await signIn(provider, { redirectTo: "/app/settings/channels" });
 }
 
+// Refresh cached profile details for a connected channel. Uses the stored
+// token/credentials — no OAuth redirect — so it can't swap to a different
+// account or bump the user past their seat limit. Best-effort: silent if
+// the fetch fails, revalidates so the refresh icon stops spinning.
+export async function refreshChannelProfileAction(formData: FormData) {
+  const userId = await requireUserId();
+  const provider = String(formData.get("provider") ?? "");
+  if (!provider) return;
+
+  // Only refresh channels the user actually has connected. Prevents a
+  // rogue form from triggering API calls for arbitrary channels.
+  if (provider === "bluesky") {
+    const [row] = await db
+      .select({ id: blueskyCredentials.id })
+      .from(blueskyCredentials)
+      .where(eq(blueskyCredentials.userId, userId))
+      .limit(1);
+    if (!row) return;
+  } else if (provider === "mastodon") {
+    const [row] = await db
+      .select({ id: mastodonCredentials.id })
+      .from(mastodonCredentials)
+      .where(eq(mastodonCredentials.userId, userId))
+      .limit(1);
+    if (!row) return;
+  } else if (provider === "telegram") {
+    const [row] = await db
+      .select({ id: telegramCredentials.id })
+      .from(telegramCredentials)
+      .where(eq(telegramCredentials.userId, userId))
+      .limit(1);
+    if (!row) return;
+  } else {
+    const [row] = await db
+      .select({ providerAccountId: accounts.providerAccountId })
+      .from(accounts)
+      .where(and(eq(accounts.userId, userId), eq(accounts.provider, provider)))
+      .limit(1);
+    if (!row) return;
+  }
+
+  await refreshChannelProfile(userId, provider);
+  revalidatePath("/app/settings/channels");
+}
+
 export async function disconnectChannel(formData: FormData) {
   const userId = await requireUserId();
   const provider = String(formData.get("provider") ?? "");
@@ -126,6 +172,14 @@ export async function disconnectChannel(formData: FormData) {
     .delete(accounts)
     .where(
       and(eq(accounts.userId, userId), eq(accounts.provider, provider)),
+    );
+  await db
+    .delete(channelProfiles)
+    .where(
+      and(
+        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.channel, provider),
+      ),
     );
 
   const remaining = await currentChannelCount(userId);
@@ -209,6 +263,20 @@ export async function connectBluesky(
 
   const did = agent.session?.did ?? null;
 
+  // Fetch the profile so the UI can show avatar + display name. Best-effort.
+  let profile: {
+    displayName?: string;
+    avatar?: string;
+    description?: string;
+    followersCount?: number;
+  } | null = null;
+  try {
+    const res = await agent.getProfile({ actor: handle });
+    profile = res.data;
+  } catch (err) {
+    console.error("[bluesky] getProfile failed", err);
+  }
+
   await db
     .insert(blueskyCredentials)
     .values({
@@ -227,6 +295,16 @@ export async function connectBluesky(
       },
     });
 
+  await upsertChannelProfile(userId, "bluesky", {
+    providerAccountId: did,
+    displayName: profile?.displayName ?? handle,
+    handle,
+    avatarUrl: profile?.avatar ?? null,
+    profileUrl: `https://bsky.app/profile/${handle}`,
+    bio: profile?.description ?? null,
+    followerCount: profile?.followersCount ?? null,
+  });
+
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
   redirect("/app/settings/channels?connected=bluesky");
@@ -238,6 +316,14 @@ export async function disconnectBluesky() {
   await db
     .delete(blueskyCredentials)
     .where(eq(blueskyCredentials.userId, userId));
+  await db
+    .delete(channelProfiles)
+    .where(
+      and(
+        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.channel, "bluesky"),
+      ),
+    );
 
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
@@ -271,6 +357,13 @@ export async function connectMastodon(
 
   let accountId = "";
   let username = "";
+  let mastodonProfile: {
+    displayName?: string;
+    avatar?: string;
+    url?: string;
+    note?: string;
+    followersCount?: number;
+  } = {};
   try {
     const res = await fetch(`${instanceBase}/api/v1/accounts/verify_credentials`, {
       headers: {
@@ -284,9 +377,25 @@ export async function connectMastodon(
         error: "Invalid access token or instance URL. Please check your credentials.",
       };
     }
-    const data = (await res.json()) as { id: string; username: string };
+    const data = (await res.json()) as {
+      id: string;
+      username: string;
+      display_name?: string;
+      avatar?: string;
+      avatar_static?: string;
+      url?: string;
+      note?: string;
+      followers_count?: number;
+    };
     accountId = data.id;
     username = data.username;
+    mastodonProfile = {
+      displayName: data.display_name,
+      avatar: data.avatar ?? data.avatar_static,
+      url: data.url,
+      note: data.note,
+      followersCount: data.followers_count,
+    };
   } catch (err) {
     console.error("[mastodon] API call failed", err);
     return {
@@ -314,6 +423,16 @@ export async function connectMastodon(
       },
     });
 
+  await upsertChannelProfile(userId, "mastodon", {
+    providerAccountId: accountId,
+    displayName: mastodonProfile.displayName || username,
+    handle: `@${username}@${normalizedInstance}`,
+    avatarUrl: mastodonProfile.avatar ?? null,
+    profileUrl: mastodonProfile.url ?? `${instanceBase}/@${username}`,
+    bio: mastodonProfile.note ?? null,
+    followerCount: mastodonProfile.followersCount ?? null,
+  });
+
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
   redirect("/app/settings/channels?connected=mastodon");
@@ -325,6 +444,14 @@ export async function disconnectMastodon() {
   await db
     .delete(mastodonCredentials)
     .where(eq(mastodonCredentials.userId, userId));
+  await db
+    .delete(channelProfiles)
+    .where(
+      and(
+        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.channel, "mastodon"),
+      ),
+    );
 
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
@@ -361,6 +488,24 @@ export async function connectTelegram(
       }
       return { error: error || "Failed to verify code" };
     }
+    // Pull the row we just authenticated so we can mirror the username/chat
+    // into channel_profiles. Telegram doesn't expose an avatar via our bot
+    // credentials path, so we leave that null — the UI falls back to the
+    // Telegram mark.
+    const [tgRow] = await db
+      .select({ chatId: telegramCredentials.chatId, username: telegramCredentials.username })
+      .from(telegramCredentials)
+      .where(eq(telegramCredentials.userId, userId))
+      .limit(1);
+    if (tgRow) {
+      const handle = tgRow.username ? `@${tgRow.username}` : null;
+      await upsertChannelProfile(userId, "telegram", {
+        providerAccountId: tgRow.chatId,
+        displayName: tgRow.username ?? tgRow.chatId,
+        handle,
+        profileUrl: tgRow.username ? `https://t.me/${tgRow.username}` : null,
+      });
+    }
     revalidatePath("/app/settings/channels");
     revalidatePath("/app/dashboard");
     redirect("/app/settings/channels?connected=telegram");
@@ -382,6 +527,21 @@ export async function connectTelegram(
     return { needsCode: true };
   }
 
+  const [tgRow] = await db
+    .select({ chatId: telegramCredentials.chatId, username: telegramCredentials.username })
+    .from(telegramCredentials)
+    .where(eq(telegramCredentials.userId, userId))
+    .limit(1);
+  if (tgRow) {
+    const handle = tgRow.username ? `@${tgRow.username}` : null;
+    await upsertChannelProfile(userId, "telegram", {
+      providerAccountId: tgRow.chatId,
+      displayName: tgRow.username ?? tgRow.chatId,
+      handle,
+      profileUrl: tgRow.username ? `https://t.me/${tgRow.username}` : null,
+    });
+  }
+
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");
   redirect("/app/settings/channels?connected=telegram");
@@ -393,6 +553,14 @@ export async function disconnectTelegram() {
   await db
     .delete(telegramCredentials)
     .where(eq(telegramCredentials.userId, userId));
+  await db
+    .delete(channelProfiles)
+    .where(
+      and(
+        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.channel, "telegram"),
+      ),
+    );
 
   revalidatePath("/app/settings/channels");
   revalidatePath("/app/dashboard");

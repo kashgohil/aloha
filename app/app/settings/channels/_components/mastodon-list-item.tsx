@@ -1,26 +1,30 @@
 "use client";
 
 import { MastodonIcon } from "@/app/auth/_components/provider-icons";
-import { Plus, ShieldCheck, Sparkle, Bell } from "lucide-react";
-import { useState } from "react";
-import { disconnectMastodon } from "../../actions";
+import { Plus, RefreshCw, ShieldCheck, Sparkle, Bell } from "lucide-react";
+import { useState, useTransition } from "react";
+import { refreshChannelProfileAction } from "../../actions";
 import { MastodonChannelItem } from "./mastodon-item";
-import { ConfirmDeleteForm } from "@/components/ui/confirm-dialog";
+import { DisconnectChannelButton } from "./disconnect-confirm";
+import { ChannelIdentity, type ChannelProfileView } from "@/components/channel-identity";
 
 type Props = {
 	isConnected: boolean;
 	isSoon: boolean;
 	isApprovalNeeded?: boolean;
 	atLimit?: boolean;
+	profile?: ChannelProfileView | null;
 };
 
-export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimit }: Props) {
+export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimit, profile }: Props) {
 	const [showForm, setShowForm] = useState(false);
-	const [disconnecting, setDisconnecting] = useState(false);
-
-	const disconnectAction = async () => {
-		setDisconnecting(true);
-		await disconnectMastodon();
+	const [isRefreshing, startRefresh] = useTransition();
+	const handleRefresh = () => {
+		startRefresh(async () => {
+			const fd = new FormData();
+			fd.set("provider", "mastodon");
+			await refreshChannelProfileAction(fd);
+		});
 	};
 
 	if (isApprovalNeeded) {
@@ -112,6 +116,22 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimi
 								? "Enter your Mastodon instance details"
 								: "Federated posts to any instance."}
 						</p>
+						{isConnected && profile && (profile.handle || profile.displayName) ? (
+							<div className="mt-2">
+								{profile.profileUrl ? (
+									<a
+										href={profile.profileUrl}
+										target="_blank"
+										rel="noreferrer"
+										className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2 py-1 hover:bg-muted/40 transition-colors"
+									>
+										<ChannelIdentity profile={{ ...profile, channel: "mastodon" }} size="sm" />
+									</a>
+								) : (
+									<ChannelIdentity profile={{ ...profile, channel: "mastodon" }} size="sm" />
+								)}
+							</div>
+						) : null}
 					</div>
 					<div className="flex items-center gap-1.5 shrink-0">
 						{showForm ? (
@@ -131,30 +151,28 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimi
 								<Plus className="w-3.5 h-3.5" />
 								Connect
 							</button>
+						) : isConnected ? (
+							<button
+								type="button"
+								onClick={handleRefresh}
+								disabled={isRefreshing}
+								title="Refresh profile details"
+								aria-label="Refresh Mastodon profile"
+								className="inline-flex items-center justify-center h-10 w-10 rounded-full border border-border-strong text-ink/70 hover:text-ink hover:border-ink transition-colors disabled:opacity-50"
+							>
+								<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+							</button>
 						) : (
 							<button
 								type="button"
 								onClick={() => setShowForm(true)}
-								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
+								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
 							>
-								{!isConnected ? <Plus className="w-3.5 h-3.5" /> : null}
-								{isConnected ? "Reconnect" : "Connect"}
+								<Plus className="w-3.5 h-3.5" />
+								Connect
 							</button>
 						)}
-					{isConnected ? (
-						<ConfirmDeleteForm
-							action={async () => {
-								setDisconnecting(true);
-								await disconnectMastodon();
-							}}
-							title="Disconnect Mastodon?"
-							description="This will remove the connection to your Mastodon instance. You can reconnect it later."
-							confirmText="Disconnect"
-							className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-primary-deep hover:bg-peach-100/60 transition-colors disabled:opacity-50"
-						>
-							Disconnect
-						</ConfirmDeleteForm>
-					) : null}
+					{isConnected ? <DisconnectChannelButton provider="mastodon" /> : null}
 					</div>
 				</div>
 				{showForm && (
