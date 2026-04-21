@@ -13,6 +13,7 @@ import {
 	platformInsights,
 } from "@/db/schema";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { and, count, eq, isNotNull, ne, notInArray } from "drizzle-orm";
@@ -26,11 +27,15 @@ import {
 	Wand2,
 } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
 export default async function NewCampaignPage() {
 	const user = (await getCurrentUser())!;
+	if (!(await hasMuseInviteEntitlement(user.id))) {
+		redirect("/app/campaigns");
+	}
 
 	const [connected, ideaCount, feedItemCount, insightCount, voiceRow] =
 		await Promise.all([

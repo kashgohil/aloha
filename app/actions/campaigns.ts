@@ -18,6 +18,7 @@ import {
   regenerateCampaignBeat,
   type CampaignKind,
 } from "@/lib/ai/campaign";
+import { requireMuseAccess } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { env } from "@/lib/env";
 
@@ -33,6 +34,7 @@ const parseStringList = (raw: string): string[] =>
 export async function createCampaignAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await requireMuseAccess(user.id);
 
   const name = String(formData.get("name") ?? "").trim();
   const goal = String(formData.get("goal") ?? "").trim();
@@ -150,6 +152,7 @@ export async function acceptCampaignBeatsAction(formData: FormData) {
 export async function regenerateCampaignBeatAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await requireMuseAccess(user.id);
 
   const campaignId = String(formData.get("campaignId") ?? "");
   const beatId = String(formData.get("beatId") ?? "");

@@ -1,7 +1,8 @@
 import { listCampaigns } from "@/lib/ai/campaign";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
-import { CalendarRange, Megaphone, Plus, Sparkles } from "lucide-react";
+import { CalendarRange, Lock, Megaphone, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +27,8 @@ const STATUS_STYLES: Record<string, string> = {
 
 export default async function CampaignsPage() {
 	const user = (await getCurrentUser())!;
-	const campaigns = await listCampaigns(user.id);
+	const museAccess = await hasMuseInviteEntitlement(user.id);
+	const campaigns = museAccess ? await listCampaigns(user.id) : [];
 
 	return (
 		<div className="space-y-10">
@@ -43,16 +45,40 @@ export default async function CampaignsPage() {
 						beat sheet you can review, tune, and ship.
 					</p>
 				</div>
-				<Link
-					href="/app/campaigns/new"
-					className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary transition-colors"
-				>
-					<Plus className="w-4 h-4" />
-					New campaign
-				</Link>
+				{museAccess ? (
+					<Link
+						href="/app/campaigns/new"
+						className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[13.5px] font-medium hover:bg-primary transition-colors"
+					>
+						<Plus className="w-4 h-4" />
+						New campaign
+					</Link>
+				) : null}
 			</header>
 
-			{campaigns.length === 0 ? (
+			{!museAccess ? (
+				<div className="rounded-3xl border border-dashed border-border-strong bg-background-elev px-8 py-16 text-center">
+					<span className="inline-grid place-items-center w-12 h-12 rounded-full bg-peach-100 border border-border">
+						<Lock className="w-5 h-5 text-ink" />
+					</span>
+					<p className="mt-5 font-display text-[24px] leading-[1.15] tracking-[-0.01em] text-ink">
+						Campaigns need Muse.
+					</p>
+					<p className="mt-2 text-[13.5px] text-ink/60 max-w-md mx-auto leading-[1.55]">
+						Muse plans the arc — beats, dates, hooks — so you can review and ship.
+						Request access to unlock campaigns.
+					</p>
+					<Link
+						href="/app/settings/muse"
+						className="mt-6 inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
+					>
+						<Sparkles className="w-4 h-4" />
+						Request Muse access
+					</Link>
+				</div>
+			) : null}
+
+			{museAccess && campaigns.length === 0 ? (
 				<div className="rounded-3xl border border-dashed border-border-strong bg-background-elev px-8 py-16 text-center">
 					<span className="inline-grid place-items-center w-12 h-12 rounded-full bg-peach-100 border border-border">
 						<Megaphone className="w-5 h-5 text-ink" />
@@ -72,7 +98,7 @@ export default async function CampaignsPage() {
 						Start one
 					</Link>
 				</div>
-			) : (
+			) : museAccess ? (
 				<ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 					{campaigns.map((c) => {
 						const total = (c.beats as Array<{ accepted?: boolean }>).length;
@@ -125,7 +151,7 @@ export default async function CampaignsPage() {
 						);
 					})}
 				</ul>
-			)}
+			) : null}
 		</div>
 	);
 }
