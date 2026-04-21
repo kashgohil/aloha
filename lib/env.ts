@@ -95,6 +95,12 @@ const envSchema = z.object({
   SENTRY_ORG: z.string().optional(),
   SENTRY_PROJECT: z.string().optional(),
   SENTRY_AUTH_TOKEN: z.string().optional(),
+
+  // Langfuse — LLM tracing. Optional: router falls back to a no-op client
+  // when either key is missing, so dev without Langfuse still boots.
+  LANGFUSE_PUBLIC_KEY: z.string().optional(),
+  LANGFUSE_SECRET_KEY: z.string().optional(),
+  LANGFUSE_BASE_URL: z.string().url().default("https://us.cloud.langfuse.com"),
 });
 
 // Validate process.env
