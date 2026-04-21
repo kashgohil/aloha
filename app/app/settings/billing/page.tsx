@@ -2,7 +2,14 @@ import { PricingCalculator } from "@/app/(marketing)/pricing/_components/pricing
 import { WishlistForm } from "@/app/(marketing)/pricing/_components/wishlist-form";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { accounts, users, wishlist } from "@/db/schema";
+import {
+	accounts,
+	blueskyCredentials,
+	mastodonCredentials,
+	telegramCredentials,
+	users,
+	wishlist,
+} from "@/db/schema";
 import { effectivePrice, FREE_TIER_CHANNELS } from "@/lib/billing/pricing";
 import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
@@ -60,16 +67,38 @@ export default async function BillingPage() {
 		/>
 	);
 
-	const channelRows = await db
-		.select({ provider: accounts.provider })
-		.from(accounts)
-		.where(
-			and(
-				eq(accounts.userId, userId),
-				notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
-			),
-		);
-	const connectedChannels = channelRows.length;
+	const [channelRows, blueskyRows, mastodonRows, telegramRows] =
+		await Promise.all([
+			db
+				.select({ provider: accounts.provider })
+				.from(accounts)
+				.where(
+					and(
+						eq(accounts.userId, userId),
+						notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+					),
+				),
+			db
+				.select({ id: blueskyCredentials.id })
+				.from(blueskyCredentials)
+				.where(eq(blueskyCredentials.userId, userId))
+				.limit(1),
+			db
+				.select({ id: mastodonCredentials.id })
+				.from(mastodonCredentials)
+				.where(eq(mastodonCredentials.userId, userId))
+				.limit(1),
+			db
+				.select({ id: telegramCredentials.id })
+				.from(telegramCredentials)
+				.where(eq(telegramCredentials.userId, userId))
+				.limit(1),
+		]);
+	const connectedChannels =
+		channelRows.length +
+		blueskyRows.length +
+		mastodonRows.length +
+		telegramRows.length;
 
 	if (!IS_DEV) {
 		const [userRow] = await db
