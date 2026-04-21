@@ -65,10 +65,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
         <div className="flex items-center pt-5 pb-4 px-3 h-[52px]">
           <Link
             href="/app/dashboard"
-            className={cn(
-              "inline-flex items-baseline gap-0.5",
-              collapsed ? "mx-auto" : "pl-3",
-            )}
+            className="inline-flex items-baseline gap-0.5 pl-3"
             aria-label="Aloha home"
           >
             <span className="font-display text-[24px] leading-none font-semibold tracking-[-0.03em] text-ink">
@@ -85,12 +82,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
         </nav>
 
         <div className="py-3 px-3 border-t border-border">
-          <div
-            className={cn(
-              "flex flex-col gap-2",
-              collapsed ? "items-center" : "items-stretch",
-            )}
-          >
+          <div className="flex flex-col gap-2 items-start">
             <ThemeToggle />
             <NotificationsBell />
             <AvatarMenu

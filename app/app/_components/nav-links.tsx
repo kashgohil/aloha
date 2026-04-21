@@ -72,10 +72,7 @@ export function NavLinks({
               aria-label={collapsed ? i.label : undefined}
               aria-current={isActive ? "page" : undefined}
               className={cn(
-                "group flex items-center h-10 rounded-xl text-[14px] font-medium transition-colors",
-                collapsed
-                  ? "w-10 mx-auto justify-center"
-                  : "gap-3 px-3",
+                "group flex items-center h-10 rounded-xl text-[14px] font-medium transition-colors gap-3 px-3",
                 isActive
                   ? "bg-peach-100/70 text-ink"
                   : "text-ink/70 hover:text-ink hover:bg-muted/60",
