@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { bulkDeletePosts } from "@/app/actions/posts";
 import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { previewContent } from "@/lib/post-preview";
 import { cn } from "@/lib/utils";
 import { PostRowActions } from "./post-row-actions";
 
@@ -27,21 +28,6 @@ type Row = {
 	publishedAt: Date | null;
 	createdAt: Date;
 };
-
-function previewContent(p: Row): string {
-	const base = p.content?.trim();
-	if (base) return p.content;
-	const overrides = p.channelContent ?? {};
-	for (const platform of p.platforms) {
-		const c = overrides[platform]?.content?.trim();
-		if (c) return overrides[platform]!.content!;
-	}
-	for (const entry of Object.values(overrides)) {
-		const c = entry?.content?.trim();
-		if (c) return entry!.content!;
-	}
-	return "";
-}
 
 const STATUS_META: Record<
 	string,
