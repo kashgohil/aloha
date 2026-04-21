@@ -182,6 +182,7 @@ type TabId = "all" | string;
 export function Composer({
 	author,
 	connectedProviders,
+	museAccess,
 	bestWindows,
 	channelStates,
 	initialContent = "",
@@ -197,6 +198,7 @@ export function Composer({
 }: {
 	author: Author;
 	connectedProviders: string[];
+	museAccess: boolean;
 	bestWindows: Record<string, BestWindow[]>;
 	channelStates: Record<string, EffectiveState>;
 	initialContent?: string;
@@ -1193,6 +1195,7 @@ export function Composer({
 						</TooltipProvider>
 
 						{/* Second footer: Assist — Muse / Variants / Fan out / Score / Import / Image / Library */}
+						{museAccess ? (
 						<TooltipProvider delay={250}>
 							<div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/50 overflow-x-auto">
 								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 px-2 shrink-0">
@@ -1314,8 +1317,9 @@ export function Composer({
 								) : null}
 							</div>
 						</TooltipProvider>
+						) : null}
 
-						{activeDrawer ? (
+						{museAccess && activeDrawer ? (
 							<div className="border-t border-border bg-muted/30">
 								{activeDrawer === "muse" ? (
 									<div className="px-5 py-4 lg:px-6 lg:py-5 space-y-3">

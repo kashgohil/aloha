@@ -1,5 +1,6 @@
 import { and, eq, notInArray } from "drizzle-orm";
 import { getCurrentUser } from "@/lib/current-user";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { db } from "@/db";
 import {
@@ -32,7 +33,7 @@ export default async function ComposerPage({
 
   const timezone = user.timezone ?? "UTC";
 
-  const [connected, bestWindows, channelStates] = await Promise.all([
+  const [connected, bestWindows, channelStates, museAccess] = await Promise.all([
     db
       .selectDistinct({ provider: accounts.provider })
       .from(accounts)
@@ -44,6 +45,7 @@ export default async function ComposerPage({
       ),
     getBestWindowsForUser(user.id, timezone),
     getEffectiveStatesForUser(user.id),
+    hasMuseInviteEntitlement(user.id),
   ]);
 
   // If the composer was opened from an idea, pull the body so the editor
@@ -130,6 +132,7 @@ export default async function ComposerPage({
         timezone,
       }}
       connectedProviders={connectedProviders}
+      museAccess={museAccess}
       bestWindows={bestWindows}
       channelStates={channelStates}
       initialContent={initialContent}
