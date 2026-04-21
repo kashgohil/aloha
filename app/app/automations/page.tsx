@@ -1,9 +1,10 @@
 import { db } from "@/db";
 import { automations } from "@/db/schema";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { desc, eq } from "drizzle-orm";
-import { Pencil, Plus, Sparkles, Zap } from "lucide-react";
+import { Lock, Pencil, Plus, Sparkles, Zap } from "lucide-react";
 import Link from "next/link";
 import { DeleteAutomationButton } from "./_components/delete-confirm";
 import { FlowDiagram } from "./_components/flow-diagram";
@@ -12,6 +13,7 @@ import { ToggleAutomationButton } from "./_components/toggle-button";
 import {
 	TEMPLATES,
 	TEMPLATE_LIST,
+	templateRequiresMuse,
 	type AutomationKind,
 } from "./_lib/templates";
 import { resolveSteps } from "./_lib/steps";
@@ -30,6 +32,7 @@ export default async function AutomationsPage({
 	searchParams: SearchParams;
 }) {
 	const user = (await getCurrentUser())!;
+	const museAccess = await hasMuseInviteEntitlement(user.id);
 	const params = await searchParams;
 	const selectedId = first(params.id);
 
@@ -155,7 +158,7 @@ export default async function AutomationsPage({
 							})}
 						</ul>
 
-						<TemplatePicker />
+						<TemplatePicker museAccess={museAccess} />
 					</aside>
 
 					{/* Selected */}
@@ -182,7 +185,7 @@ export default async function AutomationsPage({
 					</div>
 				</section>
 			) : (
-				<EmptyState />
+				<EmptyState museAccess={museAccess} />
 			)}
 		</div>
 	);
@@ -319,37 +322,57 @@ function SelectedHeader({
 	);
 }
 
-function TemplatePicker() {
+function TemplatePicker({ museAccess }: { museAccess: boolean }) {
 	return (
 		<div className="rounded-2xl border border-dashed border-border-strong p-4">
 			<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
 				Add another
 			</p>
 			<ul className="mt-3 space-y-1.5">
-				{TEMPLATE_LIST.map((t) => (
-					<li key={t.kind}>
-						<Link
-							href={`/app/automations/new?kind=${t.kind}`}
-							className="group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-muted/60 transition-colors"
-						>
-							<span className="w-8 h-8 rounded-full bg-peach-100 border border-border grid place-items-center shrink-0 text-ink">
-								<t.icon className="w-4 h-4" />
-							</span>
-							<span className="flex-1 min-w-0">
-								<span className="block text-[13px] text-ink font-medium truncate">
-									{t.name}
+				{TEMPLATE_LIST.map((t) => {
+					const locked = templateRequiresMuse(t.kind) && !museAccess;
+					const href = locked
+						? "/app/settings/muse"
+						: `/app/automations/new?kind=${t.kind}`;
+					return (
+						<li key={t.kind}>
+							<Link
+								href={href}
+								className="group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-muted/60 transition-colors"
+								title={
+									locked
+										? "Requires Muse — request access to use this template"
+										: undefined
+								}
+							>
+								<span className="w-8 h-8 rounded-full bg-peach-100 border border-border grid place-items-center shrink-0 text-ink">
+									<t.icon className="w-4 h-4" />
 								</span>
-							</span>
-							<Plus className="w-3.5 h-3.5 text-ink/40 group-hover:text-ink transition-colors" />
-						</Link>
-					</li>
-				))}
+								<span className="flex-1 min-w-0">
+									<span className="block text-[13px] text-ink font-medium truncate">
+										{t.name}
+									</span>
+									{locked ? (
+										<span className="block text-[11px] text-ink/55">
+											Requires Muse
+										</span>
+									) : null}
+								</span>
+								{locked ? (
+									<Lock className="w-3.5 h-3.5 text-ink/45" />
+								) : (
+									<Plus className="w-3.5 h-3.5 text-ink/40 group-hover:text-ink transition-colors" />
+								)}
+							</Link>
+						</li>
+					);
+				})}
 			</ul>
 		</div>
 	);
 }
 
-function EmptyState() {
+function EmptyState({ museAccess }: { museAccess: boolean }) {
 	return (
 		<section>
 			<SectionHeader
@@ -357,29 +380,45 @@ function EmptyState() {
 				title="Small jobs that pay off every week"
 			/>
 			<div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-				{TEMPLATE_LIST.map((t) => (
-					<article
-						key={t.kind}
-						className="rounded-2xl border border-border bg-background-elev p-5 flex flex-col"
-					>
-						<span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
-							<t.icon className="w-4 h-4" />
-						</span>
-						<h3 className="mt-4 font-display text-[20px] leading-[1.2] tracking-[-0.01em] text-ink">
-							{t.name}
-						</h3>
-						<p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
-							{t.summary}
-						</p>
-						<Link
-							href={`/app/automations/new?kind=${t.kind}`}
-							className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors self-start"
+				{TEMPLATE_LIST.map((t) => {
+					const locked = templateRequiresMuse(t.kind) && !museAccess;
+					return (
+						<article
+							key={t.kind}
+							className={cn(
+								"rounded-2xl border bg-background-elev p-5 flex flex-col",
+								locked ? "border-dashed border-border-strong" : "border-border",
+							)}
 						>
-							<Sparkles className="w-3.5 h-3.5" />
-							Use this template
-						</Link>
-					</article>
-				))}
+							<span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
+								<t.icon className="w-4 h-4" />
+							</span>
+							<h3 className="mt-4 font-display text-[20px] leading-[1.2] tracking-[-0.01em] text-ink">
+								{t.name}
+							</h3>
+							<p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
+								{t.summary}
+							</p>
+							{locked ? (
+								<Link
+									href="/app/settings/muse"
+									className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] font-medium text-ink hover:border-ink transition-colors self-start"
+								>
+									<Lock className="w-3.5 h-3.5" />
+									Requires Muse — request access
+								</Link>
+							) : (
+								<Link
+									href={`/app/automations/new?kind=${t.kind}`}
+									className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors self-start"
+								>
+									<Sparkles className="w-3.5 h-3.5" />
+									Use this template
+								</Link>
+							)}
+						</article>
+					);
+				})}
 			</div>
 			<p className="mt-6 text-[12.5px] text-ink/50">
 				Templates are stored as routines you can rename, pause, or delete

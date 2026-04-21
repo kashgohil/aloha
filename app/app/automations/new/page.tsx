@@ -1,12 +1,18 @@
+import { Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Builder, type BuilderStepValues } from "../_components/builder";
 import {
   TEMPLATES,
   TEMPLATE_LIST,
+  templateRequiresMuse,
   type AutomationKind,
 } from "../_lib/templates";
 import { defaultConfig } from "../_lib/steps";
 import { createAutomationFromBuilder } from "../actions";
+import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
+import { getCurrentUser } from "@/lib/current-user";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +27,15 @@ export default async function NewAutomationPage({
 }) {
   const params = await searchParams;
   const kindParam = first(params.kind) as AutomationKind | undefined;
+  const user = (await getCurrentUser())!;
+  const museAccess = await hasMuseInviteEntitlement(user.id);
 
   if (!kindParam || !TEMPLATES[kindParam]) {
-    return <TemplatePicker />;
+    return <TemplatePicker museAccess={museAccess} />;
+  }
+
+  if (templateRequiresMuse(kindParam) && !museAccess) {
+    redirect("/app/settings/muse");
   }
 
   const template = TEMPLATES[kindParam];
@@ -43,7 +55,7 @@ export default async function NewAutomationPage({
   );
 }
 
-function TemplatePicker() {
+function TemplatePicker({ museAccess }: { museAccess: boolean }) {
   return (
     <div className="space-y-8">
       <header>
@@ -61,26 +73,43 @@ function TemplatePicker() {
         </h1>
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {TEMPLATE_LIST.map((t) => (
-          <Link
-            key={t.kind}
-            href={`/app/automations/new?kind=${t.kind}`}
-            className="group rounded-2xl border border-border bg-background-elev p-5 flex flex-col"
-          >
-            <span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
-              <t.icon className="w-4 h-4" />
-            </span>
-            <h3 className="mt-4 font-display text-[20px] leading-[1.2] tracking-[-0.01em] text-ink">
-              {t.name}
-            </h3>
-            <p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
-              {t.summary}
-            </p>
-            <p className="mt-4 text-[12px] text-ink/55 group-hover:text-ink transition-colors">
-              Configure →
-            </p>
-          </Link>
-        ))}
+        {TEMPLATE_LIST.map((t) => {
+          const locked = templateRequiresMuse(t.kind) && !museAccess;
+          const href = locked
+            ? "/app/settings/muse"
+            : `/app/automations/new?kind=${t.kind}`;
+          return (
+            <Link
+              key={t.kind}
+              href={href}
+              className={cn(
+                "group rounded-2xl border bg-background-elev p-5 flex flex-col",
+                locked ? "border-dashed border-border-strong" : "border-border",
+              )}
+            >
+              <span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
+                <t.icon className="w-4 h-4" />
+              </span>
+              <h3 className="mt-4 font-display text-[20px] leading-[1.2] tracking-[-0.01em] text-ink">
+                {t.name}
+              </h3>
+              <p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
+                {t.summary}
+              </p>
+              {locked ? (
+                <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/70">
+                  <Lock className="w-3.5 h-3.5" />
+                  Requires Muse — request access
+                </p>
+              ) : (
+                <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/55 group-hover:text-ink transition-colors">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  Configure →
+                </p>
+              )}
+            </Link>
+          );
+        })}
       </div>
     </div>
   );
