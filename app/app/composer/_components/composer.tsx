@@ -66,6 +66,7 @@ import {
 	Wand2,
 	X as XIcon,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -1194,130 +1195,153 @@ export function Composer({
 							</div>
 						</TooltipProvider>
 
-						{/* Second footer: Assist — Muse / Variants / Fan out / Score / Import / Image / Library */}
-						{museAccess ? (
-						<TooltipProvider delay={250}>
-							<div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/50 overflow-x-auto">
-								<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 px-2 shrink-0">
-									Assist
-								</p>
-								<ToolDivider />
+					{/* Second footer: Assist — Muse / Variants / Fan out / Score / Import / Image / Library */}
+					{museAccess ? (
+					<TooltipProvider delay={250}>
+						<div className="flex items-center gap-1 px-3 py-2 border-t border-border bg-muted/50 overflow-x-auto">
+							<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 px-2 shrink-0">
+								Assist
+							</p>
+							<ToolDivider />
+							<DrawerTab
+								active={activeDrawer === "muse"}
+								onClick={() => toggleDrawer("muse")}
+								icon={<Wand2 className="w-3.5 h-3.5" />}
+								label="Draft from a topic — Muse writes the post + scaffolding"
+							>
+								Muse
+							</DrawerTab>
+							{draftMeta ? (
 								<DrawerTab
-									active={activeDrawer === "muse"}
-									onClick={() => toggleDrawer("muse")}
-									icon={<Wand2 className="w-3.5 h-3.5" />}
-									label="Draft from a topic — Muse writes the post + scaffolding"
+									active={activeDrawer === "scaffolding"}
+									onClick={() => toggleDrawer("scaffolding")}
+									icon={<Sparkles className="w-3.5 h-3.5" />}
+									label="Muse scaffolding — hooks, beats, CTA, hashtags"
 								>
-									Muse
+									Scaffolding
 								</DrawerTab>
-								{draftMeta ? (
-									<DrawerTab
-										active={activeDrawer === "scaffolding"}
-										onClick={() => toggleDrawer("scaffolding")}
-										icon={<Sparkles className="w-3.5 h-3.5" />}
-										label="Muse scaffolding — hooks, beats, CTA, hashtags"
-									>
-										Scaffolding
-									</DrawerTab>
-								) : null}
-								<DrawerTab
-									active={activeDrawer === "variants"}
-									onClick={() => toggleDrawer("variants")}
-									disabled={selectedPlatforms.length === 0}
-									icon={<Layers className="w-3.5 h-3.5" />}
-									label={
-										selectedPlatforms.length === 0
-											? "Select a channel first"
-											: "Draft one version per selected channel"
-									}
+							) : null}
+							<DrawerTab
+								active={activeDrawer === "variants"}
+								onClick={() => toggleDrawer("variants")}
+								disabled={selectedPlatforms.length === 0}
+								icon={<Layers className="w-3.5 h-3.5" />}
+								label={
+									selectedPlatforms.length === 0
+										? "Select a channel first"
+										: "Draft one version per selected channel"
+								}
+							>
+								Variants
+							</DrawerTab>
+							<DrawerTab
+								active={activeDrawer === "fanout"}
+								onClick={() => toggleDrawer("fanout")}
+								disabled={!canFanout}
+								icon={<GitBranch className="w-3.5 h-3.5" />}
+								label={
+									!fanoutSourcePlatform
+										? "Open a channel tab to fan out from"
+										: fanoutTargets.length === 0
+											? "Select another channel to fan out to"
+											: effectiveContent(fanoutSourcePlatform.id).trim()
+													.length === 0
+												? "Write something on this channel first"
+												: `Fan out this ${fanoutSourcePlatform.name} post`
+								}
+							>
+								Fan out
+							</DrawerTab>
+							<DrawerTab
+								active={activeDrawer === "score"}
+								onClick={() => toggleDrawer("score")}
+								disabled={!canScore}
+								icon={<Gauge className="w-3.5 h-3.5" />}
+								label={
+									!scorePlatform
+										? "Select a channel to score against"
+										: scoreContent.trim().length < 20
+											? "Write a bit more to score"
+											: `Score this ${scorePlatform.name} post`
+								}
+							>
+								Score
+							</DrawerTab>
+							<DrawerTab
+								active={activeDrawer === "import"}
+								onClick={() => toggleDrawer("import")}
+								disabled={selectedPlatforms.length === 0}
+								icon={<FileText className="w-3.5 h-3.5" />}
+								label={
+									selectedPlatforms.length === 0
+										? "Select a channel first"
+										: "Import from a URL"
+								}
+							>
+								Import
+							</DrawerTab>
+							<DrawerTab
+								active={activeDrawer === "image"}
+								onClick={() => toggleDrawer("image")}
+								disabled={baseMedia.length >= MAX_MEDIA}
+								icon={<ImagePlus className="w-3.5 h-3.5" />}
+								label={
+									baseMedia.length >= MAX_MEDIA
+										? `Up to ${MAX_MEDIA} images`
+										: "Generate image"
+								}
+							>
+								Image
+							</DrawerTab>
+							<DrawerTab
+								active={activeDrawer === "library"}
+								onClick={() => toggleDrawer("library")}
+								disabled={baseMedia.length >= MAX_MEDIA}
+								icon={<Images className="w-3.5 h-3.5" />}
+								label={
+									baseMedia.length >= MAX_MEDIA
+										? `Up to ${MAX_MEDIA} images`
+										: "Attach from library"
+								}
+							>
+								Library
+							</DrawerTab>
+							{activeDrawer ? (
+								<button
+									type="button"
+									onClick={closeAllDrawers}
+									aria-label="Close panel"
+									className="ml-auto inline-flex items-center justify-center w-8 h-8 rounded-full text-ink/60 hover:text-ink hover:bg-background/70 transition-colors shrink-0"
 								>
-									Variants
-								</DrawerTab>
-								<DrawerTab
-									active={activeDrawer === "fanout"}
-									onClick={() => toggleDrawer("fanout")}
-									disabled={!canFanout}
-									icon={<GitBranch className="w-3.5 h-3.5" />}
-									label={
-										!fanoutSourcePlatform
-											? "Open a channel tab to fan out from"
-											: fanoutTargets.length === 0
-												? "Select another channel to fan out to"
-												: effectiveContent(fanoutSourcePlatform.id).trim()
-															.length === 0
-													? "Write something on this channel first"
-													: `Fan out this ${fanoutSourcePlatform.name} post`
-									}
-								>
-									Fan out
-								</DrawerTab>
-								<DrawerTab
-									active={activeDrawer === "score"}
-									onClick={() => toggleDrawer("score")}
-									disabled={!canScore}
-									icon={<Gauge className="w-3.5 h-3.5" />}
-									label={
-										!scorePlatform
-											? "Select a channel to score against"
-											: scoreContent.trim().length < 20
-												? "Write a bit more to score"
-												: `Score this ${scorePlatform.name} post`
-									}
-								>
-									Score
-								</DrawerTab>
-								<DrawerTab
-									active={activeDrawer === "import"}
-									onClick={() => toggleDrawer("import")}
-									disabled={selectedPlatforms.length === 0}
-									icon={<FileText className="w-3.5 h-3.5" />}
-									label={
-										selectedPlatforms.length === 0
-											? "Select a channel first"
-											: "Import from a URL"
-									}
-								>
-									Import
-								</DrawerTab>
-								<DrawerTab
-									active={activeDrawer === "image"}
-									onClick={() => toggleDrawer("image")}
-									disabled={baseMedia.length >= MAX_MEDIA}
-									icon={<ImagePlus className="w-3.5 h-3.5" />}
-									label={
-										baseMedia.length >= MAX_MEDIA
-											? `Up to ${MAX_MEDIA} images`
-											: "Generate image"
-									}
-								>
-									Image
-								</DrawerTab>
-								<DrawerTab
-									active={activeDrawer === "library"}
-									onClick={() => toggleDrawer("library")}
-									disabled={baseMedia.length >= MAX_MEDIA}
-									icon={<Images className="w-3.5 h-3.5" />}
-									label={
-										baseMedia.length >= MAX_MEDIA
-											? `Up to ${MAX_MEDIA} images`
-											: "Attach from library"
-									}
-								>
-									Library
-								</DrawerTab>
-								{activeDrawer ? (
-									<button
-										type="button"
-										onClick={closeAllDrawers}
-										aria-label="Close panel"
-										className="ml-auto inline-flex items-center justify-center w-8 h-8 rounded-full text-ink/60 hover:text-ink hover:bg-background/70 transition-colors shrink-0"
-									>
-										<XIcon className="w-4 h-4" />
-									</button>
-								) : null}
+									<XIcon className="w-4 h-4" />
+								</button>
+							) : null}
+						</div>
+					</TooltipProvider>
+					) : (
+						<div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-border bg-peach-100/30">
+							<div className="flex items-center gap-3">
+								<span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-peach-100 border border-peach-300 text-primary">
+									<Sparkles className="w-4 h-4" />
+								</span>
+								<div>
+									<p className="text-[13px] font-medium text-ink">
+										Unlock Muse — your AI co-writer
+									</p>
+									<p className="text-[12px] text-ink/60">
+										Draft posts from a topic, generate hooks & hashtags, score engagement, fan out to multiple channels, and more.
+									</p>
+								</div>
 							</div>
-						</TooltipProvider>
-						) : null}
+							<Link
+								href="/app/settings/muse"
+								className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors shrink-0"
+							>
+								<Wand2 className="w-3.5 h-3.5" />
+								Enable Muse
+							</Link>
+						</div>
+					)}
 
 						{museAccess && activeDrawer ? (
 							<div className="border-t border-border bg-muted/30">
