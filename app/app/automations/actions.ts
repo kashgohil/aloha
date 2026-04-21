@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { db } from "@/db";
-import { automations } from "@/db/schema";
+import { automationRuns, automations } from "@/db/schema";
 import type { StoredFlowStep } from "@/db/schema";
 import {
   TEMPLATES,
@@ -18,6 +18,10 @@ import { requireMuseAccess } from "@/lib/billing/muse";
 import { resolveSteps } from "./_lib/steps";
 import { handlerFor } from "./_lib/handler-map";
 import { materializeNextFireAt } from "@/lib/automations/schedule";
+import {
+  cancel as cancelTick,
+  schedule as scheduleTick,
+} from "@/lib/automations/scheduler";
 import { recordRun, synthesizeStepResults } from "@/lib/automations/runs";
 
 async function requireUserId() {
@@ -149,18 +153,37 @@ export async function updateAutomationFromBuilder(formData: FormData) {
   const steps = validateStepValues(kind, parsePayload(formData));
 
   const [existing] = await db
-    .select({ id: automations.id })
+    .select({
+      id: automations.id,
+      status: automations.status,
+      scheduledMessageId: automations.scheduledMessageId,
+    })
     .from(automations)
     .where(and(eq(automations.id, id), eq(automations.userId, userId)))
     .limit(1);
   if (!existing) throw new Error("Automation not found.");
+
+  const nextFireAt = materializeNextFireAt(steps);
+
+  // Re-schedule the delayed message whenever steps change. Only active
+  // automations hold a scheduled message; paused/draft rows have none.
+  // Cancel old first (best-effort, may have already fired), then publish
+  // the new one if there's still a fire time.
+  let scheduledMessageId: string | null = existing.scheduledMessageId;
+  if (existing.status === "active") {
+    await cancelTick(existing.scheduledMessageId);
+    scheduledMessageId = nextFireAt
+      ? await scheduleTick({ kind: "fire", id, at: nextFireAt })
+      : null;
+  }
 
   await db
     .update(automations)
     .set({
       name,
       steps,
-      nextFireAt: materializeNextFireAt(steps),
+      nextFireAt,
+      scheduledMessageId,
       updatedAt: new Date(),
     })
     .where(and(eq(automations.id, id), eq(automations.userId, userId)));
@@ -193,15 +216,33 @@ export async function toggleAutomation(formData: FormData) {
     throw new Error("This template isn't available yet — check back soon.");
   }
 
-  // Going active: materialize a fresh due-time so the cron poller picks it
-  // up. Going inactive: clear it so we don't fire while paused.
+  // Going active: materialize a fresh due-time and schedule the tick
+  // message. Going paused: clear the due-time and cancel any pending
+  // scheduled message (best-effort — hourly cron + status guard in the
+  // tick handler cover the race where the message fires anyway).
   const steps = resolveSteps(current);
   const nextFireAt =
     next === "active" ? materializeNextFireAt(steps) : null;
 
+  let scheduledMessageId: string | null = null;
+  if (next === "active" && nextFireAt) {
+    scheduledMessageId = await scheduleTick({
+      kind: "fire",
+      id,
+      at: nextFireAt,
+    });
+  } else {
+    await cancelTick(current.scheduledMessageId);
+  }
+
   await db
     .update(automations)
-    .set({ status: next, nextFireAt, updatedAt: new Date() })
+    .set({
+      status: next,
+      nextFireAt,
+      scheduledMessageId,
+      updatedAt: new Date(),
+    })
     .where(and(eq(automations.id, id), eq(automations.userId, userId)));
 
   revalidatePath("/app/automations");
@@ -256,6 +297,34 @@ export async function deleteAutomation(formData: FormData) {
   const userId = await requireUserId();
   const id = String(formData.get("id") ?? "");
   if (!id) return;
+
+  // Collect scheduled message ids before the cascade delete runs so we
+  // can ask the queue to drop them. Cancellation is best-effort; any
+  // leftover message will no-op at the tick handler because the row
+  // won't exist.
+  const [existing] = await db
+    .select({ scheduledMessageId: automations.scheduledMessageId })
+    .from(automations)
+    .where(and(eq(automations.id, id), eq(automations.userId, userId)))
+    .limit(1);
+  if (!existing) {
+    redirect("/app/automations");
+  }
+
+  const waitingRuns = await db
+    .select({ scheduledMessageId: automationRuns.scheduledMessageId })
+    .from(automationRuns)
+    .where(
+      and(
+        eq(automationRuns.automationId, id),
+        eq(automationRuns.status, "waiting"),
+      ),
+    );
+
+  await Promise.all([
+    cancelTick(existing.scheduledMessageId),
+    ...waitingRuns.map((r) => cancelTick(r.scheduledMessageId)),
+  ]);
 
   await db
     .delete(automations)
