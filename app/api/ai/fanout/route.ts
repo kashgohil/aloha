@@ -17,6 +17,7 @@ import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadChannelVoices, loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 import { assertCostCap, CostCapExceededError } from "@/lib/ai/cost-cap";
+import { MuseAccessRequiredError, requireMuseAccess } from "@/lib/billing/muse";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -49,6 +50,15 @@ export async function POST(req: NextRequest) {
   if (!sourcePlatform) return new Response("Source platform required", { status: 400 });
   if (targetPlatforms.length === 0) {
     return new Response("At least one target platform required", { status: 400 });
+  }
+
+  try {
+    await requireMuseAccess(user.id);
+  } catch (err) {
+    if (err instanceof MuseAccessRequiredError) {
+      return new Response(err.message, { status: 403 });
+    }
+    throw err;
   }
 
   try {

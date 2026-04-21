@@ -19,6 +19,7 @@ import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadChannelVoices, loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 import { assertCostCap, CostCapExceededError } from "@/lib/ai/cost-cap";
+import { MuseAccessRequiredError, requireMuseAccess } from "@/lib/billing/muse";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -44,6 +45,16 @@ export async function POST(req: NextRequest) {
   }
   if (platforms.length === 0) {
     return new Response("At least one platform is required", { status: 400 });
+  }
+
+  // Muse-tier feature: gate before opening the stream.
+  try {
+    await requireMuseAccess(user.id);
+  } catch (err) {
+    if (err instanceof MuseAccessRequiredError) {
+      return new Response(err.message, { status: 403 });
+    }
+    throw err;
   }
 
   // Single gate up front: if the user is over their cap, don't open the
