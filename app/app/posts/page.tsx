@@ -1,9 +1,16 @@
 import { db } from "@/db";
-import { accounts, posts } from "@/db/schema";
+import {
+	accounts,
+	blueskyCredentials,
+	mastodonCredentials,
+	posts,
+	telegramCredentials,
+} from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { cn } from "@/lib/utils";
 import { FilterTabs } from "@/components/ui/filter-tabs";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, notInArray, sql } from "drizzle-orm";
 import {
 	AlertCircle,
 	CheckCircle2,
@@ -103,7 +110,6 @@ export default async function PostsPage({
 	const selectedChannels = parseChannels(params.channels);
 
 	// Build query conditions
-	const AUTH_PROVIDERS = ["google", "github"] as const;
 	const where = [eq(posts.userId, user.id)];
 	if (filter !== "all") {
 		where.push(eq(posts.status, filter));
@@ -129,12 +135,35 @@ export default async function PostsPage({
 		}
 	}
 
-	// Fire posts list + status aggregation + account providers concurrently.
-	const [userAccounts, rows, statusAgg] = await Promise.all([
+	// Fire posts list + status aggregation + channel sources concurrently.
+	// Channels come from several tables: OAuth accounts plus per-channel
+	// credential tables for bluesky/mastodon/telegram.
+	const [oauthRows, blueskyRows, mastodonRows, telegramRows, rows, statusAgg] =
+		await Promise.all([
 		db
 			.select({ provider: accounts.provider })
 			.from(accounts)
-			.where(eq(accounts.userId, user.id)),
+			.where(
+				and(
+					eq(accounts.userId, user.id),
+					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+				),
+			),
+		db
+			.select({ id: blueskyCredentials.id })
+			.from(blueskyCredentials)
+			.where(eq(blueskyCredentials.userId, user.id))
+			.limit(1),
+		db
+			.select({ id: mastodonCredentials.id })
+			.from(mastodonCredentials)
+			.where(eq(mastodonCredentials.userId, user.id))
+			.limit(1),
+		db
+			.select({ id: telegramCredentials.id })
+			.from(telegramCredentials)
+			.where(eq(telegramCredentials.userId, user.id))
+			.limit(1),
 		db
 			.select({
 				id: posts.id,
@@ -160,12 +189,14 @@ export default async function PostsPage({
 			.groupBy(posts.status),
 	]);
 
-	const connectedChannels = userAccounts
-		.map((a) => a.provider)
-		.filter(
-			(p): p is string =>
-				!AUTH_PROVIDERS.includes(p as (typeof AUTH_PROVIDERS)[number]),
-		);
+	const connectedChannels = Array.from(
+		new Set<string>([
+			...oauthRows.map((a) => a.provider),
+			...(blueskyRows.length > 0 ? ["bluesky"] : []),
+			...(mastodonRows.length > 0 ? ["mastodon"] : []),
+			...(telegramRows.length > 0 ? ["telegram"] : []),
+		]),
+	);
 
 	const countByStatus = Object.fromEntries(
 		statusAgg.map((r) => [r.status, r.count]),
