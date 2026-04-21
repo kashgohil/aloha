@@ -4,7 +4,7 @@ import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { desc, eq } from "drizzle-orm";
-import { Clock, Lock, Pencil, Plus, Sparkles, Zap } from "lucide-react";
+import { Clock, Lock, Pencil, Plus, Workflow, Zap } from "lucide-react";
 import Link from "next/link";
 import { DeleteAutomationButton } from "./_components/delete-confirm";
 import { FlowDiagram } from "./_components/flow-diagram";
@@ -110,7 +110,7 @@ export default async function AutomationsPage({
 							{myAutomations.map((a) => {
 								const t = TEMPLATES[a.kind as AutomationKind];
 								const isActive = a.id === selected?.id;
-								const Icon = t?.icon ?? Sparkles;
+								const Icon = t?.icon ?? Workflow;
 								const stat = stats.get(a.id);
 								return (
 									<li key={a.id}>
@@ -451,7 +451,7 @@ function EmptyState({ museAccess }: { museAccess: boolean }) {
 									href={`/app/automations/new?kind=${t.kind}`}
 									className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors self-start"
 								>
-									<Sparkles className="w-3.5 h-3.5" />
+									<Workflow className="w-3.5 h-3.5" />
 									Use this template
 								</Link>
 							)}

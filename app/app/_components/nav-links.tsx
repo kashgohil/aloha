@@ -15,8 +15,8 @@ import {
   Megaphone,
   PenSquare,
   Rss,
-  Sparkles,
   Users,
+  Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -44,7 +44,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Inbox", href: "/app/inbox", icon: Inbox },
   { label: "Audience", href: "/app/audience", icon: Users },
   { label: "Broadcasts", href: "/app/broadcasts", icon: Mail },
-  { label: "Automations", href: "/app/automations", icon: Sparkles },
+  { label: "Automations", href: "/app/automations", icon: Workflow },
 ];
 
 type Variant = "horizontal" | "sidebar";
