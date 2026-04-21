@@ -904,6 +904,27 @@ export const channelStates = pgTable(
   ],
 );
 
+// Captures interest when a user clicks "Notify me" on a channel that isn't
+// connectable yet (approval_needed platforms, unconfigured providers).
+// Drives a ping when the channel becomes available.
+export const channelNotifications = pgTable(
+  "channel_notifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    channel: text("channel").notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("channel_notifications_user_channel").on(
+      table.userId,
+      table.channel,
+    ),
+  ],
+);
+
 // Per-user × per-channel flag: is Muse turned on for this channel? Drives
 // both the entitlement check in the router and per-channel billing.
 export const museEnabledChannels = pgTable(
