@@ -10,6 +10,7 @@ import {
   type StoredStepResult,
 } from "@/db/schema";
 import { getActionHandler, getConditionHandler } from "./registry";
+import { schedule as scheduleTick } from "./scheduler";
 // Handler modules self-register via side effect. Real handlers are imported
 // before the stubs module so duplicate registration throws during
 // development if a handler + stub coexist (rather than silently masking).
@@ -116,6 +117,15 @@ export async function executeRun({
           const resumeAt = new Date(Date.now() + ms);
           const nextStep = nextInTrunk(trunk, step.id);
           stepResults.push(okResult(step.id, startedAt));
+          // Schedule the resume tick before writing the row so the
+          // messageId lands atomically. scheduleTick swallows failures
+          // and returns null — the hourly cron will pick up any
+          // waiting run whose resumeAt has passed.
+          const scheduledMessageId = await scheduleTick({
+            kind: "resume",
+            id: runId,
+            at: resumeAt,
+          });
           await db
             .update(automationRuns)
             .set({
@@ -124,6 +134,7 @@ export async function executeRun({
               snapshot: accumulated,
               resumeAt,
               cursor: nextStep?.stepId ?? null,
+              scheduledMessageId,
             })
             .where(eq(automationRuns.id, runId));
           return;
@@ -347,6 +358,7 @@ async function finalizeRun(
         finishedAt,
         resumeAt: null,
         cursor: null,
+        scheduledMessageId: null,
       })
       .where(eq(automationRuns.id, runId));
     await tx
@@ -411,7 +423,7 @@ export async function resumeRun(args: {
 }): Promise<void> {
   await db
     .update(automationRuns)
-    .set({ status: "running", resumeAt: null })
+    .set({ status: "running", resumeAt: null, scheduledMessageId: null })
     .where(eq(automationRuns.id, args.runId));
 
   await executeRun({
