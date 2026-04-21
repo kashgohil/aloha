@@ -1,7 +1,7 @@
 "use client";
 
 import { TelegramIcon } from "@/app/auth/_components/provider-icons";
-import { Plus, ShieldCheck } from "lucide-react";
+import { Plus, ShieldCheck, Sparkle } from "lucide-react";
 import { useState } from "react";
 import { disconnectTelegram } from "../../actions";
 import { TelegramChannelItem } from "./telegram-item";
@@ -10,9 +10,10 @@ import { ConfirmDeleteForm } from "@/components/ui/confirm-dialog";
 type Props = {
 	isConnected: boolean;
 	needsReauth?: boolean;
+	atLimit?: boolean;
 };
 
-export function TelegramListItem({ isConnected, needsReauth }: Props) {
+export function TelegramListItem({ isConnected, needsReauth, atLimit }: Props) {
 	const [showForm, setShowForm] = useState(false);
 
 	return (
@@ -43,6 +44,10 @@ export function TelegramListItem({ isConnected, needsReauth }: Props) {
 								Reconnect needed
 							</span>
 						) : null}
+						<span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-peach-100 border border-peach-300 text-[10.5px] text-ink font-medium tracking-wide">
+							<Sparkle className="w-3 h-3" />
+							Muse
+						</span>
 					</div>
 					<p className="mt-1 text-[12.5px] text-ink/60">
 						{showForm
@@ -60,6 +65,15 @@ export function TelegramListItem({ isConnected, needsReauth }: Props) {
 							className="inline-flex items-center justify-center h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
 						>
 							Close
+						</button>
+					) : !isConnected && atLimit ? (
+						<button
+							type="button"
+							disabled
+							className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] text-ink/40 cursor-not-allowed"
+						>
+							<Plus className="w-3.5 h-3.5" />
+							Connect
 						</button>
 					) : (
 						<button

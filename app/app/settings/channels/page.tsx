@@ -5,6 +5,7 @@ import { db } from "@/db";
 import {
   accounts,
   blueskyCredentials,
+  channelNotifications,
   channelStates,
   mastodonCredentials,
   telegramCredentials,
@@ -267,7 +268,7 @@ export default async function ChannelsSettingsPage({
 }) {
   const user = (await getCurrentUser())!;
 
-  const [rows, blueskyRows, mastodonRows, telegramRows, stateRows] = await Promise.all([
+  const [rows, blueskyRows, mastodonRows, telegramRows, stateRows, notifyRows] = await Promise.all([
     db
       .select({
         provider: accounts.provider,
@@ -304,7 +305,12 @@ export default async function ChannelsSettingsPage({
       })
       .from(channelStates)
       .where(eq(channelStates.userId, user.id)),
+    db
+      .select({ channel: channelNotifications.channel })
+      .from(channelNotifications)
+      .where(eq(channelNotifications.userId, user.id)),
   ]);
+  const notifiedChannels = new Set(notifyRows.map((r) => r.channel));
 
   const connected = new Set(rows.map((r) => r.provider));
   if (blueskyRows.length > 0) {
@@ -377,13 +383,16 @@ export default async function ChannelsSettingsPage({
       <div className="space-y-8 min-w-0">
       <ul className="rounded-3xl border border-border bg-background-elev divide-y divide-border overflow-hidden">
         {[...PROVIDERS].sort((a, b) => {
-          // Sort: available > approval_needed > soon
-          const statusOrder = { available: 0, approval_needed: 1, soon: 2 };
-          const statusDiff = statusOrder[a.status] - statusOrder[b.status];
-          if (statusDiff !== 0) return statusDiff;
-          const ac = connected.has(a.id) ? 0 : 1;
-          const bc = connected.has(b.id) ? 0 : 1;
-          return ac - bc;
+          // Priority groups: 0 connected, 1 available+configured, 2 approval_needed (notify me),
+          // 3 unconfigured available, 4 soon. Keeps notify-me channels together.
+          const rank = (p: ProviderConfig) => {
+            if (connected.has(p.id)) return 0;
+            if (p.status === "soon") return 4;
+            if (p.status === "approval_needed") return 2;
+            if (!isProviderConfigured(p.id)) return 3;
+            return 1;
+          };
+          return rank(a) - rank(b);
         }).map((p) => {
           if (p.id === "mastodon") {
             const isConnectedMastodon = connected.has("mastodon");
@@ -395,6 +404,7 @@ export default async function ChannelsSettingsPage({
                 isConnected={isConnectedMastodon}
                 isSoon={isSoon}
                 isApprovalNeeded={isApprovalNeeded}
+                atLimit={atLimit && entitlements.plan === "free"}
               />
             );
           }
@@ -405,6 +415,7 @@ export default async function ChannelsSettingsPage({
                 key={p.id}
                 isConnected={connected.has("bluesky")}
                 needsReauth={needsReauth.has("bluesky")}
+                atLimit={atLimit && entitlements.plan === "free"}
               />
             );
           }
@@ -415,6 +426,7 @@ export default async function ChannelsSettingsPage({
                 key={p.id}
                 isConnected={connected.has("telegram")}
                 needsReauth={needsReauth.has("telegram")}
+                atLimit={atLimit && entitlements.plan === "free"}
               />
             );
           }
@@ -423,7 +435,7 @@ export default async function ChannelsSettingsPage({
           const isSoon = p.status === "soon";
           const isApprovalNeeded = p.status === "approval_needed";
           const isUnconfigured = !isConnected && !isSoon && !isProviderConfigured(p.id);
-          const isLocked = !isConnected && !isSoon && !isApprovalNeeded && !isUnconfigured && atLimit;
+          const isLocked = !isConnected && !isSoon && !isApprovalNeeded && !isUnconfigured && atLimit && entitlements.plan === "free";
           const isReauth = isConnected && needsReauth.has(p.id);
           return (
             <li
@@ -457,10 +469,10 @@ export default async function ChannelsSettingsPage({
                       Reconnect needed
                     </span>
                   ) : null}
-                  {isApprovalNeeded ? (
+                  {!isSoon ? (
                     <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-peach-100 border border-peach-300 text-[10.5px] text-ink font-medium tracking-wide">
                       <Sparkle className="w-3 h-3" />
-                      AI-ready
+                      Muse
                     </span>
                   ) : null}
                   {isSoon ? (
@@ -485,26 +497,33 @@ export default async function ChannelsSettingsPage({
                   >
                     Not available yet
                   </button>
+                ) : isApprovalNeeded ? (
+                  notifiedChannels.has(p.id) ? (
+                    <span className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-peach-300 bg-peach-100/60 text-[13px] text-ink/70">
+                      <Bell className="w-3.5 h-3.5" />
+                      You&apos;re on the list
+                    </span>
+                  ) : (
+                    <form action={notifyWhenAvailable}>
+                      <input type="hidden" name="provider" value={p.id} />
+                      <PendingSubmitButton
+                        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-peach-300 bg-peach-100 text-[13px] text-ink font-medium hover:bg-peach-200 transition-colors"
+                        pendingLabel="Saving…"
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        Notify me
+                      </PendingSubmitButton>
+                    </form>
+                  )
                 ) : isUnconfigured ? (
                   <button
                     type="button"
                     disabled
-                    title="This channel isn't configured on this deployment yet."
+                    title="We're finishing setup on this one — it'll be ready to connect soon."
                     className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-dashed border-border-strong text-[13px] text-ink/45"
                   >
-                    Unavailable
+                    Getting ready
                   </button>
-                ) : isApprovalNeeded ? (
-                  <form action={notifyWhenAvailable}>
-                    <input type="hidden" name="provider" value={p.id} />
-                    <PendingSubmitButton
-                      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-peach-300 bg-peach-100 text-[13px] text-ink font-medium hover:bg-peach-200 transition-colors"
-                      pendingLabel="Saving…"
-                    >
-                      <Bell className="w-3.5 h-3.5" />
-                      Notify me
-                    </PendingSubmitButton>
-                  </form>
                 ) : isConnected ? (
                     <div className="flex items-center gap-1.5">
                     {isReauth ? (
@@ -521,13 +540,14 @@ export default async function ChannelsSettingsPage({
                     <DisconnectChannelButton provider={p.id} />
                   </div>
                 ) : isLocked ? (
-                  <Link
-                    href="/app/settings/billing"
-                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] text-ink/65 hover:text-ink hover:border-ink transition-colors"
+                  <button
+                    type="button"
+                    disabled
+                    className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] text-ink/40 cursor-not-allowed"
                   >
                     <Lock className="w-3.5 h-3.5" />
-                    Upgrade to connect
-                  </Link>
+                    Connect
+                  </button>
                 ) : (
                   <form action={connectChannel}>
                     <input type="hidden" name="provider" value={p.id} />
@@ -545,6 +565,19 @@ export default async function ChannelsSettingsPage({
           );
         })}
       </ul>
+
+      {atLimit && entitlements.plan === "free" ? (
+        <p className="text-[12.5px] text-ink/60 leading-[1.55] px-1">
+          Want more channels?{" "}
+          <a
+            href="mailto:hello@usealoha.app?subject=More%20channels%20on%20Aloha"
+            className="text-ink font-medium underline underline-offset-4 decoration-dashed hover:decoration-solid"
+          >
+            Contact us
+          </a>
+          .
+        </p>
+      ) : null}
 
       {gatedConnected.length > 0 ? (
         <ChannelStatusPanel items={gatedConnected} />

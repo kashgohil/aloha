@@ -11,9 +11,10 @@ type Props = {
 	isConnected: boolean;
 	isSoon: boolean;
 	isApprovalNeeded?: boolean;
+	atLimit?: boolean;
 };
 
-export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded }: Props) {
+export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimit }: Props) {
 	const [showForm, setShowForm] = useState(false);
 	const [disconnecting, setDisconnecting] = useState(false);
 
@@ -33,7 +34,7 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded }: Prop
 						<p className="text-[14.5px] text-ink font-medium">Mastodon</p>
 						<span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-peach-100 border border-peach-300 text-[10.5px] text-ink font-medium tracking-wide">
 							<Sparkle className="w-3 h-3" />
-							AI-ready
+							Muse
 						</span>
 					</div>
 					<p className="mt-1 text-[12.5px] text-ink/60">
@@ -101,6 +102,10 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded }: Prop
 									Connected
 								</span>
 							) : null}
+							<span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-peach-100 border border-peach-300 text-[10.5px] text-ink font-medium tracking-wide">
+								<Sparkle className="w-3 h-3" />
+								Muse
+							</span>
 						</div>
 						<p className="mt-1 text-[12.5px] text-ink/60">
 							{showForm
@@ -116,6 +121,15 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded }: Prop
 								className="inline-flex items-center justify-center h-10 px-4 rounded-full bg-primary text-primary-foreground text-[13px] font-medium hover:bg-primary-deep transition-colors"
 							>
 								Close
+							</button>
+						) : !isConnected && atLimit ? (
+							<button
+								type="button"
+								disabled
+								className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] text-ink/40 cursor-not-allowed"
+							>
+								<Plus className="w-3.5 h-3.5" />
+								Connect
 							</button>
 						) : (
 							<button
