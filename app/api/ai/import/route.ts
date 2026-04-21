@@ -15,7 +15,7 @@ import { NextRequest } from "next/server";
 import { getCurrentUser } from "@/lib/current-user";
 import { generateStream } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
-import { loadCurrentVoice } from "@/lib/ai/voice";
+import { loadChannelVoices, loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 import { assertCostCap, CostCapExceededError } from "@/lib/ai/cost-cap";
 import { extractFromUrl, ImporterError } from "@/lib/importer";
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   await registerPrompts();
   const voice = await loadCurrentVoice(user.id);
-  const voiceBlock = buildVoiceBlock(voice);
+  const channelDeltas = await loadChannelVoices(user.id, targetPlatforms);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
                 sourcePlatform: "web article",
                 targetPlatform: target,
                 platformConstraints: constraintsFor(target),
-                voiceBlock,
+                voiceBlock: buildVoiceBlock(voice, channelDeltas[target], target),
               },
               userMessage: `Source article: "${extracted.title}"\n\n${truncated}`,
               temperature: 0.7,

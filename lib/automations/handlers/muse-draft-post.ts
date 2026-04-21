@@ -5,7 +5,7 @@ import { db } from "@/db";
 import { museEnabledChannels, posts, type DraftMeta } from "@/db/schema";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
-import { loadCurrentVoice } from "@/lib/ai/voice";
+import { loadChannelVoice, loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { CostCapExceededError } from "@/lib/ai/cost-cap";
@@ -106,7 +106,10 @@ registerAction(
     const platform = await resolveChannel(userId, configuredChannel);
 
     await registerPrompts();
-    const voice = await loadCurrentVoice(userId);
+    const [voice, channelDelta] = await Promise.all([
+      loadCurrentVoice(userId),
+      loadChannelVoice(userId, platform),
+    ]);
 
     try {
       const result = await generate({
@@ -116,7 +119,7 @@ registerAction(
         vars: {
           platform,
           platformConstraints: constraintsFor(platform),
-          voiceBlock: buildVoiceBlock(voice),
+          voiceBlock: buildVoiceBlock(voice, channelDelta, platform),
         },
         userMessage: topic
           ? `Topic / brief: ${topic}`

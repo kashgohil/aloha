@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { requireMuseAccess } from "@/lib/billing/muse";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
-import { loadCurrentVoice } from "@/lib/ai/voice";
+import { loadChannelVoice, loadCurrentVoice } from "@/lib/ai/voice";
 import { buildVoiceBlock, constraintsFor } from "@/lib/ai/voice-context";
 import { CostCapExceededError } from "@/lib/ai/cost-cap";
 import { generateImage, type ImageAspect } from "@/lib/ai/image";
@@ -44,7 +44,10 @@ export async function generateDraft(topic: string, platform: string = "general")
 
   await registerPrompts();
 
-  const voice = await loadCurrentVoice(user.id);
+  const [voice, channelDelta] = await Promise.all([
+    loadCurrentVoice(user.id),
+    loadChannelVoice(user.id, platform),
+  ]);
 
   try {
     const result = await generate({
@@ -54,7 +57,7 @@ export async function generateDraft(topic: string, platform: string = "general")
       vars: {
         platform,
         platformConstraints: constraintsFor(platform),
-        voiceBlock: buildVoiceBlock(voice),
+        voiceBlock: buildVoiceBlock(voice, channelDelta, platform),
       },
       userMessage: `Topic / brief: ${topic.trim()}`,
       temperature: 0.8,
@@ -93,7 +96,10 @@ export async function generateRichDraft(
   if (!topic.trim()) throw new Error("Topic is required");
 
   await registerPrompts();
-  const voice = await loadCurrentVoice(user.id);
+  const [voice, channelDelta] = await Promise.all([
+    loadCurrentVoice(user.id),
+    loadChannelVoice(user.id, platform),
+  ]);
 
   try {
     const result = await generate({
@@ -103,7 +109,7 @@ export async function generateRichDraft(
       vars: {
         platform,
         platformConstraints: constraintsFor(platform),
-        voiceBlock: buildVoiceBlock(voice),
+        voiceBlock: buildVoiceBlock(voice, channelDelta, platform),
       },
       userMessage: `Topic / brief: ${topic.trim()}`,
       temperature: 0.75,
@@ -386,7 +392,10 @@ export async function improveWithBrief(
   }
 
   await registerPrompts();
-  const voice = await loadCurrentVoice(user.id);
+  const [voice, channelDelta] = await Promise.all([
+    loadCurrentVoice(user.id),
+    loadChannelVoice(user.id, platform),
+  ]);
 
   try {
     const result = await generate({
@@ -396,7 +405,7 @@ export async function improveWithBrief(
       vars: {
         platform,
         improvementBrief: improvementBrief.trim(),
-        voiceBlock: buildVoiceBlock(voice),
+        voiceBlock: buildVoiceBlock(voice, channelDelta, platform),
       },
       userMessage: content.trim(),
       temperature: 0.6,
