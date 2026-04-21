@@ -1,10 +1,11 @@
-import { Lock, Sparkles } from "lucide-react";
+import { Clock, Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Builder, type BuilderStepValues } from "../_components/builder";
 import {
   TEMPLATES,
   TEMPLATE_LIST,
+  templateIsComingSoon,
   templateRequiresMuse,
   type AutomationKind,
 } from "../_lib/templates";
@@ -32,6 +33,10 @@ export default async function NewAutomationPage({
 
   if (!kindParam || !TEMPLATES[kindParam]) {
     return <TemplatePicker museAccess={museAccess} />;
+  }
+
+  if (templateIsComingSoon(kindParam)) {
+    redirect("/app/automations/new");
   }
 
   if (templateRequiresMuse(kindParam) && !museAccess) {
@@ -74,19 +79,38 @@ function TemplatePicker({ museAccess }: { museAccess: boolean }) {
       </header>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {TEMPLATE_LIST.map((t) => {
-          const locked = templateRequiresMuse(t.kind) && !museAccess;
+          const comingSoon = templateIsComingSoon(t.kind);
+          const locked = !comingSoon && templateRequiresMuse(t.kind) && !museAccess;
+          const disabled = comingSoon;
           const href = locked
             ? "/app/settings/muse"
             : `/app/automations/new?kind=${t.kind}`;
-          return (
-            <Link
-              key={t.kind}
-              href={href}
-              className={cn(
-                "group rounded-2xl border bg-background-elev p-5 flex flex-col",
-                locked ? "border-dashed border-border-strong" : "border-border",
-              )}
-            >
+          const cardClass = cn(
+            "group rounded-2xl border bg-background-elev p-5 flex flex-col",
+            comingSoon
+              ? "border-dashed border-border-strong opacity-60"
+              : locked
+                ? "border-dashed border-border-strong"
+                : "border-border",
+          );
+          const footer = comingSoon ? (
+            <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/60">
+              <Clock className="w-3.5 h-3.5" />
+              Coming soon
+            </p>
+          ) : locked ? (
+            <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/70">
+              <Lock className="w-3.5 h-3.5" />
+              Requires Muse — request access
+            </p>
+          ) : (
+            <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/55 group-hover:text-ink transition-colors">
+              <Sparkles className="w-3.5 h-3.5" />
+              Configure →
+            </p>
+          );
+          const body = (
+            <>
               <span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
                 <t.icon className="w-4 h-4" />
               </span>
@@ -96,17 +120,20 @@ function TemplatePicker({ museAccess }: { museAccess: boolean }) {
               <p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
                 {t.summary}
               </p>
-              {locked ? (
-                <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/70">
-                  <Lock className="w-3.5 h-3.5" />
-                  Requires Muse — request access
-                </p>
-              ) : (
-                <p className="mt-4 inline-flex items-center gap-1.5 text-[12px] text-ink/55 group-hover:text-ink transition-colors">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  Configure →
-                </p>
-              )}
+              {footer}
+            </>
+          );
+          return disabled ? (
+            <div
+              key={t.kind}
+              className={cn(cardClass, "cursor-not-allowed")}
+              aria-disabled
+            >
+              {body}
+            </div>
+          ) : (
+            <Link key={t.kind} href={href} className={cardClass}>
+              {body}
             </Link>
           );
         })}

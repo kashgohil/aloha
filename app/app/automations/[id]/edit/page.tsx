@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/current-user";
 import { Builder, type BuilderStepValues } from "../../_components/builder";
 import {
   TEMPLATES,
+  templateIsComingSoon,
   type AutomationKind,
 } from "../../_lib/templates";
 import { resolveSteps } from "../../_lib/steps";
@@ -32,6 +33,13 @@ export default async function EditAutomationPage({
   const kind = row.kind as AutomationKind;
   const template = TEMPLATES[kind];
   if (!template) notFound();
+
+  // Block editing of templates whose backing integration hasn't shipped.
+  // The save action would throw anyway; redirect before rendering the
+  // builder so the user isn't handed a dead-end form.
+  if (templateIsComingSoon(kind)) {
+    redirect(`/app/automations?id=${id}`);
+  }
 
   const storedSteps = resolveSteps(row);
   const initialStepValues: BuilderStepValues = {};

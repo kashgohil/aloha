@@ -9,6 +9,7 @@ import { automations } from "@/db/schema";
 import type { StoredFlowStep } from "@/db/schema";
 import {
   TEMPLATES,
+  templateIsComingSoon,
   templateRequiresMuse,
   type AutomationKind,
   type ConfigField,
@@ -110,6 +111,9 @@ export async function createAutomationFromBuilder(formData: FormData) {
   if (!name) throw new Error("Name is required.");
   const template = TEMPLATES[kind];
   if (!template) throw new Error("Unknown automation template.");
+  if (templateIsComingSoon(kind)) {
+    throw new Error("This template isn't available yet — check back soon.");
+  }
   if (templateRequiresMuse(kind)) await requireMuseAccess(userId);
 
   const steps = validateStepValues(kind, parsePayload(formData));
@@ -137,6 +141,9 @@ export async function updateAutomationFromBuilder(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   if (!id || !name) throw new Error("Missing id or name.");
   if (!TEMPLATES[kind]) throw new Error("Unknown automation template.");
+  if (templateIsComingSoon(kind)) {
+    throw new Error("This template isn't available yet — check back soon.");
+  }
   if (templateRequiresMuse(kind)) await requireMuseAccess(userId);
 
   const steps = validateStepValues(kind, parsePayload(formData));
@@ -175,6 +182,16 @@ export async function toggleAutomation(formData: FormData) {
   if (!current) return;
 
   const next = current.status === "active" ? "paused" : "active";
+
+  // Refuse to activate automations whose template is gated as coming-soon.
+  // Complements the create/update/edit guards so no entry point can flip
+  // one of these into the executor's active set.
+  if (
+    next === "active" &&
+    templateIsComingSoon(current.kind as AutomationKind)
+  ) {
+    throw new Error("This template isn't available yet — check back soon.");
+  }
 
   // Going active: materialize a fresh due-time so the cron poller picks it
   // up. Going inactive: clear it so we don't fire while paused.

@@ -656,8 +656,6 @@ export const TEMPLATES: Record<AutomationKind, AutomationTemplate> = {
   },
 };
 
-export const TEMPLATE_LIST: AutomationTemplate[] = Object.values(TEMPLATES);
-
 // Templates whose steps invoke Muse-backed actions. Kept in sync with the
 // handler-map so the pickers and server guards agree on what's gated.
 export const MUSE_TEMPLATE_KINDS: ReadonlySet<AutomationKind> = new Set<AutomationKind>([
@@ -667,3 +665,25 @@ export const MUSE_TEMPLATE_KINDS: ReadonlySet<AutomationKind> = new Set<Automati
 export function templateRequiresMuse(kind: AutomationKind): boolean {
   return MUSE_TEMPLATE_KINDS.has(kind);
 }
+
+// Templates whose final action still requires an integration we haven't
+// built yet (Slack OAuth for post_to_slack, per-platform DM write APIs for
+// send_dm). Showing them as "coming soon" keeps the roadmap visible without
+// letting users create automations that would no-op the critical step.
+// Remove from this set once the backing handler is real.
+export const COMING_SOON_TEMPLATE_KINDS: ReadonlySet<AutomationKind> =
+  new Set<AutomationKind>(["post_announcement", "reply_auto"]);
+
+export function templateIsComingSoon(kind: AutomationKind): boolean {
+  return COMING_SOON_TEMPLATE_KINDS.has(kind);
+}
+
+// Order templates so coming-soon ones sink to the end — the picker reads
+// this list directly, so sorting here keeps every surface consistent.
+export const TEMPLATE_LIST: AutomationTemplate[] = Object.values(TEMPLATES)
+  .slice()
+  .sort((a, b) => {
+    const aSoon = COMING_SOON_TEMPLATE_KINDS.has(a.kind) ? 1 : 0;
+    const bSoon = COMING_SOON_TEMPLATE_KINDS.has(b.kind) ? 1 : 0;
+    return aSoon - bSoon;
+  });

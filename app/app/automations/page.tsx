@@ -4,7 +4,7 @@ import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { cn } from "@/lib/utils";
 import { desc, eq } from "drizzle-orm";
-import { Lock, Pencil, Plus, Sparkles, Zap } from "lucide-react";
+import { Clock, Lock, Pencil, Plus, Sparkles, Zap } from "lucide-react";
 import Link from "next/link";
 import { DeleteAutomationButton } from "./_components/delete-confirm";
 import { FlowDiagram } from "./_components/flow-diagram";
@@ -13,6 +13,7 @@ import { ToggleAutomationButton } from "./_components/toggle-button";
 import {
 	TEMPLATES,
 	TEMPLATE_LIST,
+	templateIsComingSoon,
 	templateRequiresMuse,
 	type AutomationKind,
 } from "./_lib/templates";
@@ -330,7 +331,54 @@ function TemplatePicker({ museAccess }: { museAccess: boolean }) {
 			</p>
 			<ul className="mt-3 space-y-1.5">
 				{TEMPLATE_LIST.map((t) => {
-					const locked = templateRequiresMuse(t.kind) && !museAccess;
+					const comingSoon = templateIsComingSoon(t.kind);
+					const locked = !comingSoon && templateRequiresMuse(t.kind) && !museAccess;
+					const title = comingSoon
+						? "Coming soon — not yet available"
+						: locked
+							? "Requires Muse — request access to use this template"
+							: undefined;
+					const row = (
+						<>
+							<span className="w-8 h-8 rounded-full bg-peach-100 border border-border grid place-items-center shrink-0 text-ink">
+								<t.icon className="w-4 h-4" />
+							</span>
+							<span className="flex-1 min-w-0">
+								<span className="block text-[13px] text-ink font-medium truncate">
+									{t.name}
+								</span>
+								{comingSoon ? (
+									<span className="block text-[11px] text-ink/55">
+										Coming soon
+									</span>
+								) : locked ? (
+									<span className="block text-[11px] text-ink/55">
+										Requires Muse
+									</span>
+								) : null}
+							</span>
+							{comingSoon ? (
+								<Clock className="w-3.5 h-3.5 text-ink/45" />
+							) : locked ? (
+								<Lock className="w-3.5 h-3.5 text-ink/45" />
+							) : (
+								<Plus className="w-3.5 h-3.5 text-ink/40 group-hover:text-ink transition-colors" />
+							)}
+						</>
+					);
+					if (comingSoon) {
+						return (
+							<li key={t.kind}>
+								<div
+									className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left opacity-60 cursor-not-allowed"
+									title={title}
+									aria-disabled
+								>
+									{row}
+								</div>
+							</li>
+						);
+					}
 					const href = locked
 						? "/app/settings/muse"
 						: `/app/automations/new?kind=${t.kind}`;
@@ -339,30 +387,9 @@ function TemplatePicker({ museAccess }: { museAccess: boolean }) {
 							<Link
 								href={href}
 								className="group w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-muted/60 transition-colors"
-								title={
-									locked
-										? "Requires Muse — request access to use this template"
-										: undefined
-								}
+								title={title}
 							>
-								<span className="w-8 h-8 rounded-full bg-peach-100 border border-border grid place-items-center shrink-0 text-ink">
-									<t.icon className="w-4 h-4" />
-								</span>
-								<span className="flex-1 min-w-0">
-									<span className="block text-[13px] text-ink font-medium truncate">
-										{t.name}
-									</span>
-									{locked ? (
-										<span className="block text-[11px] text-ink/55">
-											Requires Muse
-										</span>
-									) : null}
-								</span>
-								{locked ? (
-									<Lock className="w-3.5 h-3.5 text-ink/45" />
-								) : (
-									<Plus className="w-3.5 h-3.5 text-ink/40 group-hover:text-ink transition-colors" />
-								)}
+								{row}
 							</Link>
 						</li>
 					);
@@ -381,14 +408,20 @@ function EmptyState({ museAccess }: { museAccess: boolean }) {
 			/>
 			<div className="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 				{TEMPLATE_LIST.map((t) => {
-					const locked = templateRequiresMuse(t.kind) && !museAccess;
+					const comingSoon = templateIsComingSoon(t.kind);
+					const locked = !comingSoon && templateRequiresMuse(t.kind) && !museAccess;
 					return (
 						<article
 							key={t.kind}
 							className={cn(
 								"rounded-2xl border bg-background-elev p-5 flex flex-col",
-								locked ? "border-dashed border-border-strong" : "border-border",
+								comingSoon
+									? "border-dashed border-border-strong opacity-60"
+									: locked
+										? "border-dashed border-border-strong"
+										: "border-border",
 							)}
+							aria-disabled={comingSoon ? true : undefined}
 						>
 							<span className="w-10 h-10 rounded-full bg-peach-100 border border-border grid place-items-center text-ink">
 								<t.icon className="w-4 h-4" />
@@ -399,7 +432,12 @@ function EmptyState({ museAccess }: { museAccess: boolean }) {
 							<p className="mt-2 text-[13px] text-ink/65 leading-[1.5] flex-1">
 								{t.summary}
 							</p>
-							{locked ? (
+							{comingSoon ? (
+								<span className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] font-medium text-ink/70 self-start">
+									<Clock className="w-3.5 h-3.5" />
+									Coming soon
+								</span>
+							) : locked ? (
 								<Link
 									href="/app/settings/muse"
 									className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] font-medium text-ink hover:border-ink transition-colors self-start"
