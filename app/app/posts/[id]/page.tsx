@@ -117,17 +117,27 @@ export default async function PostDetailPage({
     .where(eq(postDeliveries.postId, post.id))
     .orderBy(postDeliveries.platform);
 
-  // Pull channel profile handles so the preview card shows the real
-  // "@handle" for each connected account instead of the generic fallback.
+  // Pull each channel's connected-account profile (avatar + display name +
+  // handle) so the preview card shows the real identity followers see on
+  // that channel instead of the generic Aloha account holder.
   const profileRows = await db
     .select({
       channel: channelProfiles.channel,
+      displayName: channelProfiles.displayName,
       handle: channelProfiles.handle,
+      avatarUrl: channelProfiles.avatarUrl,
     })
     .from(channelProfiles)
     .where(eq(channelProfiles.userId, user.id));
-  const handleByChannel = new Map(
-    profileRows.map((p) => [p.channel, p.handle]),
+  const profileByChannel = new Map(
+    profileRows.map((p) => [
+      p.channel,
+      {
+        displayName: p.displayName,
+        handle: p.handle,
+        avatarUrl: p.avatarUrl,
+      },
+    ]),
   );
 
   // Channel chips come from post_deliveries when present (post has been
@@ -288,7 +298,7 @@ export default async function PostDetailPage({
                   name: user.name ?? "You",
                   image: user.image ?? null,
                 }}
-                handle={handleByChannel.get(selectedChannel) ?? null}
+                profile={profileByChannel.get(selectedChannel) ?? null}
                 content={resolvedContent}
                 timestampLabel={previewTimestampLabel(post, tz)}
               />
