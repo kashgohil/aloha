@@ -6,13 +6,13 @@ import type { ComponentType } from "react";
 import {
   BarChart3,
   CalendarDays,
-  FileText,
   Images,
   Inbox,
   LayoutDashboard,
   Lightbulb,
   Mail,
   Megaphone,
+  Newspaper,
   PenSquare,
   Rss,
   Users,
@@ -34,7 +34,7 @@ type NavItem = {
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/app/dashboard", icon: LayoutDashboard },
   { label: "Analytics", href: "/app/analytics", icon: BarChart3 },
-  { label: "Posts", href: "/app/posts", icon: FileText },
+  { label: "Posts", href: "/app/posts", icon: Newspaper },
   { label: "Calendar", href: "/app/calendar", icon: CalendarDays },
   { label: "Composer", href: "/app/composer", icon: PenSquare },
   { label: "Campaigns", href: "/app/campaigns", icon: Megaphone },
