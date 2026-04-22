@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { connectChannel, refreshChannelProfileAction, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
 import { FlashToast } from "@/components/ui/flash-toast";
-import { ConnectedAccountCard } from "./_components/connected-account-card";
+import { ConnectedAccountCard } from "@/components/connected-account-card";
 import { DisconnectChannelButton } from "./_components/disconnect-confirm";
 import { RefreshChannelButton } from "./_components/refresh-channel-button";
 import {

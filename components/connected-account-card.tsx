@@ -40,7 +40,7 @@ export function ConnectedAccountCard({
             rel: "noreferrer",
           }
         : {})}
-      className="group flex items-center gap-3 rounded-xl bg-peach-100/40 border border-peach-200/60 px-3.5 py-2.5 hover:bg-peach-100/60 transition-colors"
+      className="group relative inline-flex items-center gap-3 rounded-xl bg-peach-100/40 border border-peach-200/60 pl-3.5 pr-8 py-2.5 hover:bg-peach-100/60 transition-colors max-w-full align-top"
     >
       <ChannelAvatar
         channel={channel}
@@ -69,7 +69,7 @@ export function ConnectedAccountCard({
         </div>
       </div>
       {profile.profileUrl ? (
-        <ArrowUpRight className="w-3.5 h-3.5 text-ink/35 group-hover:text-ink transition-colors shrink-0" />
+        <ArrowUpRight className="absolute top-2 right-2 w-3.5 h-3.5 text-ink/35 group-hover:text-ink transition-colors" />
       ) : null}
     </Wrapper>
   );
