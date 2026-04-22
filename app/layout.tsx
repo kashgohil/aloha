@@ -7,7 +7,7 @@ import {
 } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import type { Metadata } from "next";
-import { Fraunces, Geist } from "next/font/google";
+import { Fraunces, Geist, Instrument_Serif, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import { themeInitScript } from "./app/_components/theme-provider";
 import "./globals.css";
@@ -19,6 +19,23 @@ const fraunces = Fraunces({
 });
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+
+// Audience-page template fonts. Loaded lazily on the public profile route so
+// the main app doesn't pay the bytes. `display: "swap"` keeps first paint
+// readable even on slow connections.
+const instrumentSerif = Instrument_Serif({
+	weight: "400",
+	style: ["normal", "italic"],
+	subsets: ["latin"],
+	variable: "--font-serif",
+	display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+	subsets: ["latin"],
+	variable: "--font-mono",
+	display: "swap",
+});
 
 export const metadata: Metadata = {
 	metadataBase: new URL(SITE_URL),
@@ -73,6 +90,8 @@ export default function RootLayout({
 				fraunces.variable,
 				"font-sans",
 				geist.variable,
+				instrumentSerif.variable,
+				jetbrainsMono.variable,
 			)}
 			suppressHydrationWarning
 		>
