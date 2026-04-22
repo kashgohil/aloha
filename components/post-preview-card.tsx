@@ -48,15 +48,28 @@ export type PostPreviewAuthor = {
   image: string | null;
 };
 
+export type PostPreviewProfile = {
+  displayName: string | null;
+  handle: string | null;
+  avatarUrl: string | null;
+};
+
 export function PostPreviewCard({
   channel,
   author,
+  profile,
   handle,
   content,
   timestampLabel = "just now",
 }: {
   channel: string;
+  // Fallback identity (the Aloha account holder) used when we don't have a
+  // connected-channel profile on file yet.
   author: PostPreviewAuthor;
+  // Preferred — the connected channel's own profile (avatar + display name
+  // + handle). When provided, drives the card header so the preview looks
+  // like what subscribers will actually see on that channel.
+  profile?: PostPreviewProfile | null;
   handle?: string | null;
   content: string;
   // Shown in the subheader line (e.g. "just now" in composer, "2d" on the
@@ -65,10 +78,14 @@ export function PostPreviewCard({
 }) {
   const Icon = CHANNEL_ICONS[channel];
   const accent = CHANNEL_ACCENT[channel] ?? "bg-ink text-background";
-  const displayHandle = handle ?? CHANNEL_HANDLE[channel] ?? "@handle";
+
+  const displayName = profile?.displayName ?? author.name;
+  const avatarUrl = profile?.avatarUrl ?? author.image;
+  const resolvedHandle =
+    profile?.handle ?? handle ?? CHANNEL_HANDLE[channel] ?? "@handle";
 
   const initials =
-    author.name
+    displayName
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
@@ -82,10 +99,10 @@ export function PostPreviewCard({
       <header className="px-5 pt-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-full overflow-hidden border border-border bg-peach-100 grid place-items-center text-[12px] font-semibold text-ink">
-            {author.image ? (
+            {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={author.image}
+                src={avatarUrl}
                 alt=""
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -96,10 +113,10 @@ export function PostPreviewCard({
           </span>
           <div className="min-w-0">
             <p className="text-[14px] font-medium text-ink leading-tight truncate">
-              {author.name}
+              {displayName}
             </p>
             <p className="text-[12px] text-ink/55 leading-tight truncate">
-              {displayHandle} · {timestampLabel}
+              {resolvedHandle} · {timestampLabel}
             </p>
           </div>
         </div>
