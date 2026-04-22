@@ -164,6 +164,20 @@ const PLATFORMS: Platform[] = [
 		accent: "bg-[#0085ff] text-white",
 	},
 	{
+		id: "mastodon",
+		name: "Mastodon",
+		handle: "@handle",
+		limit: 500,
+		accent: "bg-[#6364ff] text-white",
+	},
+	{
+		id: "telegram",
+		name: "Telegram",
+		handle: "@handle",
+		limit: 4096,
+		accent: "bg-[#229ed9] text-white",
+	},
+	{
 		id: "medium",
 		name: "Medium",
 		handle: "@username",
@@ -282,7 +296,11 @@ export function Composer({
 		}
 	}, [activeTab, selected]);
 
-	const selectedPlatforms = PLATFORMS.filter((p) => selected.includes(p.id));
+	// Ordered by selection order — newly picked channels append to the end
+	// of the scope-tabs strip instead of jumping into PLATFORMS-list order.
+	const selectedPlatforms = selected
+		.map((id) => PLATFORMS.find((p) => p.id === id))
+		.filter((p): p is Platform => p !== undefined);
 	const activePlatform =
 		activeTab === "all"
 			? null
@@ -858,7 +876,7 @@ export function Composer({
 				{/* Header bar 1: publish-to channels + char counter */}
 				<div className="flex items-center gap-4 flex-wrap px-5 py-3 border-b border-border bg-muted/40">
 					<p className="text-[10.5px] font-semibold uppercase tracking-[0.22em] text-ink/55 shrink-0">
-						Publish to
+						Channels
 					</p>
 					<div className="flex flex-wrap gap-1.5 flex-1 min-w-0">
 						{PLATFORMS.map((p) => {
