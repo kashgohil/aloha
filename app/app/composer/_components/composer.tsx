@@ -660,6 +660,34 @@ export function Composer({
 		});
 	};
 
+	// Reset composer state back to a fresh-draft baseline. Used after
+	// publishing so the user lands on an empty composer without needing to
+	// navigate away and come back.
+	const resetComposer = () => {
+		setBaseContent("");
+		setBaseMedia([]);
+		setOverrides({});
+		setSelected(
+			connectedProviders.length > 0 ? [connectedProviders[0]] : ["twitter"],
+		);
+		setActiveTab("all");
+		setScheduledAt("");
+		setShowSchedule(false);
+		setDraftMeta(null);
+		setShowDraftMeta(false);
+		setShowGenerate(false);
+		setGenerateTopic("");
+		setShowVariants(false);
+		setShowFanout(false);
+		setShowImport(false);
+		setShowScore(false);
+		setShowLibrary(false);
+		setShowImageGen(false);
+		setImagePrompt("");
+		setHashSuggestions([]);
+		setFormError(null);
+	};
+
 	const handleSchedule = () => {
 		if (!canSubmit || !scheduledAt || isReadOnly) return;
 		setFormError(null);
@@ -667,19 +695,22 @@ export function Composer({
 		startPublishing(async () => {
 			try {
 				const when = tzLocalInputToUtcDate(scheduledAt, author.timezone);
-				if (editingPostId) {
-					await updatePost(editingPostId, {
-						...buildPayload(),
-						scheduledAt: when,
-					});
-				} else {
-					await schedulePost({
-						...buildPayload(),
-						scheduledAt: when,
-					});
-				}
+				const result = editingPostId
+					? await updatePost(editingPostId, {
+							...buildPayload(),
+							scheduledAt: when,
+						})
+					: await schedulePost({
+							...buildPayload(),
+							scheduledAt: when,
+						});
 				toast.success("Post scheduled.", { id: toastId });
-				router.push("/app/dashboard");
+				const postId = result.postId ?? editingPostId;
+				if (postId) {
+					router.push(`/app/posts/${postId}`);
+				} else {
+					router.refresh();
+				}
 			} catch {
 				toast.error("Couldn't schedule. Check the time and try again.", {
 					id: toastId,
@@ -696,16 +727,20 @@ export function Composer({
 		startPublishing(async () => {
 			try {
 				const when = new Date();
-				if (editingPostId) {
-					await updatePost(editingPostId, {
-						...buildPayload(),
-						scheduledAt: when,
-					});
-				} else {
-					await schedulePost({ ...buildPayload(), scheduledAt: when });
-				}
+				const result = editingPostId
+					? await updatePost(editingPostId, {
+							...buildPayload(),
+							scheduledAt: when,
+						})
+					: await schedulePost({ ...buildPayload(), scheduledAt: when });
 				toast.success("Publishing now.", { id: toastId });
-				router.push("/app/dashboard");
+				const postId = result.postId ?? editingPostId;
+				if (postId) {
+					router.push(`/app/posts/${postId}`);
+				} else {
+					resetComposer();
+					router.refresh();
+				}
 			} catch {
 				toast.error("Couldn't publish. Please try again.", { id: toastId });
 				setFormError("Couldn't publish. Please try again.");

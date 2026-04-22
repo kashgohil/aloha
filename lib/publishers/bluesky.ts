@@ -118,8 +118,11 @@ export async function publishToBluesky(args: {
 
 	const rkey = uri.split("/").pop() ?? uri;
 
+	// Store the full AT-URI so we can pass it directly to getPostThread
+	// when fetching per-post comments. The rkey is kept in the web URL
+	// since bsky.app only understands that short form.
 	return {
-		remotePostId: rkey,
+		remotePostId: uri,
 		remoteUrl: `https://bsky.app/profile/${credentials.handle}/post/${rkey}`,
 	};
 }
