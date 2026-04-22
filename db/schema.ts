@@ -272,6 +272,12 @@ export const wishlist = pgTable("wishlist", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export type PageTheme = {
+  fontPairId?: string;
+  accentId?: string;
+  backgroundPresetId?: string;
+};
+
 export const pages = pgTable("pages", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("userId")
@@ -282,6 +288,17 @@ export const pages = pgTable("pages", {
   title: text("title"),
   bio: text("bio"),
   avatarUrl: text("avatarUrl"),
+  // Template + theme: null theme means "use template defaults". An image
+  // background is signalled by backgroundAssetId (FK to assets); a preset
+  // background lives in theme.backgroundPresetId. Asset wins if both are set.
+  templateId: text("templateId").notNull().default("peach"),
+  theme: jsonb("theme").$type<PageTheme>(),
+  avatarAssetId: uuid("avatarAssetId").references(() => assets.id, {
+    onDelete: "set null",
+  }),
+  backgroundAssetId: uuid("backgroundAssetId").references(() => assets.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
@@ -294,6 +311,9 @@ export const links = pgTable("links", {
   title: text("title").notNull(),
   url: text("url").notNull(),
   order: integer("order").default(0).notNull(),
+  // null = auto-detect from url/label (globe fallback). "none" = render no
+  // icon. Any other value is a preset id from the link-icons catalog.
+  iconPresetId: text("iconPresetId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
