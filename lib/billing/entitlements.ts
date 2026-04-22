@@ -12,6 +12,9 @@ export type Entitlements = {
 	channelLimit: number; // Infinity once a paid plan is active
 	channelsRemaining: number; // Infinity for paid plans
 	currentChannels: number;
+	// Audience page theming: template picker + font/accent/background custom
+	// overrides. Free tier is locked to the `peach` template with defaults.
+	customThemeEnabled: boolean;
 };
 
 export async function getEntitlements(
@@ -28,6 +31,7 @@ export async function getEntitlements(
 			channelLimit: FREE_TIER_CHANNELS,
 			channelsRemaining: Math.max(0, FREE_TIER_CHANNELS - currentChannels),
 			currentChannels,
+			customThemeEnabled: false,
 		};
 	}
 
@@ -37,9 +41,17 @@ export async function getEntitlements(
 		channelLimit: Number.POSITIVE_INFINITY,
 		channelsRemaining: Number.POSITIVE_INFINITY,
 		currentChannels,
+		customThemeEnabled: true,
 	};
 }
 
 export function canConnectAnotherChannel(e: Entitlements): boolean {
 	return e.channelsRemaining > 0;
+}
+
+// Narrow helper for audience theming. Avoids the channel count that the full
+// `getEntitlements` call requires.
+export async function isCustomThemeEnabled(userId: string): Promise<boolean> {
+	const sub = await getLogicalSubscription(userId);
+	return sub.plan !== "free";
 }
