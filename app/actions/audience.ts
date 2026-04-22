@@ -55,6 +55,7 @@ export async function updatePage(formData: FormData) {
 
   revalidatePath("/app/audience");
   revalidatePath(`/u/${slug}`);
+  return { created: !existing };
 }
 
 export async function addLink(formData: FormData) {

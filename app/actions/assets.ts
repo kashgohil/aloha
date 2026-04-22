@@ -64,7 +64,7 @@ export async function deleteGeneratedAssetAction(formData: FormData) {
     .delete(assets)
     .where(and(eq(assets.id, id), eq(assets.userId, user.id)));
 
-  if (row.source === "generated") {
+  if (row.source === "generated" || row.source === "upload") {
     try {
       await del(row.url, { token: env.BLOB_READ_WRITE_TOKEN });
     } catch {

@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
 import { unpublishPost } from "@/lib/unpublishers";
+import { publishPost } from "@/lib/publishers";
 
 const qstashClient = new Client({
   token: env.QSTASH_TOKEN,
@@ -141,6 +142,92 @@ export async function schedulePost(
   } catch (error) {
     console.error("Schedule Post Error:", error);
     throw new Error("Failed to schedule post");
+  }
+}
+
+// Publish-now path. Unlike schedulePost, this does the dispatch inline so
+// the caller (composer) can await a concrete published/failed summary
+// before navigating — otherwise the redirect lands on the post page while
+// QStash still has the job queued, and the user sees a "scheduled" state
+// for a beat. Accepts an optional existing postId to support publishing
+// an existing draft/scheduled post without creating a duplicate row.
+export async function publishPostNow(
+  payload: ComposerPayload & { postId?: string | null },
+) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const now = new Date();
+  let postId = payload.postId ?? null;
+
+  try {
+    if (postId) {
+      const [existing] = await db
+        .select({
+          id: posts.id,
+          userId: posts.userId,
+          status: posts.status,
+        })
+        .from(posts)
+        .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+        .limit(1);
+      if (!existing) throw new Error("Post not found");
+      if (existing.status === "published") {
+        throw new Error("Published posts are read-only.");
+      }
+
+      await db
+        .update(posts)
+        .set({
+          content: payload.content,
+          platforms: payload.platforms,
+          media: payload.media ?? [],
+          channelContent: sanitizeOverrides(
+            payload.channelContent,
+            payload.platforms,
+          ),
+          status: "scheduled",
+          scheduledAt: now,
+          ...(payload.draftMeta !== undefined
+            ? { draftMeta: payload.draftMeta }
+            : {}),
+          updatedAt: now,
+        })
+        .where(eq(posts.id, postId));
+    } else {
+      const [row] = await db
+        .insert(posts)
+        .values({
+          userId: session.user.id,
+          content: payload.content,
+          platforms: payload.platforms,
+          media: payload.media ?? [],
+          channelContent: sanitizeOverrides(
+            payload.channelContent,
+            payload.platforms,
+          ),
+          status: "scheduled",
+          scheduledAt: now,
+          sourceIdeaId: payload.sourceIdeaId ?? null,
+          draftMeta: payload.draftMeta ?? null,
+        })
+        .returning();
+      postId = row.id;
+    }
+
+    await flipIdeaToDrafted(session.user.id, payload.sourceIdeaId);
+
+    const summary = await publishPost(postId);
+
+    revalidatePath("/app/dashboard");
+    revalidatePath("/app/calendar");
+    revalidatePath("/app/ideas");
+    revalidatePath(`/app/posts/${postId}`);
+
+    return { success: true, postId, summary };
+  } catch (error) {
+    console.error("Publish Now Error:", error);
+    throw new Error("Failed to publish post");
   }
 }
 
