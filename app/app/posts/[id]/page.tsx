@@ -6,7 +6,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
-  CalendarClock,
   CheckCircle2,
   Clock,
   AlertCircle,
@@ -19,6 +18,7 @@ import { cn } from "@/lib/utils";
 import { PostAnalytics } from "./_components/post-analytics";
 import { PostReplies } from "./_components/post-replies";
 import { RefreshRepliesButton } from "./_components/refresh-replies-button";
+import { RescheduleButton } from "./_components/reschedule-button";
 
 export const dynamic = "force-dynamic";
 
@@ -123,7 +123,6 @@ export default async function PostDetailPage({
   const statusMeta = STATUS_META[post.status] ?? STATUS_META.draft;
   const StatusIcon = statusMeta.icon;
 
-  const scheduledLabel = formatDateTime(post.scheduledAt, tz);
   const publishedLabel = formatDateTime(post.publishedAt, tz);
 
   return (
@@ -150,11 +149,12 @@ export default async function PostDetailPage({
               <StatusIcon className="w-3 h-3" />
               {statusMeta.label}
             </span>
-            {scheduledLabel && post.status === "scheduled" && (
-              <span className="inline-flex items-center gap-1.5 text-[12px] text-ink/65">
-                <CalendarClock className="w-3.5 h-3.5" />
-                {scheduledLabel}
-              </span>
+            {post.status === "scheduled" && post.scheduledAt && (
+              <RescheduleButton
+                postId={post.id}
+                scheduledAtIso={post.scheduledAt.toISOString()}
+                timezone={tz}
+              />
             )}
             {publishedLabel && post.status === "published" && (
               <span className="inline-flex items-center gap-1.5 text-[12px] text-ink/65">

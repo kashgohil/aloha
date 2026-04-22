@@ -237,6 +237,63 @@ export async function updatePost(
   }
 }
 
+// Lightweight reschedule — bumps `scheduledAt` and queues a fresh QStash
+// message for the new time. Rejects if the post is already published or a
+// draft (drafts need to go through `updatePost` with full payload since
+// they might be flipping status for the first time). Older QStash messages
+// still fire on their original time but no-op because the handler
+// re-checks status + scheduledAt.
+export async function reschedulePost(postId: string, scheduledAt: Date) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const [existing] = await db
+    .select({
+      id: posts.id,
+      userId: posts.userId,
+      status: posts.status,
+    })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .limit(1);
+  if (!existing) throw new Error("Post not found");
+  if (existing.status === "published") {
+    throw new Error("Published posts can't be rescheduled.");
+  }
+  if (existing.status !== "scheduled") {
+    throw new Error("Only scheduled posts can be rescheduled from here.");
+  }
+
+  if (scheduledAt.getTime() <= Date.now()) {
+    throw new Error("Pick a future time to reschedule to.");
+  }
+
+  await db
+    .update(posts)
+    .set({ scheduledAt, updatedAt: new Date() })
+    .where(eq(posts.id, postId));
+
+  const delay = Math.max(
+    0,
+    Math.floor((scheduledAt.getTime() - Date.now()) / 1000),
+  );
+  await qstashClient.publishJSON({
+    url: `${env.APP_URL}/api/qstash`,
+    body: {
+      postId,
+      intendedScheduledAt: scheduledAt.toISOString(),
+    },
+    delay,
+  });
+
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/calendar");
+  revalidatePath(`/app/posts/${postId}`);
+  revalidatePath("/app/posts");
+
+  return { success: true };
+}
+
 // Deletes a post. Two modes:
 //
 //   - mode: "local"   → soft deletes the post by setting status to 'deleted'
