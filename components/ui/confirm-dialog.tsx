@@ -109,7 +109,13 @@ export function useConfirmDialog() {
   return { open, close, Dialog, isOpen };
 }
 
-// Wrapper component for form-based deletes
+// Wrapper component for form-based deletes.
+//
+// Lifecycle hooks let callers surface staged toasts without having to
+// drop down to ConfirmDialog themselves. If `toastMessages` is provided,
+// the wrapper drives a single updating toast id through pending → success
+// / error. For custom flows (multi-stage messages, follow-up side effects)
+// pass `onStart` / `onSuccess` / `onError` instead.
 export type ConfirmDeleteFormProps = {
   action: (formData: FormData) => Promise<void> | void;
   feedId?: string;
@@ -119,6 +125,14 @@ export type ConfirmDeleteFormProps = {
   confirmText?: string;
   children: React.ReactNode;
   className?: string;
+  toastMessages?: {
+    pending: string;
+    success: string;
+    error?: string;
+  };
+  onStart?: (toastId?: string | number) => void;
+  onSuccess?: (toastId?: string | number) => void;
+  onError?: (err: unknown, toastId?: string | number) => void;
 };
 
 export function ConfirmDeleteForm({
@@ -130,18 +144,45 @@ export function ConfirmDeleteForm({
   confirmText = "Delete",
   children,
   className,
+  toastMessages,
+  onStart,
+  onSuccess,
+  onError,
 }: ConfirmDeleteFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
   const handleConfirm = async () => {
     setPending(true);
-    const formData = new FormData();
-    if (feedId) formData.append("feedId", feedId);
-    if (id) formData.append("id", id);
-    await action(formData);
-    setPending(false);
-    setIsOpen(false);
+    // Lazy-import so non-toast callers don't pull sonner into their bundle
+    // just for the delete button. toast.loading/success/error all share the
+    // same id so the UI threads a single notification through its stages.
+    const toastId = toastMessages
+      ? (await import("sonner")).toast.loading(toastMessages.pending)
+      : undefined;
+    onStart?.(toastId);
+    try {
+      const formData = new FormData();
+      if (feedId) formData.append("feedId", feedId);
+      if (id) formData.append("id", id);
+      await action(formData);
+      if (toastMessages) {
+        const { toast } = await import("sonner");
+        toast.success(toastMessages.success, { id: toastId });
+      }
+      onSuccess?.(toastId);
+      setIsOpen(false);
+    } catch (err) {
+      if (toastMessages) {
+        const { toast } = await import("sonner");
+        toast.error(toastMessages.error ?? "Something went wrong.", {
+          id: toastId,
+        });
+      }
+      onError?.(err, toastId);
+    } finally {
+      setPending(false);
+    }
   };
 
   return (
@@ -155,7 +196,7 @@ export function ConfirmDeleteForm({
       </button>
       <ConfirmDialog
         isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
+        onClose={() => !pending && setIsOpen(false)}
         onConfirm={handleConfirm}
         title={title}
         description={description}
