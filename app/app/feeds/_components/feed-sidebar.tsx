@@ -154,6 +154,11 @@ export function FeedSidebar({
                         </>
                       }
                       confirmText="Unsubscribe"
+                      toastMessages={{
+                        pending: "Unsubscribing…",
+                        success: "Unsubscribed from feed.",
+                        error: "Couldn't unsubscribe.",
+                      }}
                       className="inline-flex items-center justify-center w-7 h-7 rounded-full text-ink/40 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />

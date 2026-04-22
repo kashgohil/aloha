@@ -7,7 +7,12 @@ import {
 	refineContent,
 	suggestHashtags,
 } from "@/app/actions/ai";
-import { saveDraft, schedulePost, updatePost } from "@/app/actions/posts";
+import {
+	publishPostNow,
+	saveDraft,
+	schedulePost,
+	updatePost,
+} from "@/app/actions/posts";
 import {
 	BlueskyIcon,
 	FacebookIcon,
@@ -732,15 +737,19 @@ export function Composer({
 		const toastId = toast.loading("Publishing…");
 		startPublishing(async () => {
 			try {
-				const when = new Date();
-				const result = editingPostId
-					? await updatePost(editingPostId, {
-							...buildPayload(),
-							scheduledAt: when,
-						})
-					: await schedulePost({ ...buildPayload(), scheduledAt: when });
-				toast.success("Publishing now.", { id: toastId });
+				const result = await publishPostNow({
+					...buildPayload(),
+					postId: editingPostId ?? null,
+				});
+				const { summary } = result;
 				const postId = result.postId ?? editingPostId;
+				if (summary.allOk) {
+					toast.success("Published.", { id: toastId });
+				} else if (summary.anyOk) {
+					toast.success("Published with some failures.", { id: toastId });
+				} else {
+					toast.error("Couldn't publish. Please try again.", { id: toastId });
+				}
 				if (postId) {
 					router.push(`/app/posts/${postId}`);
 				} else {
@@ -1099,13 +1108,14 @@ export function Composer({
 
 					<aside className="lg:col-span-5 p-4 lg:p-5 flex flex-col gap-4 h-full">
 						{activePlatform ? (
-							<div className="rounded-2xl shadow-[0_14px_32px_-18px_rgba(26,22,18,0.28)]">
+							<div className="rounded-2xl w-fit shadow-[0_14px_32px_-18px_rgba(26,22,18,0.28)]">
 								<PostPreviewCard
 									channel={activePlatform.id}
 									author={author}
 									profile={channelProfiles[activePlatform.id] ?? null}
 									handle={activePlatform.handle}
 									content={effectiveContent(activePlatform.id)}
+									media={baseMedia}
 								/>
 							</div>
 						) : (
