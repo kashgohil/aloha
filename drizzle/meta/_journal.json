@@ -71,6 +71,13 @@
       "when": 1776852922189,
       "tag": "0009_reflective_vindicator",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776868404836,
+      "tag": "0010_lucky_annihilus",
+      "breakpoints": true
     }
   ]
 }

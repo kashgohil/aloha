@@ -1296,6 +1296,56 @@ export const postComments = pgTable(
   ],
 );
 
+// Admin panel operators. Completely separate from `users` — no shared
+// sessions, no OAuth, password + TOTP only. Seed via scripts/seed-admin.ts;
+// there is no self-signup path.
+export const internalUsers = pgTable("internal_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  email: text("email").notNull().unique(),
+  name: text("name"),
+  passwordHash: text("passwordHash").notNull(),
+  // Base32 TOTP shared secret. Null until the operator completes enrollment
+  // on first login. Once set, every login requires a valid 6-digit code.
+  totpSecret: text("totpSecret"),
+  totpEnrolledAt: timestamp("totpEnrolledAt", { mode: "date" }),
+  role: text("role", { enum: ["owner", "staff"] }).default("staff").notNull(),
+  lastLoginAt: timestamp("lastLoginAt", { mode: "date" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// Audit log for admin actions. Every mutation in /admin writes a row here so
+// we can trace who did what to whom. `targetUserId` is the end-user the
+// action touched (nullable for system-wide actions).
+export const internalAuditLog = pgTable(
+  "internal_audit_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    actorId: uuid("actorId")
+      .notNull()
+      .references(() => internalUsers.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    targetUserId: uuid("targetUserId").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    metadata: jsonb("metadata")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+  },
+  (table) => [
+    index("internal_audit_log_actor_created").on(
+      table.actorId,
+      table.createdAt.desc(),
+    ),
+    index("internal_audit_log_target_created").on(
+      table.targetUserId,
+      table.createdAt.desc(),
+    ),
+  ],
+);
+
 // Append-only time-series of engagement counters per delivery. Latest row =
 // current count; deltas across rows drive the analytics chart. Nullable
 // metric columns because platform support varies (e.g. no impressions on
