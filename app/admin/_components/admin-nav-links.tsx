@@ -10,6 +10,7 @@ import {
   CreditCard,
   Sparkles,
   ScrollText,
+  BellRing,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -28,6 +29,11 @@ export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Requests", href: "/admin/requests", icon: MailCheck },
+  {
+    label: "Channel interest",
+    href: "/admin/channel-interest",
+    icon: BellRing,
+  },
   { label: "Billing", href: "/admin/billing", icon: CreditCard },
   { label: "AI usage", href: "/admin/ai-usage", icon: Sparkles },
   { label: "Audit log", href: "/admin/audit", icon: ScrollText },

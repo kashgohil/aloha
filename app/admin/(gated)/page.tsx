@@ -1,6 +1,12 @@
 import { db } from "@/db";
-import { users, posts, generations, featureAccess } from "@/db/schema";
-import { sql, and, isNull, isNotNull } from "drizzle-orm";
+import {
+  users,
+  posts,
+  generations,
+  featureAccess,
+  channelNotifications,
+} from "@/db/schema";
+import { sql, and, isNull, isNotNull, desc } from "drizzle-orm";
 import Link from "next/link";
 import { MailCheck, Users as UsersIcon } from "lucide-react";
 import {
@@ -11,7 +17,14 @@ import {
 } from "../_components/page-header";
 
 async function getStats() {
-  const [[userCount], [postCount], [genAgg], [pendingReq]] = await Promise.all([
+  const [
+    [userCount],
+    [postCount],
+    [genAgg],
+    [pendingReq],
+    [notifyAgg],
+    topChannels,
+  ] = await Promise.all([
     db.select({ c: sql<number>`count(*)::int` }).from(users),
     db.select({ c: sql<number>`count(*)::int` }).from(posts),
     db
@@ -26,6 +39,16 @@ async function getStats() {
       .where(
         and(isNotNull(featureAccess.requestedAt), isNull(featureAccess.grantedAt)),
       ),
+    db.select({ c: sql<number>`count(*)::int` }).from(channelNotifications),
+    db
+      .select({
+        channel: channelNotifications.channel,
+        count: sql<number>`count(*)::int`,
+      })
+      .from(channelNotifications)
+      .groupBy(channelNotifications.channel)
+      .orderBy(desc(sql`count(*)`))
+      .limit(3),
   ]);
   return {
     users: userCount.c,
@@ -33,6 +56,8 @@ async function getStats() {
     generations: genAgg.c,
     aiCostUsd: Number(genAgg.cost) / 1_000_000,
     pendingRequests: pendingReq.c,
+    notifyMeTotal: notifyAgg.c,
+    topChannels,
   };
 }
 
@@ -91,23 +116,65 @@ export default async function AdminOverviewPage() {
       </section>
 
       <section>
-        <SectionHeader
-          eyebrow="Queue"
-          title="Needs your attention"
-          actionLabel="Open requests →"
-          actionHref="/admin/requests"
-        />
-        <DataCard>
-          <div className="p-6 flex items-baseline gap-3">
-            <span className="font-display text-[40px] leading-none tracking-[-0.02em] text-ink">
-              {stats.pendingRequests.toLocaleString()}
-            </span>
-            <span className="text-[13px] text-ink/60">
-              pending access request
-              {stats.pendingRequests === 1 ? "" : "s"}
-            </span>
-          </div>
-        </DataCard>
+        <SectionHeader eyebrow="Queue" title="Needs your attention" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DataCard>
+            <div className="p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+                Access requests
+              </p>
+              <p className="mt-3 flex items-baseline gap-2">
+                <span className="font-display text-[40px] leading-none tracking-[-0.02em] text-ink">
+                  {stats.pendingRequests.toLocaleString()}
+                </span>
+                <span className="text-[13px] text-ink/60">
+                  pending
+                </span>
+              </p>
+              <Link
+                href="/admin/requests"
+                className="mt-5 inline-flex items-center justify-center w-full h-10 rounded-full border border-border-strong text-[13px] text-ink hover:border-ink transition-colors"
+              >
+                Review queue
+              </Link>
+            </div>
+          </DataCard>
+
+          <DataCard>
+            <div className="p-6">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+                Channel interest
+              </p>
+              <p className="mt-3 flex items-baseline gap-2">
+                <span className="font-display text-[40px] leading-none tracking-[-0.02em] text-ink">
+                  {stats.notifyMeTotal.toLocaleString()}
+                </span>
+                <span className="text-[13px] text-ink/60">
+                  &ldquo;Notify me&rdquo; signal
+                  {stats.notifyMeTotal === 1 ? "" : "s"}
+                </span>
+              </p>
+              {stats.topChannels.length > 0 ? (
+                <ul className="mt-4 flex flex-wrap gap-2">
+                  {stats.topChannels.map((c) => (
+                    <li
+                      key={c.channel}
+                      className="inline-flex items-center h-6 px-2 rounded-full bg-peach-100/70 text-[11px] text-ink capitalize"
+                    >
+                      {c.channel} · {c.count}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <Link
+                href="/admin/channel-interest"
+                className="mt-5 inline-flex items-center justify-center w-full h-10 rounded-full border border-border-strong text-[13px] text-ink hover:border-ink transition-colors"
+              >
+                See all signals
+              </Link>
+            </div>
+          </DataCard>
+        </div>
       </section>
     </div>
   );
