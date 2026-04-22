@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
+import { ToastForm } from "@/components/ui/toast-form";
 import { AvatarEditor } from "./_components/avatar-editor";
 import { LinkList } from "./_components/link-list";
 
@@ -134,7 +135,12 @@ export default async function AudiencePage() {
 					/>
 
 					<div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
-						<form action={updatePage}>
+						<ToastForm
+							action={updatePage}
+							success={(res) =>
+								res?.created ? "Page created." : "Page saved."
+							}
+						>
 							<div className="p-6 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 sm:gap-7">
 								<div className="flex flex-col items-start gap-2">
 									{page ? (
@@ -230,7 +236,7 @@ export default async function AudiencePage() {
 									{page ? "Save page" : "Create page"}
 								</PendingSubmitButton>
 							</div>
-						</form>
+						</ToastForm>
 					</div>
 
 					{/* Links */}
@@ -263,8 +269,9 @@ export default async function AudiencePage() {
 							}))}
 						/>
 
-						<form
+						<ToastForm
 							action={addLink}
+							success="Link added."
 							className="p-4 border-t border-border bg-muted/30 grid grid-cols-1 sm:grid-cols-[1fr_1.5fr_auto] gap-2"
 						>
 							<input
@@ -302,7 +309,7 @@ export default async function AudiencePage() {
 									another.
 								</p>
 							) : null}
-						</form>
+						</ToastForm>
 					</div>
 				</div>
 

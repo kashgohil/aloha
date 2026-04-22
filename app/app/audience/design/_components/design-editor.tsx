@@ -2,6 +2,7 @@
 
 import { Check, Loader2, Lock } from "lucide-react";
 import { useEffect, useState, useTransition } from "react";
+import { toast } from "sonner";
 import { getTemplate, listTemplates } from "@/lib/audience-templates";
 import {
   ACCENTS,
@@ -123,8 +124,11 @@ export function DesignEditor({
       ]);
       // Mark the new state as the baseline.
       setSavedState(state);
+      toast.success("Design saved.");
     } catch (err) {
-      setSaveErr(err instanceof Error ? err.message : "Couldn't save.");
+      const msg = err instanceof Error ? err.message : "Couldn't save.";
+      setSaveErr(msg);
+      toast.error(msg);
     } finally {
       setSaving(false);
     }
