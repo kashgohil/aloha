@@ -20,7 +20,7 @@ export function TelegramListItem({ isConnected, needsReauth, atLimit, profile }:
 	const [showForm, setShowForm] = useState(false);
 	return (
 		<li className="flex flex-col px-5 py-4">
-			<div className="flex items-center gap-4">
+			<div className="flex items-start gap-4">
 				<span
 					className={`w-11 h-11 rounded-full border grid place-items-center shrink-0 text-ink ${
 						needsReauth

@@ -79,7 +79,7 @@ export function MastodonListItem({ isConnected, isSoon, isApprovalNeeded, atLimi
 	return (
 		<>
 			<li className="flex flex-col px-5 py-4">
-				<div className="flex items-center gap-4">
+				<div className="flex items-start gap-4">
 					<span
 						className={`w-11 h-11 rounded-full border grid place-items-center shrink-0 ${
 							isConnected
