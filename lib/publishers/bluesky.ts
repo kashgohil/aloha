@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { PostMedia } from "@/db/schema";
-import { AtpAgent } from "@atproto/api";
+import { AtpAgent, type BlobRef } from "@atproto/api";
 import { db } from "@/db";
 import { blueskyCredentials } from "@/db/schema";
 import { PublishError } from "./errors";
@@ -53,7 +53,7 @@ export async function createSession(credentials: BlueskyCredentials) {
 async function uploadImage(
 	agent: AtpAgent,
 	media: PostMedia,
-): Promise<{ ref: string; mimeType: string }> {
+): Promise<{ blob: BlobRef; alt: string }> {
 	const bin = await fetch(media.url);
 	if (!bin.ok) {
 		throw new PublishError(
@@ -64,25 +64,24 @@ async function uploadImage(
 	const bytes = await bin.arrayBuffer();
 	const uploaded = await agent.uploadBlob(new Uint8Array(bytes), {
 		encoding: media.mimeType,
-	}) as unknown as { data: { ref: { uri: string } } };
+	});
 	return {
-		ref: uploaded.data.ref.uri,
-		mimeType: media.mimeType,
+		blob: uploaded.data.blob,
+		alt: media.alt ?? "",
 	};
 }
 
 async function createPost(
 	agent: AtpAgent,
 	text: string,
-	images: Array<{ ref: string; mimeType: string }>,
+	images: Array<{ blob: BlobRef; alt: string }>,
 ): Promise<{ uri: string; cid: string }> {
 	const embed = images.length > 0
 		? {
 			$type: "app.bsky.embed.images",
 			images: images.map((img) => ({
-				$type: "app.bsky.embed.images#image",
-				ref: { $link: img.ref },
-				mimeType: img.mimeType,
+				alt: img.alt,
+				image: img.blob,
 			})),
 		}
 		: undefined;
