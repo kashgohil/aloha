@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, ne, notInArray, or, sql } from "drizzle-orm";
 import {
   BookOpen,
   Check,
@@ -11,11 +11,17 @@ import {
 } from "lucide-react";
 import { db } from "@/db";
 import {
+  accounts,
+  blueskyCredentials,
   brandCorpus,
+  ideas,
+  mastodonCredentials,
   notionCredentials,
   platformContentCache,
   posts,
+  telegramCredentials,
 } from "@/db/schema";
+import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { trainVoiceAction } from "@/app/actions/voice";
 import {
   syncNotionAction,
@@ -34,7 +40,6 @@ import { GoogleIcon, NotionIcon } from "@/app/auth/_components/provider-icons";
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
-const RECENT_SAMPLE_LIMIT = 20;
 const CHANNEL_DELTA_MIN_SAMPLES = 15;
 
 export default async function MuseSettingsPage() {
@@ -47,25 +52,15 @@ export default async function MuseSettingsPage() {
 
   const [
     voice,
-    recentSamples,
     notion,
     corpusRows,
     channelCounts,
     channelDeltas,
     internalPostStats,
+    ideaCount,
+    connectedChannels,
   ] = await Promise.all([
     loadCurrentVoice(user.id),
-    db
-      .select({
-        id: platformContentCache.id,
-        platform: platformContentCache.platform,
-        content: platformContentCache.content,
-        platformPostedAt: platformContentCache.platformPostedAt,
-      })
-      .from(platformContentCache)
-      .where(and(eq(platformContentCache.userId, user.id)))
-      .orderBy(desc(platformContentCache.platformPostedAt))
-      .limit(RECENT_SAMPLE_LIMIT),
     db
       .select({
         workspaceId: notionCredentials.workspaceId,
@@ -96,41 +91,88 @@ export default async function MuseSettingsPage() {
       .where(eq(platformContentCache.userId, user.id))
       .groupBy(platformContentCache.platform),
     loadAllChannelVoices(user.id),
-    // Total non-deleted posts + per-channel expansion via unnest, so
-    // PerChannelVoiceCard reflects internal posts too. Matches the
-    // training-side filter exactly.
-    (async () => {
-      const [totalRow] = await db
-        .select({ total: sql<number>`count(*)::int` })
-        .from(posts)
+    // Pull every non-deleted post's platforms and aggregate in JS — matches
+    // the training-side filter exactly, and lets channel-tuning rows reflect
+    // Aloha-composed drafts/scheduled/published posts.
+    db
+      .select({ platforms: posts.platforms })
+      .from(posts)
+      .where(and(eq(posts.userId, user.id), ne(posts.status, "deleted")))
+      .then((rows) => {
+        const perChannel = new Map<string, number>();
+        for (const row of rows) {
+          for (const platform of row.platforms) {
+            perChannel.set(platform, (perChannel.get(platform) ?? 0) + 1);
+          }
+        }
+        return {
+          total: rows.length,
+          perChannel: Array.from(perChannel, ([platform, count]) => ({
+            platform,
+            count,
+          })),
+        };
+      }),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(ideas)
+      .where(
+        and(
+          eq(ideas.userId, user.id),
+          or(eq(ideas.source, "manual"), eq(ideas.source, "url_clip")),
+        ),
+      )
+      .then((rows) => rows[0]?.count ?? 0),
+    // Enumerate every connected channel — OAuth providers plus the per-provider
+    // credential tables. A channel with zero posts still needs a row in the
+    // tuning list so the user sees it counting up toward the threshold.
+    Promise.all([
+      db
+        .select({ provider: accounts.provider })
+        .from(accounts)
         .where(
-          and(eq(posts.userId, user.id), ne(posts.status, "deleted")),
-        );
-      const perChannel = await db.execute<{
-        platform: string;
-        count: number;
-      }>(sql`
-        select unnest(platforms) as platform, count(*)::int as count
-        from posts
-        where "userId" = ${user.id} and status <> 'deleted'
-        group by platform
-      `);
-      const rows = (perChannel as unknown as {
-        rows: Array<{ platform: string; count: number }>;
-      }).rows ?? [];
-      return {
-        total: totalRow?.total ?? 0,
-        perChannel: rows,
-      };
-    })(),
+          and(
+            eq(accounts.userId, user.id),
+            notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+          ),
+        ),
+      db
+        .select({ id: blueskyCredentials.id })
+        .from(blueskyCredentials)
+        .where(eq(blueskyCredentials.userId, user.id))
+        .limit(1),
+      db
+        .select({ id: mastodonCredentials.id })
+        .from(mastodonCredentials)
+        .where(eq(mastodonCredentials.userId, user.id))
+        .limit(1),
+      db
+        .select({ id: telegramCredentials.id })
+        .from(telegramCredentials)
+        .where(eq(telegramCredentials.userId, user.id))
+        .limit(1),
+    ]).then(([oauthRows, blueskyRows, mastodonRows, telegramRows]) =>
+      Array.from(
+        new Set<string>([
+          ...oauthRows.map((r) => r.provider),
+          ...(blueskyRows.length > 0 ? ["bluesky"] : []),
+          ...(mastodonRows.length > 0 ? ["mastodon"] : []),
+          ...(telegramRows.length > 0 ? ["telegram"] : []),
+        ]),
+      ),
+    ),
   ]);
 
   // Combined per-channel sample counts (cached readback + internal Aloha
   // posts) so the "need N more" threshold reflects what training actually
-  // sees.
+  // sees. Connected channels are seeded at zero so newly-connected accounts
+  // with no posts yet still appear in the tuning list.
   const mergedChannelCounts = (() => {
     const map = new Map<string, number>();
-    for (const c of channelCounts) map.set(c.platform, c.count);
+    for (const channel of connectedChannels) map.set(channel, 0);
+    for (const c of channelCounts) {
+      map.set(c.platform, (map.get(c.platform) ?? 0) + c.count);
+    }
     for (const c of internalPostStats.perChannel) {
       map.set(c.platform, (map.get(c.platform) ?? 0) + c.count);
     }
@@ -182,14 +224,22 @@ export default async function MuseSettingsPage() {
 
       <KnowledgeSources notion={notion} corpus={corpusRows} />
 
-      {voice ? <CurrentVoiceCard voice={voice} tone={currentTone} features={currentFeatures} /> : null}
-
       {voice ? (
-        <PerChannelVoiceCard
-          counts={mergedChannelCounts}
-          deltas={channelDeltas}
+        <CurrentVoiceCard
+          voice={voice}
+          tone={currentTone}
+          features={currentFeatures}
+          channelCounts={mergedChannelCounts}
+          channelDeltas={channelDeltas}
         />
       ) : null}
+
+      <TrainingSourcesCard
+        internalPostCount={internalPostStats.total}
+        channelSampleCount={channelCounts.reduce((sum, c) => sum + c.count, 0)}
+        notionDocCount={corpusRows.filter((c) => c.source === "notion").length}
+        ideaCount={ideaCount}
+      />
 
       <form action={trainVoiceAction} className="space-y-8">
         <section className="rounded-3xl border border-border bg-background-elev p-6 space-y-6">
@@ -198,10 +248,10 @@ export default async function MuseSettingsPage() {
               <Wand2 className="w-4 h-4 text-ink" />
             </span>
             <div>
-              <p className="text-[14.5px] text-ink font-medium">Voice sliders</p>
+              <p className="text-[14.5px] text-ink font-medium">How should Muse sound?</p>
               <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
-                The trainer reads these alongside your corpus. Even with no
-                corpus, the sliders are enough to produce a working baseline.
+                Steer the voice alongside your writing. Works on its own too,
+                if your corpus is still thin.
               </p>
             </div>
           </header>
@@ -217,39 +267,13 @@ export default async function MuseSettingsPage() {
         <section className="rounded-3xl border border-border bg-background-elev p-6 space-y-4">
           <header className="flex items-start gap-3">
             <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
-              <Sparkles className="w-4 h-4 text-ink" />
-            </span>
-            <div>
-              <p className="text-[14.5px] text-ink font-medium">Pull your past posts</p>
-              <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
-                Pick posts that sound most like you. Leave unchecked and
-                we&apos;ll auto-pick the most recent 100 across every
-                connected channel.
-              </p>
-            </div>
-          </header>
-
-          {recentSamples.length === 0 ? (
-            <p className="text-[12.5px] text-ink/60 leading-[1.55]">
-              No posts cached yet. The nightly read-back will populate this
-              after your next sync. You can still train from the sliders and
-              uploaded text below.
-            </p>
-          ) : (
-            <SamplePicker samples={recentSamples} />
-          )}
-        </section>
-
-        <section className="rounded-3xl border border-border bg-background-elev p-6 space-y-4">
-          <header className="flex items-start gap-3">
-            <span className="mt-[2px] w-9 h-9 rounded-full bg-peach-100 border border-peach-300 grid place-items-center shrink-0">
               <Upload className="w-4 h-4 text-ink" />
             </span>
             <div>
               <p className="text-[14.5px] text-ink font-medium">Paste additional text</p>
               <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
-                Newsletter drafts, blog posts, anything that sounds like you.
-                Optional — mix with sample posts or use on its own.
+                Newsletter drafts, blog posts, anything else that sounds like
+                you. Optional.
               </p>
             </div>
           </header>
@@ -308,68 +332,35 @@ function PerspectivePicker() {
   );
 }
 
-function SamplePicker({
-  samples,
-}: {
-  samples: Array<{
-    id: string;
-    platform: string;
-    content: string;
-    platformPostedAt: Date | null;
-  }>;
-}) {
-  return (
-    <>
-      <ul className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-        {samples.map((s) => (
-          <li key={s.id} className="flex items-start gap-3 px-4 py-3">
-            <input
-              type="checkbox"
-              name="samplePostIds"
-              value={s.id}
-              className="mt-1 accent-ink"
-            />
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 text-[11px] text-ink/55 uppercase tracking-[0.16em]">
-                <span>{s.platform}</span>
-                {s.platformPostedAt ? (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>
-                      {new Intl.DateTimeFormat("en-US", {
-                        month: "short",
-                        day: "numeric",
-                      }).format(s.platformPostedAt)}
-                    </span>
-                  </>
-                ) : null}
-              </div>
-              <p className="mt-1 text-[13px] text-ink/80 leading-[1.5] line-clamp-3">
-                {s.content}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-2 text-[11.5px] text-ink/50">
-        Leave all unchecked to auto-pick the most recent 100 posts across every
-        connected channel.
-      </p>
-    </>
-  );
-}
+type ChannelDelta = {
+  channel: string;
+  delta: {
+    summary: string;
+    sample_count: number;
+    tone_descriptors?: string[];
+    hook_patterns?: string[];
+    cta_style?: string;
+    emoji_rate?: string;
+  };
+  version: number;
+  updatedAt: Date;
+};
 
 function CurrentVoiceCard({
   voice,
   tone,
   features,
+  channelCounts,
+  channelDeltas,
 }: {
   voice: { trainedAt: Date | null; version: number; emojiRate: string | null; bannedPhrases: string[]; ctaStyle: string | null };
   tone: { summary?: string; descriptors?: string[] };
   features: { hook_patterns?: string[]; positive_examples?: string[] };
+  channelCounts: Array<{ platform: string; count: number }>;
+  channelDeltas: ChannelDelta[];
 }) {
   return (
-    <section className="rounded-3xl border border-border bg-peach-100/50 p-6 space-y-4">
+    <section className="rounded-3xl border border-border bg-peach-100/50 p-6 space-y-5">
       <div className="grid grid-cols-[1fr_auto] items-start gap-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
@@ -406,35 +397,132 @@ function CurrentVoiceCard({
           <Field label="Avoid">{voice.bannedPhrases.join(", ")}</Field>
         ) : null}
       </dl>
+
+      <ChannelTuning counts={channelCounts} deltas={channelDeltas} />
     </section>
   );
 }
 
-function PerChannelVoiceCard({
+function ChannelTuning({
   counts,
   deltas,
 }: {
   counts: Array<{ platform: string; count: number }>;
-  deltas: Array<{
-    channel: string;
-    delta: {
-      summary: string;
-      sample_count: number;
-      tone_descriptors?: string[];
-      hook_patterns?: string[];
-      cta_style?: string;
-      emoji_rate?: string;
-    };
-    version: number;
-    updatedAt: Date;
-  }>;
+  deltas: ChannelDelta[];
 }) {
   const byChannel = new Map(counts.map((c) => [c.platform, c.count]));
   for (const d of deltas) {
-    if (!byChannel.has(d.channel)) byChannel.set(d.channel, d.delta.sample_count);
+    if (!byChannel.has(d.channel))
+      byChannel.set(d.channel, d.delta.sample_count);
   }
   const deltaByChannel = new Map(deltas.map((d) => [d.channel, d]));
   const rows = Array.from(byChannel.entries()).sort((a, b) => b[1] - a[1]);
+
+  const hasTrained = deltas.length > 0;
+  const hasSamples = rows.length > 0;
+
+  return (
+    <div className="pt-5 border-t border-ink/10">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+        Channel tuning
+      </p>
+
+      {!hasTrained && !hasSamples ? (
+        <p className="mt-2 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
+          Connect and sync a channel to unlock channel-specific tuning once it
+          has {CHANNEL_DELTA_MIN_SAMPLES}+ posts. Until then, every channel
+          uses the global voice above.
+        </p>
+      ) : !hasTrained ? (
+        <>
+          <p className="mt-2 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
+            Muse trains a lightweight per-channel delta once a channel has{" "}
+            {CHANNEL_DELTA_MIN_SAMPLES}+ posts. Others stay on the global
+            voice.
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11.5px] text-ink/60">
+            {rows.map(([channel, count]) => (
+              <li key={channel} className="tabular-nums">
+                <span className="capitalize text-ink/75">{channel}</span>{" "}
+                {Math.min(count, CHANNEL_DELTA_MIN_SAMPLES)}/
+                {CHANNEL_DELTA_MIN_SAMPLES}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : (
+        <ul className="mt-3 divide-y divide-ink/10 rounded-xl border border-ink/10 overflow-hidden bg-background/60">
+          {rows.map(([channel, count]) => {
+            const delta = deltaByChannel.get(channel);
+            const trained = !!delta;
+            return (
+              <li key={channel} className="px-4 py-3 space-y-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13px] text-ink font-medium capitalize">
+                      {channel}
+                    </span>
+                    <span className="text-[11.5px] text-ink/55 tabular-nums">
+                      {count} sample{count === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[11px] uppercase tracking-[0.16em] ${
+                      trained ? "text-ink" : "text-ink/45"
+                    }`}
+                  >
+                    {trained
+                      ? `Tuned · v${delta.version}`
+                      : `Need ${Math.max(CHANNEL_DELTA_MIN_SAMPLES - count, 0)} more`}
+                  </span>
+                </div>
+                {trained && delta.delta.tone_descriptors?.length ? (
+                  <p className="text-[11.5px] text-ink/60">
+                    Shift: {delta.delta.tone_descriptors.join(" · ")}
+                  </p>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function TrainingSourcesCard({
+  internalPostCount,
+  channelSampleCount,
+  notionDocCount,
+  ideaCount,
+}: {
+  internalPostCount: number;
+  channelSampleCount: number;
+  notionDocCount: number;
+  ideaCount: number;
+}) {
+  const rows: Array<{ label: string; count: number; hint: string }> = [
+    {
+      label: "Aloha posts",
+      count: internalPostCount,
+      hint: "drafts, scheduled, published",
+    },
+    {
+      label: "Channel posts",
+      count: channelSampleCount,
+      hint: "synced from connected channels",
+    },
+    {
+      label: "Notion docs",
+      count: notionDocCount,
+      hint: "from your knowledge sources",
+    },
+    {
+      label: "Ideas",
+      count: ideaCount,
+      hint: "captured notes and clips",
+    },
+  ];
 
   return (
     <section className="rounded-3xl border border-border bg-background-elev p-6 space-y-4">
@@ -443,68 +531,35 @@ function PerChannelVoiceCard({
           <Sparkles className="w-4 h-4 text-ink" />
         </span>
         <div>
-          <p className="text-[14.5px] text-ink font-medium">Per-channel voice</p>
+          <p className="text-[14.5px] text-ink font-medium">Training sources</p>
           <p className="mt-1 text-[12.5px] text-ink/65 leading-[1.55] max-w-2xl">
-            On top of your global voice, Muse trains a lightweight delta for
-            each channel with at least {CHANNEL_DELTA_MIN_SAMPLES} sample
-            posts. Others fall back to the global profile.
+            What Muse reads when you train. All of this feeds the voice
+            profile automatically — no picking needed.
           </p>
         </div>
       </header>
-
-      {rows.length === 0 ? (
-        <p className="text-[12.5px] text-ink/60 leading-[1.55]">
-          No per-channel posts cached yet. Once your channels are connected
-          and synced, retrain to pick up channel-specific nuance.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border rounded-xl border border-border overflow-hidden">
-          {rows.map(([channel, count]) => {
-            const delta = deltaByChannel.get(channel);
-            const trained = !!delta;
-            const eligible = count >= CHANNEL_DELTA_MIN_SAMPLES;
-            return (
-              <li key={channel} className="px-4 py-3 space-y-1">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[13px] text-ink font-medium capitalize">
-                      {channel}
-                    </span>
-                    <span className="text-[11.5px] text-ink/55">
-                      {count} sample{count === 1 ? "" : "s"}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-[11px] uppercase tracking-[0.16em] ${
-                      trained
-                        ? "text-ink"
-                        : eligible
-                          ? "text-ink/55"
-                          : "text-ink/45"
-                    }`}
-                  >
-                    {trained
-                      ? `Trained · v${delta.version}`
-                      : eligible
-                        ? "Retrain to tune"
-                        : `Need ${CHANNEL_DELTA_MIN_SAMPLES - count} more`}
-                  </span>
-                </div>
-                {trained && delta.delta.summary ? (
-                  <p className="text-[12.5px] text-ink/70 leading-[1.55]">
-                    {delta.delta.summary}
-                  </p>
-                ) : null}
-                {trained && delta.delta.tone_descriptors?.length ? (
-                  <p className="text-[11.5px] text-ink/55">
-                    Tone shift: {delta.delta.tone_descriptors.join(" · ")}
-                  </p>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <ul className="grid gap-2 sm:grid-cols-2">
+        {rows.map((r) => (
+          <li
+            key={r.label}
+            className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="text-[13px] text-ink font-medium">{r.label}</p>
+              <p className="text-[11.5px] text-ink/55 leading-[1.5]">
+                {r.hint}
+              </p>
+            </div>
+            <span
+              className={`text-[15px] font-display tabular-nums ${
+                r.count === 0 ? "text-ink/40" : "text-ink"
+              }`}
+            >
+              {r.count}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
