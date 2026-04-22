@@ -36,7 +36,8 @@ import type { BestWindow } from "@/lib/best-time-format";
 import { formatWindow } from "@/lib/best-time-format";
 import type { EffectiveState } from "@/lib/channel-state-format";
 import { stateOr, stateStyles } from "@/lib/channel-state-format";
-import { ChannelIdentity, type ChannelProfileView } from "@/components/channel-identity";
+import type { ChannelProfileView } from "@/components/channel-identity";
+import { ConnectedAccountCard } from "@/components/connected-account-card";
 import {
 	buildTzLocalInput,
 	formatTzLocalInputForDisplay,
@@ -75,7 +76,7 @@ import { DraftMetaPanel } from "./draft-meta-panel";
 import { FanoutPanel } from "./fanout-panel";
 import { ImportPanel } from "./import-panel";
 import { LibraryPanel } from "./library-panel";
-import { PreviewCard } from "./preview-card";
+import { PostPreviewCard } from "@/components/post-preview-card";
 import { ScorePanel } from "./score-panel";
 import { VariantsPanel, type VariantPlatform } from "./variants-panel";
 
@@ -990,34 +991,17 @@ export function Composer({
 				</div>
 
 				{activePlatform && channelProfiles[activePlatform.id] ? (
-					<div className="px-5 py-2 border-b border-border flex items-center justify-between gap-3">
-						<span className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-ink/50">
+					<div className="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
+						<span className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-ink/50">
 							Posting as
 						</span>
-						{channelProfiles[activePlatform.id].profileUrl ? (
-							<a
-								href={channelProfiles[activePlatform.id].profileUrl!}
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-2 py-1 hover:bg-muted/40 transition-colors"
-							>
-								<ChannelIdentity
-									profile={{
-										...channelProfiles[activePlatform.id],
-										channel: activePlatform.id,
-									}}
-									size="sm"
-								/>
-							</a>
-						) : (
-							<ChannelIdentity
-								profile={{
-									...channelProfiles[activePlatform.id],
-									channel: activePlatform.id,
-								}}
-								size="sm"
-							/>
-						)}
+						<ConnectedAccountCard
+							profile={{
+								...channelProfiles[activePlatform.id],
+								channel: activePlatform.id,
+							}}
+							channel={activePlatform.id}
+						/>
 					</div>
 				) : null}
 
@@ -1149,9 +1133,10 @@ export function Composer({
 					<aside className="lg:col-span-5 p-4 lg:p-5 flex flex-col gap-4 h-full">
 						{activePlatform ? (
 							<div className="rounded-2xl shadow-[0_14px_32px_-18px_rgba(26,22,18,0.28)]">
-								<PreviewCard
-									platform={activePlatform}
+								<PostPreviewCard
+									channel={activePlatform.id}
 									author={author}
+									handle={activePlatform.handle}
 									content={effectiveContent(activePlatform.id)}
 								/>
 							</div>
