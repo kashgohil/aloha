@@ -37,7 +37,6 @@ import { formatWindow } from "@/lib/best-time-format";
 import type { EffectiveState } from "@/lib/channel-state-format";
 import { stateOr, stateStyles } from "@/lib/channel-state-format";
 import type { ChannelProfileView } from "@/components/channel-identity";
-import { ConnectedAccountCard } from "@/components/connected-account-card";
 import {
 	buildTzLocalInput,
 	formatTzLocalInputForDisplay,
@@ -244,7 +243,6 @@ export function Composer({
 	const [isGenerating, startGenerating] = useTransition();
 	const [isSaving, startSaving] = useTransition();
 	const [isPublishing, startPublishing] = useTransition();
-	const [formError, setFormError] = useState<string | null>(null);
 
 	// Cap-exceeded server errors carry a specific message; preserve it so the
 	// user sees the real reason instead of a generic "failed" toast.
@@ -373,7 +371,6 @@ export function Composer({
 		const remaining = MAX_MEDIA - baseMedia.length;
 		const toUpload = Array.from(files).slice(0, remaining);
 		if (toUpload.length === 0) return;
-		setFormError(null);
 		setIsUploading(true);
 		try {
 			const uploaded: PostMedia[] = [];
@@ -392,7 +389,7 @@ export function Composer({
 			}
 			setBaseMedia((prev) => [...prev, ...uploaded]);
 		} catch (err) {
-			setFormError(err instanceof Error ? err.message : "Upload failed.");
+			toast.error(err instanceof Error ? err.message : "Upload failed.");
 		} finally {
 			setIsUploading(false);
 			if (fileInputRef.current) fileInputRef.current.value = "";
@@ -423,14 +420,13 @@ export function Composer({
 
 	const handleRefine = () => {
 		if (!editorValue.trim()) return;
-		setFormError(null);
 		startRefining(async () => {
 			try {
 				const context = activePlatform?.id ?? selected[0] ?? "general";
 				const refined = await refineContent(editorValue, context);
 				handleEditorChange(refined);
 			} catch (err) {
-				setFormError(
+				toast.error(
 					messageFromErr(err, "Refine failed. Try again in a moment."),
 				);
 			}
@@ -439,7 +435,6 @@ export function Composer({
 
 	const handleSuggestHashtags = () => {
 		if (!editorValue.trim()) return;
-		setFormError(null);
 		startHashing(async () => {
 			try {
 				const context = activePlatform?.id ?? selected[0] ?? "general";
@@ -453,7 +448,6 @@ export function Composer({
 					err,
 					"Hashtag suggest failed. Try again in a moment.",
 				);
-				setFormError(msg);
 				toast.error(msg);
 			}
 		});
@@ -514,7 +508,6 @@ export function Composer({
 
 	const handleGenerateImage = () => {
 		if (!imagePrompt.trim() || baseMedia.length >= MAX_MEDIA) return;
-		setFormError(null);
 		startImaging(async () => {
 			try {
 				const img = await generateImageAction(imagePrompt, imageAspect);
@@ -531,7 +524,7 @@ export function Composer({
 				setImagePrompt("");
 				setShowImageGen(false);
 			} catch (err) {
-				setFormError(
+				toast.error(
 					messageFromErr(
 						err,
 						"Image generation failed. Try again in a moment.",
@@ -543,14 +536,13 @@ export function Composer({
 
 	const handleGenerateAltText = async (m: PostMedia) => {
 		setAltTextLoading(m.url);
-		setFormError(null);
 		try {
 			const text = await generateAltText(m.url, baseContent);
 			setBaseMedia((prev) =>
 				prev.map((x) => (x.url === m.url ? { ...x, alt: text } : x)),
 			);
 		} catch (err) {
-			setFormError(
+			toast.error(
 				messageFromErr(err, "Alt text failed. Try again in a moment."),
 			);
 		} finally {
@@ -560,7 +552,6 @@ export function Composer({
 
 	const handleGenerate = () => {
 		if (!generateTopic.trim()) return;
-		setFormError(null);
 		const toastId = toast.loading("Drafting with Muse…");
 		startGenerating(async () => {
 			try {
@@ -587,7 +578,6 @@ export function Composer({
 					"Generate failed. Try again in a moment.",
 				);
 				toast.error(msg, { id: toastId });
-				setFormError(msg);
 			}
 		});
 	};
@@ -636,7 +626,6 @@ export function Composer({
 
 	const handleSaveDraft = () => {
 		if (!canSubmit || isReadOnly) return;
-		setFormError(null);
 		const toastId = toast.loading("Saving draft…");
 		startSaving(async () => {
 			try {
@@ -655,7 +644,6 @@ export function Composer({
 				router.push("/app/dashboard");
 			} catch {
 				toast.error("Couldn't save. Please try again.", { id: toastId });
-				setFormError("Couldn't save. Please try again.");
 			}
 		});
 	};
@@ -685,12 +673,10 @@ export function Composer({
 		setShowImageGen(false);
 		setImagePrompt("");
 		setHashSuggestions([]);
-		setFormError(null);
 	};
 
 	const handleSchedule = () => {
 		if (!canSubmit || !scheduledAt || isReadOnly) return;
-		setFormError(null);
 		const toastId = toast.loading("Scheduling…");
 		startPublishing(async () => {
 			try {
@@ -713,16 +699,14 @@ export function Composer({
 				}
 			} catch {
 				toast.error("Couldn't schedule. Check the time and try again.", {
-					id: toastId,
-				});
-				setFormError("Couldn't schedule. Check the time and try again.");
+				id: toastId,
+			});
 			}
 		});
 	};
 
 	const handlePublishNow = () => {
 		if (!canSubmit || isReadOnly) return;
-		setFormError(null);
 		const toastId = toast.loading("Publishing…");
 		startPublishing(async () => {
 			try {
@@ -743,7 +727,6 @@ export function Composer({
 				}
 			} catch {
 				toast.error("Couldn't publish. Please try again.", { id: toastId });
-				setFormError("Couldn't publish. Please try again.");
 			}
 		});
 	};
@@ -870,16 +853,6 @@ export function Composer({
 				</div>
 			) : null}
 
-			{formError ? (
-				<div
-					role="alert"
-					className="flex items-start gap-3 rounded-2xl border border-border-strong bg-peach-100/60 px-4 py-3 text-[13.5px] text-ink"
-				>
-					<AlertCircle className="w-4 h-4 mt-[2px] text-primary shrink-0" />
-					<span className="leading-normal">{formError}</span>
-				</div>
-			) : null}
-
 			{/* Editor card: two chip header bars → core editor + floating preview → footers */}
 			<div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
 				{/* Header bar 1: publish-to channels + char counter */}
@@ -923,19 +896,6 @@ export function Composer({
 								</button>
 							);
 						})}
-					</div>
-					<div className="shrink-0">
-						<CharCounter
-							length={editorValue.length}
-							limit={activeLimit}
-							tightestPlatforms={
-								activePlatform
-									? editorValue.length > activeLimit
-										? [activePlatform.name]
-										: []
-									: perPlatformOverflow.map((x) => x.platform.name)
-							}
-						/>
 					</div>
 				</div>
 
@@ -989,21 +949,6 @@ export function Composer({
 						);
 					})}
 				</div>
-
-				{activePlatform && channelProfiles[activePlatform.id] ? (
-					<div className="px-5 py-3 border-b border-border flex items-center gap-3 flex-wrap">
-						<span className="shrink-0 text-[11px] uppercase tracking-[0.18em] text-ink/50">
-							Posting as
-						</span>
-						<ConnectedAccountCard
-							profile={{
-								...channelProfiles[activePlatform.id],
-								channel: activePlatform.id,
-							}}
-							channel={activePlatform.id}
-						/>
-					</div>
-				) : null}
 
 				{activePlatform && bestWindows[activePlatform.id]?.length ? (
 					<div className="px-5 py-2 border-b border-border">
@@ -1136,6 +1081,7 @@ export function Composer({
 								<PostPreviewCard
 									channel={activePlatform.id}
 									author={author}
+									profile={channelProfiles[activePlatform.id] ?? null}
 									handle={activePlatform.handle}
 									content={effectiveContent(activePlatform.id)}
 								/>
@@ -1207,6 +1153,20 @@ export function Composer({
 						{isReadOnly ? null : (
 						<TooltipProvider delay={250}>
 							<div className="flex flex-wrap items-center gap-1 px-3 py-2 border-t border-border">
+								<div className="pl-2 pr-3 shrink-0">
+									<CharCounter
+										length={editorValue.length}
+										limit={activeLimit}
+										tightestPlatforms={
+											activePlatform
+												? editorValue.length > activeLimit
+													? [activePlatform.name]
+													: []
+												: perPlatformOverflow.map((x) => x.platform.name)
+										}
+									/>
+								</div>
+								<ToolDivider />
 								<input
 									ref={fileInputRef}
 									type="file"
