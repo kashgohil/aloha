@@ -73,6 +73,7 @@ export function PostPreviewCard({
   content,
   media,
   timestampLabel = "just now",
+  articleClassName,
 }: {
   channel: string;
   // Fallback identity (the Aloha account holder) used when we don't have a
@@ -88,6 +89,9 @@ export function PostPreviewCard({
   // Shown in the subheader line (e.g. "just now" in composer, "2d" on the
   // post page, or a formatted date).
   timestampLabel?: string;
+  // Extra classes merged onto the outer article — use to override the
+  // built-in max-width cap when the card needs to fill its container.
+  articleClassName?: string;
 }) {
   const Icon = CHANNEL_ICONS[channel];
   const accent = CHANNEL_ACCENT[channel] ?? "bg-ink text-background";
@@ -117,6 +121,7 @@ export function PostPreviewCard({
         text={text}
         media={media}
         timestampLabel={timestampLabel}
+        articleClassName={articleClassName}
       />
     );
   }
@@ -131,12 +136,13 @@ export function PostPreviewCard({
         text={text}
         media={media}
         timestampLabel={timestampLabel}
+        articleClassName={articleClassName}
       />
     );
   }
 
   return (
-    <article className="w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden">
+    <article className={cn("w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden", articleClassName)}>
       <header className="px-5 pt-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="w-10 h-10 rounded-full overflow-hidden border border-border bg-peach-100 grid place-items-center text-[12px] font-semibold text-ink">
@@ -267,6 +273,7 @@ function BlueskyPreview({
   text,
   media,
   timestampLabel,
+  articleClassName,
 }: {
   displayName: string;
   handle: string;
@@ -275,9 +282,10 @@ function BlueskyPreview({
   text: string | null;
   media?: PostMedia[];
   timestampLabel: string;
+  articleClassName?: string;
 }) {
   return (
-    <article className="w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden">
+    <article className={cn("w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden", articleClassName)}>
       <div className="flex gap-3 px-4 pt-4">
         <span className="shrink-0 w-10 h-10 rounded-full overflow-hidden border border-border bg-peach-100 grid place-items-center text-[12px] font-semibold text-ink">
           {avatarUrl ? (
@@ -397,6 +405,7 @@ function MastodonPreview({
   text,
   media,
   timestampLabel,
+  articleClassName,
 }: {
   displayName: string;
   handle: string;
@@ -405,9 +414,10 @@ function MastodonPreview({
   text: string | null;
   media?: PostMedia[];
   timestampLabel: string;
+  articleClassName?: string;
 }) {
   return (
-    <article className="w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden">
+    <article className={cn("w-full max-w-[560px] rounded-2xl border border-border bg-background-elev overflow-hidden", articleClassName)}>
       <div className="px-4 pt-4 flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <span className="shrink-0 w-10 h-10 rounded-md overflow-hidden border border-border bg-peach-100 grid place-items-center text-[13px] font-semibold text-ink">

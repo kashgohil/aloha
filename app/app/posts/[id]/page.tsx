@@ -320,7 +320,7 @@ export default async function PostDetailPage({
         {/* Right column — sticky preview */}
         {selectedChannel && (
           <aside className="lg:col-span-5 lg:sticky lg:top-8 self-start">
-            <div className="rounded-2xl w-fit shadow-[0_14px_32px_-18px_rgba(26,22,18,0.2)]">
+            <div className="rounded-2xl w-full shadow-[0_14px_32px_-18px_rgba(26,22,18,0.2)]">
               <PostPreviewCard
                 channel={selectedChannel}
                 author={{
@@ -331,6 +331,7 @@ export default async function PostDetailPage({
                 content={resolvedContent}
                 media={resolvedMedia}
                 timestampLabel={previewTimestampLabel(post, tz)}
+                articleClassName="max-w-none"
               />
             </div>
           </aside>
