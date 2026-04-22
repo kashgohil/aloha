@@ -832,7 +832,10 @@ export const inboxMessages = pgTable(
     remoteId: text("remoteId").notNull(),
     threadId: text("threadId"),
     parentId: text("parentId"),
-    reason: text("reason", { enum: ["mention", "reply"] }).notNull(),
+    reason: text("reason", { enum: ["mention", "dm"] }).notNull(),
+    // null for mentions (always inbound). 'in' or 'out' for DMs so the
+    // thread view can render sent vs received bubbles.
+    direction: text("direction", { enum: ["in", "out"] }),
     authorDid: text("authorDid").notNull(),
     authorHandle: text("authorHandle").notNull(),
     authorDisplayName: text("authorDisplayName"),
@@ -1242,6 +1245,104 @@ export const inboxSyncCursors = pgTable(
     uniqueIndex("inbox_sync_cursors_user_platform").on(
       table.userId,
       table.platform,
+    ),
+  ],
+);
+
+// Individual replies/comments on one of the user's post deliveries. Keyed by
+// `(userId, platform, remoteId)` — association to a delivery happens at read
+// time via `rootRemoteId` matching `post_deliveries.remoteId`. The post detail
+// page builds the threaded tree client-side from `parentRemoteId`.
+export const postComments = pgTable(
+  "post_comments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    platform: text("platform").notNull(),
+    remoteId: text("remoteId").notNull(),
+    // Immediate parent in the reply chain. For a direct reply to the post,
+    // parentRemoteId === rootRemoteId. Used by the UI to build the tree.
+    parentRemoteId: text("parentRemoteId").notNull(),
+    // Top-level post this thread hangs off of. Matches
+    // `post_deliveries.remoteId` for the user's own posts. Indexed for the
+    // "all replies on this post" query.
+    rootRemoteId: text("rootRemoteId").notNull(),
+    authorDid: text("authorDid"),
+    authorHandle: text("authorHandle").notNull(),
+    authorDisplayName: text("authorDisplayName"),
+    authorAvatarUrl: text("authorAvatarUrl"),
+    content: text("content").notNull(),
+    platformData: jsonb("platformData")
+      .$type<Record<string, unknown>>()
+      .default({})
+      .notNull(),
+    platformCreatedAt: timestamp("platformCreatedAt", { mode: "date" }).notNull(),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("post_comments_user_platform_remote").on(
+      table.userId,
+      table.platform,
+      table.remoteId,
+    ),
+    index("post_comments_user_platform_root").on(
+      table.userId,
+      table.platform,
+      table.rootRemoteId,
+    ),
+  ],
+);
+
+// Append-only time-series of engagement counters per delivery. Latest row =
+// current count; deltas across rows drive the analytics chart. Nullable
+// metric columns because platform support varies (e.g. no impressions on
+// Bluesky).
+export const postEngagementSnapshots = pgTable(
+  "post_engagement_snapshots",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    deliveryId: uuid("deliveryId")
+      .notNull()
+      .references(() => postDeliveries.id, { onDelete: "cascade" }),
+    capturedAt: timestamp("capturedAt", { mode: "date" }).defaultNow().notNull(),
+    likes: integer("likes"),
+    reposts: integer("reposts"),
+    replies: integer("replies"),
+    views: integer("views"),
+    bookmarks: integer("bookmarks"),
+    profileClicks: integer("profileClicks"),
+  },
+  (table) => [
+    index("post_engagement_snapshots_delivery_captured").on(
+      table.deliveryId,
+      table.capturedAt,
+    ),
+  ],
+);
+
+// Per-delivery sync cursors for engagement streams. `kind` separates the
+// snapshot counter stream from the comments stream so they can paginate
+// independently (different endpoints, different rate-limit budgets).
+export const postSyncCursors = pgTable(
+  "post_sync_cursors",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    deliveryId: uuid("deliveryId")
+      .notNull()
+      .references(() => postDeliveries.id, { onDelete: "cascade" }),
+    kind: text("kind", { enum: ["snapshot", "comments"] }).notNull(),
+    cursor: text("cursor"),
+    lastSyncedAt: timestamp("lastSyncedAt", { mode: "date" }),
+    createdAt: timestamp("createdAt").defaultNow().notNull(),
+    updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("post_sync_cursors_delivery_kind").on(
+      table.deliveryId,
+      table.kind,
     ),
   ],
 );
