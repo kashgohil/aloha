@@ -25,6 +25,11 @@ export function DeleteBroadcastButton({
         </>
       }
       confirmText="Delete"
+      toastMessages={{
+        pending: "Deleting draft…",
+        success: "Draft deleted.",
+        error: "Couldn't delete draft.",
+      }}
       className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-ink/60 hover:text-primary-deep hover:bg-peach-100/60 transition-colors text-[13px]"
     >
       <Trash2 className="w-3.5 h-3.5" />

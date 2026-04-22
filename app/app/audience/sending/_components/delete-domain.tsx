@@ -24,6 +24,11 @@ export function DeleteDomainButton({
         </>
       }
       confirmText="Remove"
+      toastMessages={{
+        pending: "Removing sending domain…",
+        success: "Sending domain removed.",
+        error: "Couldn't remove sending domain.",
+      }}
       className="inline-flex items-center h-9 px-3 rounded-full text-ink/60 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
     >
       <Trash2 className="w-3.5 h-3.5" />

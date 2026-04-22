@@ -16,6 +16,11 @@ export function DeleteLinkButton({ linkId, title }: { linkId: string; title: str
         </>
       }
       confirmText="Remove"
+      toastMessages={{
+        pending: "Removing link…",
+        success: "Link removed.",
+        error: "Couldn't remove link.",
+      }}
       className="p-2 rounded-full text-ink/50 hover:text-primary-deep hover:bg-peach-100/60 transition-colors"
     >
       <Trash2 className="w-3.5 h-3.5" />
