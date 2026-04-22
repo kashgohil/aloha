@@ -15,10 +15,17 @@ import { WishlistForm } from "./wishlist-form";
 const FREE_FEATURES = [
 	"3 connected channels",
 	"Manual posting + scheduling, calendar view",
-	"Link-in-bio + landing page",
+	"Link-in-bio + landing page (Peach theme)",
 	"AI companion (50 generations / mo)",
 	"Basic analytics (last 30 days)",
 	"Community support",
+];
+
+// Paid-tier perks to show alongside Muse once the Basic SKU lands. Referenced
+// from the upcoming-features section below.
+const BASIC_PREVIEW_FEATURES = [
+	"Five more page templates beyond Peach",
+	"Curated font pairs, accent colors, and custom backgrounds",
 ];
 
 const MUSE_HIGHLIGHTS = [
@@ -153,6 +160,20 @@ export function PricingComingSoon() {
 									voice — per channel. We're opening beta access to a small
 									group first. Sign up and we'll be in touch.
 								</p>
+								<ul className="mt-5 space-y-2 text-[13px] text-ink/75">
+									<li className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+										Paid plans will also include
+									</li>
+									{BASIC_PREVIEW_FEATURES.map((f) => (
+										<li key={f} className="flex items-start gap-2.5">
+											<Check
+												className="w-3.5 h-3.5 mt-[3px] text-ink/70 shrink-0"
+												strokeWidth={2.5}
+											/>
+											{f}
+										</li>
+									))}
+								</ul>
 								<div className="mt-8 pt-6 border-t border-ink/10 flex-1 flex flex-col justify-end">
 									<p className="text-[12.5px] text-ink/65 mb-4">
 										<span className="font-medium text-ink">
