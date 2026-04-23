@@ -39,7 +39,7 @@ export default async function AnalyticsPage() {
           ),
         ),
       db
-        .select({ id: blueskyCredentials.userId })
+        .select({ id: blueskyCredentials.id })
         .from(blueskyCredentials)
         .where(eq(blueskyCredentials.workspaceId, workspace.id))
         .limit(1),

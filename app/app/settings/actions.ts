@@ -296,14 +296,13 @@ export async function connectBluesky(
   await db
     .insert(blueskyCredentials)
     .values({
-      userId,
       workspaceId,
       handle,
       appPassword,
       did,
     })
     .onConflictDoUpdate({
-      target: blueskyCredentials.userId,
+      target: blueskyCredentials.workspaceId,
       set: {
         handle,
         appPassword,
@@ -423,7 +422,6 @@ export async function connectMastodon(
   await db
     .insert(mastodonCredentials)
     .values({
-      userId,
       workspaceId,
       instanceUrl: instanceBase,
       accessToken,
@@ -431,7 +429,7 @@ export async function connectMastodon(
       username,
     })
     .onConflictDoUpdate({
-      target: mastodonCredentials.userId,
+      target: mastodonCredentials.workspaceId,
       set: {
         instanceUrl: instanceBase,
         accessToken,
