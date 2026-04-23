@@ -11,6 +11,7 @@ import {
   Sparkles,
   ScrollText,
   BellRing,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +28,7 @@ type NavItem = {
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Workspaces", href: "/admin/workspaces", icon: Building2 },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Requests", href: "/admin/requests", icon: MailCheck },
   {
