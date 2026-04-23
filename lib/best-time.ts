@@ -18,6 +18,7 @@
 import { and, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { platformInsights } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import type { BestWindow } from "./best-time-format";
 
 export type { BestWindow } from "./best-time-format";
@@ -33,6 +34,7 @@ export async function getBestWindowsForUser(
   userId: string,
   timezone: string,
 ): Promise<Record<string, BestWindow[]>> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const cutoff = new Date(Date.now() - LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
 
   const rows = await db
@@ -44,7 +46,7 @@ export async function getBestWindowsForUser(
     .from(platformInsights)
     .where(
       and(
-        eq(platformInsights.userId, userId),
+        eq(platformInsights.workspaceId, workspaceId),
         gte(platformInsights.platformPostedAt, cutoff),
       ),
     )

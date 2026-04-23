@@ -54,10 +54,9 @@ export type ChannelStateRow = {
 };
 
 export async function loadChannelState(
-  userId: string,
+  workspaceId: string,
   channel: string,
 ): Promise<ChannelStateRow> {
-  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select({
       publishMode: channelStates.publishMode,
@@ -82,7 +81,6 @@ export async function loadChannelState(
   const gating = PLATFORM_GATING[channel] ?? "ready";
   if (gating === "pending_approval") {
     const now = new Date();
-    const workspaceId = await requireActiveWorkspaceId(userId);
     await db
       .insert(channelStates)
       .values({
@@ -151,11 +149,11 @@ export type PublishDecision =
   | { kind: "skip"; reason: "pending_review" | "manual_assist" };
 
 export async function decideForPublish(
-  userId: string,
+  workspaceId: string,
   channel: string,
 ): Promise<PublishDecision> {
   const gating = PLATFORM_GATING[channel] ?? "ready";
-  const override = await loadChannelState(userId, channel);
+  const override = await loadChannelState(workspaceId, channel);
 
   if (gating === "ready" && override.publishMode === "auto") {
     return { kind: "go" };
@@ -207,19 +205,19 @@ export async function getEffectiveStatesForUser(
       .from(accounts)
       .where(
         and(
-          eq(accounts.userId, userId),
+          eq(accounts.workspaceId, workspaceId),
           notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
         ),
       ),
     db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.userId, userId))
+      .where(eq(blueskyCredentials.workspaceId, workspaceId))
       .limit(1),
     db
       .select({ id: mastodonCredentials.id })
       .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.userId, userId))
+      .where(eq(mastodonCredentials.workspaceId, workspaceId))
       .limit(1),
     db
       .select({

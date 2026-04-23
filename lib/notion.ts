@@ -10,7 +10,7 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { notionCredentials } from "@/db/schema";
+import { notionCredentials, workspaces } from "@/db/schema";
 import { env } from "@/lib/env";
 import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
@@ -76,7 +76,6 @@ export async function saveNotionConnection(
   await db
     .insert(notionCredentials)
     .values({
-      userId,
       workspaceId,
       accessToken: token.access_token,
       notionWorkspaceId: token.workspace_id,
@@ -85,7 +84,7 @@ export async function saveNotionConnection(
       botId: token.bot_id,
     })
     .onConflictDoUpdate({
-      target: notionCredentials.userId,
+      target: notionCredentials.workspaceId,
       set: {
         accessToken: token.access_token,
         notionWorkspaceId: token.workspace_id,
@@ -98,18 +97,20 @@ export async function saveNotionConnection(
 }
 
 export async function getNotionConnection(userId: string) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select()
     .from(notionCredentials)
-    .where(eq(notionCredentials.userId, userId))
+    .where(eq(notionCredentials.workspaceId, workspaceId))
     .limit(1);
   return row ?? null;
 }
 
 export async function disconnectNotion(userId: string): Promise<void> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .delete(notionCredentials)
-    .where(eq(notionCredentials.userId, userId));
+    .where(eq(notionCredentials.workspaceId, workspaceId));
 }
 
 // --- Content API -----------------------------------------------------------
@@ -373,16 +374,17 @@ export async function syncNotionCorpus(
       reauthRequired: false,
       updatedAt: new Date(),
     })
-    .where(eq(notionCredentials.userId, userId));
+    .where(eq(notionCredentials.workspaceId, workspaceId));
 
   return { synced, failed, totalChars };
 }
 
 async function flagNotionReauth(userId: string): Promise<void> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .update(notionCredentials)
     .set({ reauthRequired: true, updatedAt: new Date() })
-    .where(eq(notionCredentials.userId, userId));
+    .where(eq(notionCredentials.workspaceId, workspaceId));
 }
 
 // Iterates every connected Notion account (skipping those flagged for
@@ -398,18 +400,22 @@ export type AllSyncOutcome = {
 };
 
 export async function syncAllNotionAccounts(): Promise<AllSyncOutcome[]> {
+  // Iterate by workspace. The owner is attributed as `createdByUserId` on
+  // brand_corpus rows so existing audit fields stay meaningful.
   const rows = await db
     .select({
-      userId: notionCredentials.userId,
+      workspaceId: notionCredentials.workspaceId,
       reauthRequired: notionCredentials.reauthRequired,
+      ownerUserId: workspaces.ownerUserId,
     })
-    .from(notionCredentials);
+    .from(notionCredentials)
+    .innerJoin(workspaces, eq(workspaces.id, notionCredentials.workspaceId));
 
   const outcomes: AllSyncOutcome[] = [];
   for (const row of rows) {
     if (row.reauthRequired) {
       outcomes.push({
-        userId: row.userId,
+        userId: row.ownerUserId,
         status: "reauth",
         synced: 0,
         totalChars: 0,
@@ -417,9 +423,9 @@ export async function syncAllNotionAccounts(): Promise<AllSyncOutcome[]> {
       continue;
     }
     try {
-      const res = await syncNotionCorpus(row.userId);
+      const res = await syncNotionCorpus(row.ownerUserId);
       outcomes.push({
-        userId: row.userId,
+        userId: row.ownerUserId,
         status: "ok",
         synced: res.synced,
         totalChars: res.totalChars,
@@ -427,7 +433,7 @@ export async function syncAllNotionAccounts(): Promise<AllSyncOutcome[]> {
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       outcomes.push({
-        userId: row.userId,
+        userId: row.ownerUserId,
         status: err instanceof NotionAuthError ? "reauth" : "failed",
         synced: 0,
         totalChars: 0,
@@ -439,6 +445,7 @@ export async function syncAllNotionAccounts(): Promise<AllSyncOutcome[]> {
 }
 
 export async function loadBrandCorpus(userId: string) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   return db
     .select({
       id: brandCorpus.id,
@@ -449,6 +456,6 @@ export async function loadBrandCorpus(userId: string) {
       fetchedAt: brandCorpus.fetchedAt,
     })
     .from(brandCorpus)
-    .where(eq(brandCorpus.createdByUserId, userId))
+    .where(eq(brandCorpus.workspaceId, workspaceId))
     .orderBy(brandCorpus.fetchedAt);
 }

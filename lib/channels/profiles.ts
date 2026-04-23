@@ -77,7 +77,7 @@ export async function upsertChannelProfile(
 }
 
 async function loadAccessToken(
-  userId: string,
+  workspaceId: string,
   provider: string,
 ): Promise<{ accessToken: string; providerAccountId: string } | null> {
   const [row] = await db
@@ -86,7 +86,7 @@ async function loadAccessToken(
       providerAccountId: accounts.providerAccountId,
     })
     .from(accounts)
-    .where(and(eq(accounts.userId, userId), eq(accounts.provider, provider)))
+    .where(and(eq(accounts.workspaceId, workspaceId), eq(accounts.provider, provider)))
     .limit(1);
   if (!row?.accessToken) return null;
   return {
@@ -408,14 +408,16 @@ export async function refreshOAuthChannelProfile(
   provider: string,
 ): Promise<boolean> {
   try {
-    const stored = await loadAccessToken(userId, provider);
+    const workspaceId = await resolveWorkspaceId(userId);
+    if (!workspaceId) return false;
+    const stored = await loadAccessToken(workspaceId, provider);
     if (!stored) return false;
     let accessToken = stored.accessToken;
     let providerAccountId = stored.providerAccountId;
     if (REFRESHABLE.has(provider)) {
       try {
         const fresh = await getFreshToken(
-          userId,
+          workspaceId,
           provider as Parameters<typeof getFreshToken>[1],
         );
         accessToken = fresh.accessToken;
@@ -479,6 +481,8 @@ export async function refreshOAuthChannelProfile(
 
 async function refreshBlueskyProfile(userId: string): Promise<boolean> {
   try {
+    const workspaceId = await resolveWorkspaceId(userId);
+    if (!workspaceId) return false;
     const [row] = await db
       .select({
         handle: blueskyCredentials.handle,
@@ -486,7 +490,7 @@ async function refreshBlueskyProfile(userId: string): Promise<boolean> {
         did: blueskyCredentials.did,
       })
       .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.userId, userId))
+      .where(eq(blueskyCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return false;
     const agent = new AtpAgent({ service: "https://bsky.social" });
@@ -510,13 +514,15 @@ async function refreshBlueskyProfile(userId: string): Promise<boolean> {
 
 async function refreshMastodonProfile(userId: string): Promise<boolean> {
   try {
+    const workspaceId = await resolveWorkspaceId(userId);
+    if (!workspaceId) return false;
     const [row] = await db
       .select({
         instanceUrl: mastodonCredentials.instanceUrl,
         accessToken: mastodonCredentials.accessToken,
       })
       .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.userId, userId))
+      .where(eq(mastodonCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return false;
     const res = await fetch(
@@ -553,13 +559,15 @@ async function refreshMastodonProfile(userId: string): Promise<boolean> {
 
 async function refreshTelegramProfile(userId: string): Promise<boolean> {
   try {
+    const workspaceId = await resolveWorkspaceId(userId);
+    if (!workspaceId) return false;
     const [row] = await db
       .select({
         chatId: telegramCredentials.chatId,
         username: telegramCredentials.username,
       })
       .from(telegramCredentials)
-      .where(eq(telegramCredentials.userId, userId))
+      .where(eq(telegramCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return false;
     const handle = row.username ? `@${row.username}` : null;

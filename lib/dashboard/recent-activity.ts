@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { inboxMessages, postComments, postDeliveries, posts } from "@/db/schema";
 import type { ActivityItem } from "@/app/app/dashboard/_components";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { and, desc, eq } from "drizzle-orm";
 
 const INBOX_LIMIT = 20;
@@ -10,6 +11,7 @@ const MERGED_LIMIT = 20;
 export async function getRecentActivity(
   userId: string,
 ): Promise<ActivityItem[]> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   // Two independent queries merged in Node — simpler than a UNION across
   // two different row shapes, and the limits are small enough that this
   // costs nothing.
@@ -17,12 +19,12 @@ export async function getRecentActivity(
     db
       .select()
       .from(inboxMessages)
-      .where(eq(inboxMessages.userId, userId))
+      .where(eq(inboxMessages.workspaceId, workspaceId))
       .orderBy(desc(inboxMessages.platformCreatedAt))
       .limit(INBOX_LIMIT),
     // Join comments to their delivery so we can build a /app/posts/[id]
-    // link from rootRemoteId. Scope by userId so we only surface comments
-    // that hang off the user's own posts.
+    // link from rootRemoteId. Scope by workspace so all members see
+    // comments on the workspace's posts.
     db
       .select({
         id: postComments.id,
@@ -44,7 +46,10 @@ export async function getRecentActivity(
       )
       .innerJoin(posts, eq(posts.id, postDeliveries.postId))
       .where(
-        and(eq(postComments.userId, userId), eq(posts.createdByUserId, userId)),
+        and(
+          eq(postComments.workspaceId, workspaceId),
+          eq(posts.workspaceId, workspaceId),
+        ),
       )
       .orderBy(desc(postComments.platformCreatedAt))
       .limit(COMMENTS_LIMIT),
