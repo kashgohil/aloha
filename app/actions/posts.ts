@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq, inArray } from "drizzle-orm";
-import { auth } from "@/auth";
 import { db } from "@/db";
 import {
   ideas,
@@ -13,6 +12,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
+import { requireContext } from "@/lib/current-context";
 import { unpublishPost } from "@/lib/unpublishers";
 import { publishPost } from "@/lib/publishers";
 import { assertTransition, type PostStatus } from "@/lib/posts/transitions";
@@ -39,7 +39,7 @@ export type ComposerPayload = {
 };
 
 async function flipIdeaToDrafted(
-  userId: string,
+  workspaceId: string,
   ideaId: string | null | undefined,
 ) {
   if (!ideaId) return;
@@ -51,24 +51,21 @@ async function flipIdeaToDrafted(
     .where(
       and(
         eq(ideas.id, ideaId),
-        eq(ideas.userId, userId),
+        eq(ideas.workspaceId, workspaceId),
         eq(ideas.status, "new"),
       ),
     );
 }
 
 export async function saveDraft(payload: ComposerPayload) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
+  const ctx = await requireContext();
 
   try {
     const [row] = await db
       .insert(posts)
       .values({
-        userId: session.user.id,
+        createdByUserId: ctx.user.id,
+        workspaceId: ctx.workspace.id,
         content: payload.content,
         platforms: payload.platforms,
         media: payload.media ?? [],
@@ -82,7 +79,7 @@ export async function saveDraft(payload: ComposerPayload) {
       })
       .returning({ id: posts.id });
 
-    await flipIdeaToDrafted(session.user.id, payload.sourceIdeaId);
+    await flipIdeaToDrafted(ctx.workspace.id, payload.sourceIdeaId);
 
     revalidatePath("/app/dashboard");
     revalidatePath("/app/calendar");
@@ -100,14 +97,13 @@ export async function saveDraft(payload: ComposerPayload) {
 // time; the handler re-reads status + scheduledAt before firing, so older
 // messages from rescheduling no-op safely.
 export async function schedulePost(postId: string, scheduledAt: Date) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
   if (scheduledAt.getTime() <= Date.now()) {
     throw new Error("Pick a future time to schedule for.");
   }
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "scheduled");
 
   await db
@@ -147,10 +143,9 @@ export async function schedulePost(postId: string, scheduledAt: Date) {
 // it up inline. Requires the post to be in `approved` — strict one-step-
 // forward with the `scheduled → published` step collapsed into one call.
 export async function publishPostNow(postId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "published");
 
   const now = new Date();
@@ -183,10 +178,9 @@ export async function publishPostNow(postId: string) {
 // draft to receive further edits. For rescheduling a scheduled post, use
 // `reschedulePost`.
 export async function updatePost(postId: string, payload: ComposerPayload) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   if (existing.status !== "draft") {
     throw new Error(
       "Post is locked. Move it back to draft to edit its content.",
@@ -227,17 +221,15 @@ export async function updatePost(postId: string, payload: ComposerPayload) {
 // still fire on their original time but no-op because the handler
 // re-checks status + scheduledAt.
 export async function reschedulePost(postId: string, scheduledAt: Date) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
   const [existing] = await db
     .select({
       id: posts.id,
-      userId: posts.userId,
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
   if (!existing) throw new Error("Post not found");
   if (existing.status === "published") {
@@ -297,17 +289,15 @@ export async function deletePost(
   postId: string,
   mode: "local" | "remote",
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
   const [existing] = await db
     .select({
       id: posts.id,
-      userId: posts.userId,
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
   if (!existing) throw new Error("Post not found");
 
@@ -354,17 +344,15 @@ export async function deletePost(
 // Permanently deletes a post that has already been soft deleted.
 // This is irreversible and removes the row completely from the database.
 export async function permanentDeletePost(postId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
   const [existing] = await db
     .select({
       id: posts.id,
-      userId: posts.userId,
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
+    .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
   if (!existing) throw new Error("Post not found");
   if (existing.status !== "deleted") {
@@ -398,15 +386,17 @@ export async function bulkDeletePosts(
   postIds: string[],
   mode: "local" | "permanent",
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
   if (postIds.length === 0) return { success: true, count: 0 };
 
   const owned = await db
     .select({ id: posts.id, status: posts.status })
     .from(posts)
     .where(
-      and(eq(posts.userId, session.user.id), inArray(posts.id, postIds)),
+      and(
+        eq(posts.workspaceId, ctx.workspace.id),
+        inArray(posts.id, postIds),
+      ),
     );
   const ownedIds = owned.map((r) => r.id);
   if (ownedIds.length === 0) return { success: true, count: 0 };
@@ -456,15 +446,14 @@ function sanitizeOverrides(
   return out;
 }
 
-async function loadOwnedPost(postId: string, userId: string) {
+async function loadOwnedPost(postId: string, workspaceId: string) {
   const [row] = await db
     .select({
       id: posts.id,
-      userId: posts.userId,
       status: posts.status,
     })
     .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .where(and(eq(posts.id, postId), eq(posts.workspaceId, workspaceId)))
     .limit(1);
   if (!row) throw new Error("Post not found");
   return row;
@@ -481,10 +470,9 @@ function revalidatePostPaths(postId?: string) {
 // who submitted it and when so the Kanban card / detail view can show
 // "Submitted for review by X · 2h ago" once workspaces exist.
 export async function submitForReview(postId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "in_review");
 
   const now = new Date();
@@ -493,7 +481,7 @@ export async function submitForReview(postId: string) {
     .set({
       status: "in_review",
       submittedForReviewAt: now,
-      submittedBy: session.user.id,
+      submittedBy: ctx.user.id,
       updatedAt: now,
     })
     .where(eq(posts.id, postId));
@@ -506,10 +494,9 @@ export async function submitForReview(postId: string) {
 // the post in `approved` state so the author can pick schedule-or-publish
 // from the composer.
 export async function approvePost(postId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "approved");
 
   const now = new Date();
@@ -518,7 +505,7 @@ export async function approvePost(postId: string) {
     .set({
       status: "approved",
       approvedAt: now,
-      approvedBy: session.user.id,
+      approvedBy: ctx.user.id,
       updatedAt: now,
     })
     .where(eq(posts.id, postId));
@@ -533,10 +520,9 @@ export async function approvePost(postId: string) {
 // the flow is always draft → in_review → approved, so after a reset the
 // author re-submits to advance again.
 export async function backToDraft(postId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
+  const ctx = await requireContext();
 
-  const existing = await loadOwnedPost(postId, session.user.id);
+  const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "draft");
 
   await db
