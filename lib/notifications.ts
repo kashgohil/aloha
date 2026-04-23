@@ -28,11 +28,16 @@ export async function createNotification(args: CreateArgs): Promise<void> {
         enabled: users.notificationsEnabled,
         notifyPostOutcomes: users.notifyPostOutcomes,
         notifyInboxSyncIssues: users.notifyInboxSyncIssues,
+        workspaceId: users.activeWorkspaceId,
       })
       .from(users)
       .where(eq(users.id, args.userId))
       .limit(1);
     if (!user || !user.enabled) return;
+    // Notifications require a workspace — skip the write if the user
+    // hasn't been backfilled / onboarded yet. Callers never inspect the
+    // return value; a missed notification is a non-event.
+    if (!user.workspaceId) return;
 
     const postKinds: NotificationKind[] = [
       "post_published",
@@ -46,6 +51,7 @@ export async function createNotification(args: CreateArgs): Promise<void> {
 
     await db.insert(notifications).values({
       userId: args.userId,
+      workspaceId: user.workspaceId,
       kind: args.kind,
       title: args.title,
       body: args.body ?? null,

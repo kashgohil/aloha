@@ -5,6 +5,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { generations } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { langfuse } from "./langfuse";
 
 export type LogGenerationInput = {
@@ -28,10 +29,12 @@ export type LogGenerationInput = {
 export async function logGeneration(
   entry: LogGenerationInput,
 ): Promise<string> {
+  const workspaceId = await requireActiveWorkspaceId(entry.userId);
   const [row] = await db
     .insert(generations)
     .values({
       userId: entry.userId,
+      workspaceId,
       feature: entry.feature,
       templateName: entry.templateName,
       templateVersion: entry.templateVersion,

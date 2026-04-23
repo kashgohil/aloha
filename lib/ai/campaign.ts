@@ -26,6 +26,7 @@ import { PROMPTS, registerPrompts } from "./prompts";
 import { loadCurrentVoice } from "./voice";
 import { buildVoiceBlock } from "./voice-context";
 import { getBestWindowsForUser } from "@/lib/best-time";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { desc, inArray, isNotNull } from "drizzle-orm";
 
 export const CAMPAIGN_KINDS = [
@@ -182,10 +183,12 @@ export async function generateCampaign(
     id: crypto.randomUUID(),
   }));
 
+  const campaignWorkspaceId = await requireActiveWorkspaceId(input.userId);
   const [row] = await db
     .insert(campaigns)
     .values({
-      userId: input.userId,
+      createdByUserId: input.userId,
+      workspaceId: campaignWorkspaceId,
       name: input.name.trim() || parsed.name || input.goal.trim().slice(0, 60),
       goal: input.goal.trim(),
       kind: input.kind,
@@ -360,7 +363,7 @@ async function loadUserIdeas(userId: string) {
       tags: ideas.tags,
     })
     .from(ideas)
-    .where(and(eq(ideas.userId, userId), ne(ideas.status, "archived")))
+    .where(and(eq(ideas.createdByUserId, userId), ne(ideas.status, "archived")))
     .orderBy(desc(ideas.createdAt))
     .limit(MAX_IDEA_ITEMS);
 }
@@ -412,8 +415,12 @@ async function loadPastHighPerformers(userId: string, channels: string[]) {
 }
 
 async function loadRecentInspiration(userId: string) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const userFeedIds = (
-    await db.select({ id: feeds.id }).from(feeds).where(eq(feeds.userId, userId))
+    await db
+      .select({ id: feeds.id })
+      .from(feeds)
+      .where(eq(feeds.workspaceId, workspaceId))
   ).map((r) => r.id);
   if (userFeedIds.length === 0) return [];
   return db
@@ -526,7 +533,7 @@ export async function loadCampaign(
   const [row] = await db
     .select()
     .from(campaigns)
-    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)))
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.createdByUserId, userId)))
     .limit(1);
   if (!row) return null;
   return {
@@ -559,7 +566,7 @@ export async function listCampaigns(userId: string) {
       createdAt: campaigns.createdAt,
     })
     .from(campaigns)
-    .where(eq(campaigns.userId, userId))
+    .where(eq(campaigns.createdByUserId, userId))
     .orderBy(desc(campaigns.createdAt));
 }
 
@@ -669,7 +676,7 @@ export async function regenerateCampaignBeat(
       beats: next as unknown as Array<Record<string, unknown>>,
       updatedAt: new Date(),
     })
-    .where(and(eq(campaigns.id, campaignId), eq(campaigns.userId, userId)));
+    .where(and(eq(campaigns.id, campaignId), eq(campaigns.createdByUserId, userId)));
 
   return replacement;
 }

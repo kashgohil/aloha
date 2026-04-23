@@ -12,6 +12,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { notionCredentials } from "@/db/schema";
 import { env } from "@/lib/env";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 const NOTION_VERSION = "2022-06-28";
 const API_BASE = "https://api.notion.com/v1";
@@ -71,23 +72,25 @@ export async function saveNotionConnection(
   userId: string,
   token: NotionTokenExchange,
 ): Promise<void> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .insert(notionCredentials)
     .values({
       userId,
+      workspaceId,
       accessToken: token.access_token,
-      workspaceId: token.workspace_id,
-      workspaceName: token.workspace_name,
-      workspaceIcon: token.workspace_icon,
+      notionWorkspaceId: token.workspace_id,
+      notionWorkspaceName: token.workspace_name,
+      notionWorkspaceIcon: token.workspace_icon,
       botId: token.bot_id,
     })
     .onConflictDoUpdate({
       target: notionCredentials.userId,
       set: {
         accessToken: token.access_token,
-        workspaceId: token.workspace_id,
-        workspaceName: token.workspace_name,
-        workspaceIcon: token.workspace_icon,
+        notionWorkspaceId: token.workspace_id,
+        notionWorkspaceName: token.workspace_name,
+        notionWorkspaceIcon: token.workspace_icon,
         botId: token.bot_id,
         updatedAt: new Date(),
       },
@@ -308,6 +311,7 @@ export async function syncNotionCorpus(
   limit = 25,
 ): Promise<NotionSyncResult> {
   const token = await requireNotionToken(userId);
+  const workspaceId = await requireActiveWorkspaceId(userId);
 
   let pages: NotionPageSummary[];
   try {
@@ -331,7 +335,8 @@ export async function syncNotionCorpus(
       await db
         .insert(brandCorpus)
         .values({
-          userId,
+          createdByUserId: userId,
+          workspaceId,
           source: "notion",
           sourceId: page.id,
           title: page.title,
@@ -340,7 +345,7 @@ export async function syncNotionCorpus(
           fetchedAt: new Date(),
         })
         .onConflictDoUpdate({
-          target: [brandCorpus.userId, brandCorpus.source, brandCorpus.sourceId],
+          target: [brandCorpus.workspaceId, brandCorpus.source, brandCorpus.sourceId],
           set: {
             title: page.title,
             content: text,
@@ -444,6 +449,6 @@ export async function loadBrandCorpus(userId: string) {
       fetchedAt: brandCorpus.fetchedAt,
     })
     .from(brandCorpus)
-    .where(eq(brandCorpus.userId, userId))
+    .where(eq(brandCorpus.createdByUserId, userId))
     .orderBy(brandCorpus.fetchedAt);
 }

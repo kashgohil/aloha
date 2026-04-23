@@ -26,6 +26,7 @@ import {
 } from "@/db/schema";
 import { and, eq, or } from "drizzle-orm";
 import { PROMPTS, registerPrompts } from "./prompts";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { generate } from "./router";
 
 // Channels need at least this many samples before we train a per-channel
@@ -254,16 +255,17 @@ async function persistChannelDeltas(
   deltas: TrainedChannelDelta[],
 ) {
   if (deltas.length === 0) return;
+  const workspaceId = await requireActiveWorkspaceId(userId);
   for (const { channel, delta } of deltas) {
     await db
       .insert(brandVoiceChannels)
       .values({
-        userId,
+        workspaceId,
         channel,
         overrides: delta as unknown as Record<string, unknown>,
       })
       .onConflictDoUpdate({
-        target: [brandVoiceChannels.userId, brandVoiceChannels.channel],
+        target: [brandVoiceChannels.workspaceId, brandVoiceChannels.channel],
         set: {
           overrides: delta as unknown as Record<string, unknown>,
           version: sql`${brandVoiceChannels.version} + 1`,
@@ -277,17 +279,18 @@ async function persistChannelDeltas(
 // user disconnected an account), drop the stale delta so it can't continue
 // influencing generations.
 async function clearStaleChannelDeltas(userId: string, keep: string[]) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const rows = await db
     .select({ channel: brandVoiceChannels.channel })
     .from(brandVoiceChannels)
-    .where(eq(brandVoiceChannels.userId, userId));
+    .where(eq(brandVoiceChannels.workspaceId, workspaceId));
   const stale = rows.map((r) => r.channel).filter((c) => !keep.includes(c));
   if (stale.length === 0) return;
   await db
     .delete(brandVoiceChannels)
     .where(
       and(
-        eq(brandVoiceChannels.userId, userId),
+        eq(brandVoiceChannels.workspaceId, workspaceId),
         inArray(brandVoiceChannels.channel, stale),
       ),
     );
@@ -334,7 +337,7 @@ async function loadInternalPostSamples(userId: string): Promise<Sample[]> {
       channelContent: posts.channelContent,
     })
     .from(posts)
-    .where(and(eq(posts.userId, userId), ne(posts.status, "deleted")));
+    .where(and(eq(posts.createdByUserId, userId), ne(posts.status, "deleted")));
 
   const out: Sample[] = [];
   for (const row of rows) {
@@ -361,7 +364,7 @@ async function loadBrandCorpusForTraining(userId: string): Promise<CorpusDoc[]> 
       content: brandCorpus.content,
     })
     .from(brandCorpus)
-    .where(eq(brandCorpus.userId, userId));
+    .where(eq(brandCorpus.createdByUserId, userId));
 }
 
 // Ideas the user wrote themselves — `manual` captures and `url_clip` bodies
@@ -380,7 +383,7 @@ async function loadIdeasForTraining(userId: string): Promise<IdeaNote[]> {
     .from(ideas)
     .where(
       and(
-        eq(ideas.userId, userId),
+        eq(ideas.createdByUserId, userId),
         or(eq(ideas.source, "manual"), eq(ideas.source, "url_clip")),
       ),
     );
@@ -486,10 +489,11 @@ async function persistVoiceProfile(
   profile: VoiceProfile,
   sampleIds: string[],
 ) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .insert(brandVoice)
     .values({
-      userId,
+      workspaceId,
       tone: { summary: profile.summary, descriptors: profile.tone_descriptors },
       features: {
         hook_patterns: profile.hook_patterns,
@@ -503,7 +507,7 @@ async function persistVoiceProfile(
       trainedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: brandVoice.userId,
+      target: brandVoice.workspaceId,
       set: {
         tone: { summary: profile.summary, descriptors: profile.tone_descriptors },
         features: {
@@ -522,10 +526,11 @@ async function persistVoiceProfile(
 }
 
 export async function loadCurrentVoice(userId: string) {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select()
     .from(brandVoice)
-    .where(eq(brandVoice.userId, userId))
+    .where(eq(brandVoice.workspaceId, workspaceId))
     .limit(1);
   return row ?? null;
 }
@@ -534,12 +539,13 @@ export async function loadChannelVoice(
   userId: string,
   channel: string,
 ): Promise<VoiceChannelDelta | null> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select({ overrides: brandVoiceChannels.overrides })
     .from(brandVoiceChannels)
     .where(
       and(
-        eq(brandVoiceChannels.userId, userId),
+        eq(brandVoiceChannels.workspaceId, workspaceId),
         eq(brandVoiceChannels.channel, channel),
       ),
     )
@@ -555,6 +561,7 @@ export async function loadChannelVoices(
     channels.map((c) => [c, null]),
   );
   if (channels.length === 0) return result;
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const rows = await db
     .select({
       channel: brandVoiceChannels.channel,
@@ -563,7 +570,7 @@ export async function loadChannelVoices(
     .from(brandVoiceChannels)
     .where(
       and(
-        eq(brandVoiceChannels.userId, userId),
+        eq(brandVoiceChannels.workspaceId, workspaceId),
         inArray(brandVoiceChannels.channel, channels),
       ),
     );
@@ -576,6 +583,7 @@ export async function loadChannelVoices(
 export async function loadAllChannelVoices(
   userId: string,
 ): Promise<Array<{ channel: string; delta: VoiceChannelDelta; version: number; updatedAt: Date }>> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const rows = await db
     .select({
       channel: brandVoiceChannels.channel,
@@ -584,7 +592,7 @@ export async function loadAllChannelVoices(
       updatedAt: brandVoiceChannels.updatedAt,
     })
     .from(brandVoiceChannels)
-    .where(eq(brandVoiceChannels.userId, userId));
+    .where(eq(brandVoiceChannels.workspaceId, workspaceId));
   return rows.map((r) => ({
     channel: r.channel,
     delta: r.overrides as VoiceChannelDelta,

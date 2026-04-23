@@ -87,7 +87,7 @@ export async function sendManualAssistReminderForDelivery(
   const media = override?.media ?? post.media;
 
   await sendManualAssistReminder({
-    userId: post.userId,
+    userId: post.createdByUserId,
     postId: post.id,
     platform,
     content,

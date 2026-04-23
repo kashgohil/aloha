@@ -4,10 +4,30 @@
 
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { subscriptions, users } from "@/db/schema";
+import { subscriptions, users, workspaces } from "@/db/schema";
 import { polar } from "./polar";
 import { productId, productSlot, type Interval, type ProductKey } from "./products";
 import { env } from "@/lib/env";
+
+// Resolves the billing workspace for a given user. Billing rides on the
+// user's active workspace — `polarCustomerId` moved from `users` to
+// `workspaces` in Slice 2.7, so every call that previously hit
+// `users.polarCustomerId` now goes through here.
+async function loadBillingWorkspace(userId: string): Promise<{
+	workspaceId: string;
+	polarCustomerId: string | null;
+} | null> {
+	const [row] = await db
+		.select({
+			workspaceId: workspaces.id,
+			polarCustomerId: workspaces.polarCustomerId,
+		})
+		.from(users)
+		.innerJoin(workspaces, eq(workspaces.id, users.activeWorkspaceId))
+		.where(eq(users.id, userId))
+		.limit(1);
+	return row ?? null;
+}
 
 export type LogicalSubscription = {
 	plan: "free" | "basic" | "basic_muse";
@@ -23,10 +43,13 @@ export type LogicalSubscription = {
 };
 
 export async function getLogicalSubscription(userId: string): Promise<LogicalSubscription> {
-	const rows = await db
-		.select()
-		.from(subscriptions)
-		.where(eq(subscriptions.userId, userId));
+	const ws = await loadBillingWorkspace(userId);
+	const rows = ws
+		? await db
+				.select()
+				.from(subscriptions)
+				.where(eq(subscriptions.workspaceId, ws.workspaceId))
+		: [];
 
 	const active = rows.find(
 		(r) => r.status === "active" || r.status === "past_due",
@@ -64,15 +87,11 @@ export async function getLogicalSubscription(userId: string): Promise<LogicalSub
 // to update their payment method. This is the only hand-off to Polar's
 // hosted UI — required because card entry must be PCI-compliant.
 export async function createCustomerPortalUrl(userId: string): Promise<string | null> {
-	const [user] = await db
-		.select({ polarCustomerId: users.polarCustomerId })
-		.from(users)
-		.where(eq(users.id, userId))
-		.limit(1);
-	if (!user?.polarCustomerId) return null;
+	const ws = await loadBillingWorkspace(userId);
+	if (!ws?.polarCustomerId) return null;
 
 	const session = await polar.customerSessions.create({
-		customerId: user.polarCustomerId,
+		customerId: ws.polarCustomerId,
 	});
 	return session.customerPortalUrl;
 }
@@ -88,23 +107,28 @@ export async function createCheckout(args: {
 			id: users.id,
 			email: users.email,
 			name: users.name,
-			polarCustomerId: users.polarCustomerId,
 		})
 		.from(users)
 		.where(eq(users.id, args.userId))
 		.limit(1);
 	if (!user) throw new Error("User not found");
+	const ws = await loadBillingWorkspace(user.id);
+	if (!ws) throw new Error("User has no active workspace for billing");
 
 	const seats = Math.max(1, args.channels);
 	const slot = productSlot(args.plan, args.interval);
 	const checkout = await polar.checkouts.create({
 		products: [productId(slot)],
 		seats,
-		externalCustomerId: user.id,
+		// Polar identifies the customer by externalCustomerId. We key on
+		// workspaceId now that billing is tenant-scoped; the webhook reads
+		// it back via `internal_workspace_id` metadata too (belt & braces).
+		externalCustomerId: ws.workspaceId,
 		customerEmail: user.email,
 		customerName: user.name ?? undefined,
 		successUrl: `${env.APP_URL}/app/settings/billing?success=1`,
 		metadata: {
+			internal_workspace_id: ws.workspaceId,
 			internal_user_id: user.id,
 			plan: args.plan,
 			interval: args.interval,
@@ -203,15 +227,11 @@ export type InvoiceRow = {
 // download goes through /api/billing/invoice/[id] since Polar only
 // exposes the URL via a separate API call.
 export async function listInvoices(userId: string, limit = 12): Promise<InvoiceRow[]> {
-	const [user] = await db
-		.select({ polarCustomerId: users.polarCustomerId })
-		.from(users)
-		.where(eq(users.id, userId))
-		.limit(1);
-	if (!user?.polarCustomerId) return [];
+	const ws = await loadBillingWorkspace(userId);
+	if (!ws?.polarCustomerId) return [];
 
 	const page = await polar.orders.list({
-		customerId: user.polarCustomerId,
+		customerId: ws.polarCustomerId,
 		limit,
 	});
 	const rows: InvoiceRow[] = [];
@@ -232,12 +252,8 @@ export async function listInvoices(userId: string, limit = 12): Promise<InvoiceR
 }
 
 export async function getInvoiceUrl(userId: string, orderId: string): Promise<string | null> {
-	const [user] = await db
-		.select({ polarCustomerId: users.polarCustomerId })
-		.from(users)
-		.where(eq(users.id, userId))
-		.limit(1);
-	if (!user?.polarCustomerId) return null;
+	const ws = await loadBillingWorkspace(userId);
+	if (!ws?.polarCustomerId) return null;
 
 	const invoice = await polar.orders.invoice({ id: orderId });
 	return invoice?.url ?? null;
@@ -253,15 +269,63 @@ export async function upsertSubscriptionFromPolar(payload: {
 	currentPeriodEnd?: Date | null;
 	cancelAtPeriodEnd?: boolean | null;
 	externalCustomerId?: string | null;
+	// Polar's customer id (distinct from our internal ids). Stamped on
+	// `workspaces.polarCustomerId` so portal/invoice lookups can find
+	// the right customer without asking Polar.
+	polarCustomerId?: string | null;
 	metadata?: Record<string, unknown> | null;
 }) {
-	const internalUserId =
-		(payload.metadata?.internal_user_id as string | undefined) ??
-		payload.externalCustomerId ??
+	// Identity resolution has three possible shapes, in order of preference:
+	//   1. New subs carry `internal_workspace_id` metadata and externalCustomerId = workspace.id
+	//   2. Legacy subs carry `internal_user_id` metadata and externalCustomerId = user.id
+	//   3. Old rows may only have externalCustomerId (pre-metadata).
+	const metadataWorkspaceId =
+		(payload.metadata?.internal_workspace_id as string | undefined) ??
 		undefined;
-	if (!internalUserId) {
+	const metadataUserId =
+		(payload.metadata?.internal_user_id as string | undefined) ?? undefined;
+	const externalId = payload.externalCustomerId ?? undefined;
+
+	let workspaceId: string | null = metadataWorkspaceId ?? null;
+	let userId: string | null = metadataUserId ?? null;
+
+	// If we still have gaps, try resolving externalId as either id.
+	if (!workspaceId && externalId) {
+		const [ws] = await db
+			.select({ id: workspaces.id, ownerUserId: workspaces.ownerUserId })
+			.from(workspaces)
+			.where(eq(workspaces.id, externalId))
+			.limit(1);
+		if (ws) {
+			workspaceId = ws.id;
+			if (!userId) userId = ws.ownerUserId;
+		}
+	}
+	if (!workspaceId && externalId) {
+		// Legacy path: externalCustomerId was user.id.
+		const [u] = await db
+			.select({ id: users.id, workspaceId: users.activeWorkspaceId })
+			.from(users)
+			.where(eq(users.id, externalId))
+			.limit(1);
+		if (u) {
+			userId = userId ?? u.id;
+			workspaceId = u.workspaceId ?? null;
+		}
+	}
+
+	if (!userId && workspaceId) {
+		const [ws] = await db
+			.select({ ownerUserId: workspaces.ownerUserId })
+			.from(workspaces)
+			.where(eq(workspaces.id, workspaceId))
+			.limit(1);
+		userId = ws?.ownerUserId ?? null;
+	}
+
+	if (!userId || !workspaceId) {
 		throw new Error(
-			`Polar subscription ${payload.id} has no internal_user_id metadata or externalCustomerId`,
+			`Polar subscription ${payload.id} could not be resolved to a user + workspace (externalCustomerId=${externalId ?? "null"}).`,
 		);
 	}
 
@@ -282,7 +346,8 @@ export async function upsertSubscriptionFromPolar(payload: {
 		.limit(1);
 
 	const values = {
-		userId: internalUserId,
+		createdByUserId: userId,
+		workspaceId,
 		polarSubscriptionId: payload.id,
 		productKey,
 		status,
@@ -300,6 +365,15 @@ export async function upsertSubscriptionFromPolar(payload: {
 			.where(eq(subscriptions.polarSubscriptionId, payload.id));
 	} else {
 		await db.insert(subscriptions).values(values);
+	}
+
+	// Stamp polarCustomerId on the workspace the first time we see it, so
+	// portal / invoice lookups don't need to round-trip to Polar.
+	if (payload.polarCustomerId) {
+		await db
+			.update(workspaces)
+			.set({ polarCustomerId: payload.polarCustomerId, updatedAt: new Date() })
+			.where(eq(workspaces.id, workspaceId));
 	}
 }
 

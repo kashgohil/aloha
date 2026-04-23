@@ -66,7 +66,7 @@ export async function getPinterestAnalytics(userId: string): Promise<PinterestAn
 		.innerJoin(posts, eq(postDeliveries.postId, posts.id))
 		.where(
 			and(
-				eq(posts.userId, userId),
+				eq(posts.createdByUserId, userId),
 				eq(postDeliveries.platform, "pinterest"),
 				gte(postDeliveries.createdAt, thirtyDaysAgo),
 			),

@@ -12,6 +12,7 @@ import { randomUUID } from "crypto";
 import { assets } from "@/db/schema";
 import { db } from "@/db";
 import { env } from "@/lib/env";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { assertCostCap } from "./cost-cap";
 import { logGeneration } from "./generations";
 import { langfuse, scheduleLangfuseFlush } from "./langfuse";
@@ -132,10 +133,12 @@ export async function generateImage(
   });
   await scheduleLangfuseFlush();
 
+  const assetWorkspaceId = await requireActiveWorkspaceId(input.userId);
   const [asset] = await db
     .insert(assets)
     .values({
-      userId: input.userId,
+      createdByUserId: input.userId,
+      workspaceId: assetWorkspaceId,
       source: "generated",
       url: blob.url,
       mimeType,

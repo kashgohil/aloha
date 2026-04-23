@@ -409,9 +409,23 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
     // tokens have just been written by the adapter.
     async linkAccount({ user, account }) {
       if (!user.id || !account.provider) return;
+      // Drizzle adapter inserts accounts without knowing about our workspace
+      // layer. Stamp workspaceId on the row here so tenant-scoped queries
+      // find it. Falls back to null if the user has no active workspace yet
+      // (edge case during first-ever sign-in — backfilled on next link).
+      const [userRow] = await db
+        .select({ workspaceId: users.activeWorkspaceId })
+        .from(users)
+        .where(eq(users.id, user.id))
+        .limit(1);
       await db
         .update(accounts)
-        .set({ reauthRequired: false })
+        .set({
+          reauthRequired: false,
+          ...(userRow?.workspaceId
+            ? { workspaceId: userRow.workspaceId }
+            : {}),
+        })
         .where(
           and(
             eq(accounts.userId, user.id),
