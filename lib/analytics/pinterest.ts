@@ -42,10 +42,10 @@ async function fetchUserAnalytics(accessToken: string): Promise<PinterestUserAna
 	return data.data ?? {};
 }
 
-export async function getPinterestAnalytics(userId: string): Promise<PinterestAnalytics> {
+export async function getPinterestAnalytics(workspaceId: string): Promise<PinterestAnalytics> {
 	let account;
 	try {
-		account = await getFreshToken(userId, "pinterest");
+		account = await getFreshToken(workspaceId, "pinterest");
 	} catch {
 		return {
 			totalPins: 0,
@@ -66,7 +66,7 @@ export async function getPinterestAnalytics(userId: string): Promise<PinterestAn
 		.innerJoin(posts, eq(postDeliveries.postId, posts.id))
 		.where(
 			and(
-				eq(posts.createdByUserId, userId),
+				eq(posts.workspaceId, workspaceId),
 				eq(postDeliveries.platform, "pinterest"),
 				gte(postDeliveries.createdAt, thirtyDaysAgo),
 			),
@@ -98,10 +98,10 @@ export async function getPinterestAnalytics(userId: string): Promise<PinterestAn
 }
 
 export async function getPinterestAnalyticsWithRefresh(
-	userId: string,
+	workspaceId: string,
 ): Promise<PinterestAnalytics> {
 	try {
-		await getFreshToken(userId, "pinterest");
+		await getFreshToken(workspaceId, "pinterest");
 	} catch {
 		return {
 			totalPins: 0,
@@ -111,11 +111,11 @@ export async function getPinterestAnalyticsWithRefresh(
 		};
 	}
 
-	const analytics = await getPinterestAnalytics(userId);
+	const analytics = await getPinterestAnalytics(workspaceId);
 
 	try {
 		if (analytics.engagementRate === null) {
-			const freshAccount = await forceRefresh(userId, "pinterest");
+			const freshAccount = await forceRefresh(workspaceId, "pinterest");
 			const metrics = await fetchUserAnalytics(freshAccount.accessToken);
 			if (metrics.impressions && metrics.impressions > 0) {
 				analytics.engagementRate =

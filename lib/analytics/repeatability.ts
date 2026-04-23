@@ -8,6 +8,7 @@
 import { and, asc, eq, gte } from "drizzle-orm";
 import { db } from "@/db";
 import { platformInsights } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 export const MIN_WEEKS = 8;
 export const MIN_POSTS_PER_PLATFORM = 12;
@@ -29,10 +30,11 @@ export async function getRepeatability(
   userId: string,
   timezone: string,
 ): Promise<RepeatabilityGate> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [earliest] = await db
     .select({ at: platformInsights.platformPostedAt })
     .from(platformInsights)
-    .where(eq(platformInsights.userId, userId))
+    .where(eq(platformInsights.workspaceId, workspaceId))
     .orderBy(asc(platformInsights.platformPostedAt))
     .limit(1);
 
@@ -57,7 +59,7 @@ export async function getRepeatability(
     .from(platformInsights)
     .where(
       and(
-        eq(platformInsights.userId, userId),
+        eq(platformInsights.workspaceId, workspaceId),
         gte(platformInsights.platformPostedAt, cutoff),
       ),
     );

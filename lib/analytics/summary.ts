@@ -5,6 +5,7 @@
 import { and, asc, eq, gte, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { platformInsights, posts } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 export const WEEKS_WINDOW = 12;
 export const MIN_POSTS_FOR_TOP_POSTS = 10;
@@ -48,6 +49,7 @@ export type AnalyticsSummary = {
 export async function getAnalyticsSummary(
   userId: string,
 ): Promise<AnalyticsSummary> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const now = new Date();
   const windowStart = weeksAgo(now, WEEKS_WINDOW);
   const prevStart = weeksAgo(now, WEEKS_WINDOW * 2);
@@ -63,7 +65,7 @@ export async function getAnalyticsSummary(
     .from(platformInsights)
     .where(
       and(
-        eq(platformInsights.userId, userId),
+        eq(platformInsights.workspaceId, workspaceId),
         gte(platformInsights.platformPostedAt, prevStart),
       ),
     );
@@ -71,7 +73,7 @@ export async function getAnalyticsSummary(
   const [firstRow] = await db
     .select({ at: platformInsights.platformPostedAt })
     .from(platformInsights)
-    .where(eq(platformInsights.userId, userId))
+    .where(eq(platformInsights.workspaceId, workspaceId))
     .orderBy(asc(platformInsights.platformPostedAt))
     .limit(1);
 
