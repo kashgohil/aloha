@@ -15,6 +15,7 @@ import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
 import { unpublishPost } from "@/lib/unpublishers";
 import { publishPost } from "@/lib/publishers";
+import { assertTransition, type PostStatus } from "@/lib/posts/transitions";
 
 const qstashClient = new Client({
   token: env.QSTASH_TOKEN,
@@ -64,41 +65,7 @@ export async function saveDraft(payload: ComposerPayload) {
   }
 
   try {
-    await db.insert(posts).values({
-      userId: session.user.id,
-      content: payload.content,
-      platforms: payload.platforms,
-      media: payload.media ?? [],
-      channelContent: sanitizeOverrides(payload.channelContent, payload.platforms),
-      status: "draft",
-      sourceIdeaId: payload.sourceIdeaId ?? null,
-      draftMeta: payload.draftMeta ?? null,
-    });
-
-    await flipIdeaToDrafted(session.user.id, payload.sourceIdeaId);
-
-    revalidatePath("/app/dashboard");
-    revalidatePath("/app/calendar");
-    revalidatePath("/app/ideas");
-
-    return { success: true };
-  } catch (error) {
-    console.error("Save Draft Error:", error);
-    throw new Error("Failed to save draft");
-  }
-}
-
-export async function schedulePost(
-  payload: ComposerPayload & { scheduledAt: Date },
-) {
-  const session = await auth();
-
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-
-  try {
-    const results = await db
+    const [row] = await db
       .insert(posts)
       .values({
         userId: session.user.id,
@@ -109,40 +76,64 @@ export async function schedulePost(
           payload.channelContent,
           payload.platforms,
         ),
-        status: "scheduled",
-        scheduledAt: payload.scheduledAt,
+        status: "draft",
         sourceIdeaId: payload.sourceIdeaId ?? null,
         draftMeta: payload.draftMeta ?? null,
       })
-      .returning();
-
-    const newPost = results[0];
+      .returning({ id: posts.id });
 
     await flipIdeaToDrafted(session.user.id, payload.sourceIdeaId);
-
-    const delay = Math.max(
-      0,
-      Math.floor((payload.scheduledAt.getTime() - Date.now()) / 1000),
-    );
-
-    await qstashClient.publishJSON({
-      url: `${env.APP_URL}/api/qstash`,
-      body: {
-        postId: newPost.id,
-        intendedScheduledAt: payload.scheduledAt.toISOString(),
-      },
-      delay,
-    });
 
     revalidatePath("/app/dashboard");
     revalidatePath("/app/calendar");
     revalidatePath("/app/ideas");
 
-    return { success: true, postId: newPost.id };
+    return { success: true, postId: row.id };
   } catch (error) {
-    console.error("Schedule Post Error:", error);
-    throw new Error("Failed to schedule post");
+    console.error("Save Draft Error:", error);
+    throw new Error("Failed to save draft");
   }
+}
+
+// Flip an approved post into the scheduled queue. Strict one-step-forward:
+// only works on posts already in `approved`. Enqueues QStash at the given
+// time; the handler re-reads status + scheduledAt before firing, so older
+// messages from rescheduling no-op safely.
+export async function schedulePost(postId: string, scheduledAt: Date) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  if (scheduledAt.getTime() <= Date.now()) {
+    throw new Error("Pick a future time to schedule for.");
+  }
+
+  const existing = await loadOwnedPost(postId, session.user.id);
+  assertTransition(existing.status as PostStatus, "scheduled");
+
+  await db
+    .update(posts)
+    .set({
+      status: "scheduled",
+      scheduledAt,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
+
+  const delay = Math.max(
+    0,
+    Math.floor((scheduledAt.getTime() - Date.now()) / 1000),
+  );
+  await qstashClient.publishJSON({
+    url: `${env.APP_URL}/api/qstash`,
+    body: {
+      postId,
+      intendedScheduledAt: scheduledAt.toISOString(),
+    },
+    delay,
+  });
+
+  revalidatePostPaths(postId);
+  return { success: true, postId };
 }
 
 // Publish-now path. Unlike schedulePost, this does the dispatch inline so
@@ -151,79 +142,32 @@ export async function schedulePost(
 // QStash still has the job queued, and the user sees a "scheduled" state
 // for a beat. Accepts an optional existing postId to support publishing
 // an existing draft/scheduled post without creating a duplicate row.
-export async function publishPostNow(
-  payload: ComposerPayload & { postId?: string | null },
-) {
+// Publish an approved post immediately. Flips status to `scheduled` with
+// scheduledAt=now so the publisher infra (which keys off scheduled) picks
+// it up inline. Requires the post to be in `approved` — strict one-step-
+// forward with the `scheduled → published` step collapsed into one call.
+export async function publishPostNow(postId: string) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  const existing = await loadOwnedPost(postId, session.user.id);
+  assertTransition(existing.status as PostStatus, "published");
+
   const now = new Date();
-  let postId = payload.postId ?? null;
 
   try {
-    if (postId) {
-      const [existing] = await db
-        .select({
-          id: posts.id,
-          userId: posts.userId,
-          status: posts.status,
-        })
-        .from(posts)
-        .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
-        .limit(1);
-      if (!existing) throw new Error("Post not found");
-      if (existing.status === "published") {
-        throw new Error("Published posts are read-only.");
-      }
-
-      await db
-        .update(posts)
-        .set({
-          content: payload.content,
-          platforms: payload.platforms,
-          media: payload.media ?? [],
-          channelContent: sanitizeOverrides(
-            payload.channelContent,
-            payload.platforms,
-          ),
-          status: "scheduled",
-          scheduledAt: now,
-          ...(payload.draftMeta !== undefined
-            ? { draftMeta: payload.draftMeta }
-            : {}),
-          updatedAt: now,
-        })
-        .where(eq(posts.id, postId));
-    } else {
-      const [row] = await db
-        .insert(posts)
-        .values({
-          userId: session.user.id,
-          content: payload.content,
-          platforms: payload.platforms,
-          media: payload.media ?? [],
-          channelContent: sanitizeOverrides(
-            payload.channelContent,
-            payload.platforms,
-          ),
-          status: "scheduled",
-          scheduledAt: now,
-          sourceIdeaId: payload.sourceIdeaId ?? null,
-          draftMeta: payload.draftMeta ?? null,
-        })
-        .returning();
-      postId = row.id;
-    }
-
-    await flipIdeaToDrafted(session.user.id, payload.sourceIdeaId);
+    await db
+      .update(posts)
+      .set({
+        status: "scheduled",
+        scheduledAt: now,
+        updatedAt: now,
+      })
+      .where(eq(posts.id, postId));
 
     const summary = await publishPost(postId);
 
-    revalidatePath("/app/dashboard");
-    revalidatePath("/app/calendar");
-    revalidatePath("/app/ideas");
-    revalidatePath(`/app/posts/${postId}`);
-
+    revalidatePostPaths(postId);
     return { success: true, postId, summary };
   } catch (error) {
     console.error("Publish Now Error:", error);
@@ -231,51 +175,23 @@ export async function publishPostNow(
   }
 }
 
-// Updates an existing draft or scheduled post in place. Content / media /
-// platforms / overrides are always updatable. `scheduledAt` + status flips
-// handle the draft → scheduled conversion and reschedule paths:
-//
-//   - Draft + no scheduledAt arg           → stays a draft, fields updated.
-//   - Draft + scheduledAt arg              → flips to scheduled, QStash queued.
-//   - Scheduled + scheduledAt=null arg     → flips back to draft, old QStash
-//                                            message ignored on fire (handler
-//                                            checks status).
-//   - Scheduled + new scheduledAt arg      → reschedules. A new QStash message
-//                                            is queued for the new time; the
-//                                            old one still fires at the old
-//                                            time but no-ops because the
-//                                            handler re-reads status +
-//                                            scheduledAt and only publishes
-//                                            when they're both still valid.
-//
-// Published posts are not editable — caller is expected to gate that in the
-// UI; we reject it here as a belt-and-braces guard.
-export async function updatePost(
-  postId: string,
-  payload: ComposerPayload & { scheduledAt?: Date | null },
-) {
+// Content-only update. Keeps status untouched — status changes happen
+// exclusively through the dedicated transition actions (submitForReview,
+// approvePost, backToDraft, schedulePost, publishPostNow). Content edits
+// are only permitted while the post is still a draft; once it's been
+// submitted for review, the post is frozen and must be moved back to
+// draft to receive further edits. For rescheduling a scheduled post, use
+// `reschedulePost`.
+export async function updatePost(postId: string, payload: ComposerPayload) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
-  const [existing] = await db
-    .select({
-      id: posts.id,
-      userId: posts.userId,
-      status: posts.status,
-    })
-    .from(posts)
-    .where(and(eq(posts.id, postId), eq(posts.userId, session.user.id)))
-    .limit(1);
-  if (!existing) throw new Error("Post not found");
-  if (existing.status === "published") {
-    throw new Error("Published posts are read-only.");
+  const existing = await loadOwnedPost(postId, session.user.id);
+  if (existing.status !== "draft") {
+    throw new Error(
+      "Post is locked. Move it back to draft to edit its content.",
+    );
   }
-
-  const scheduleRequested =
-    payload.scheduledAt !== undefined && payload.scheduledAt !== null;
-  const nextStatus: "draft" | "scheduled" = scheduleRequested
-    ? "scheduled"
-    : "draft";
 
   try {
     await db
@@ -288,8 +204,6 @@ export async function updatePost(
           payload.channelContent,
           payload.platforms,
         ),
-        status: nextStatus,
-        scheduledAt: scheduleRequested ? payload.scheduledAt! : null,
         // `undefined` means "leave alone"; null clears; a value overwrites.
         ...(payload.draftMeta !== undefined
           ? { draftMeta: payload.draftMeta }
@@ -298,25 +212,7 @@ export async function updatePost(
       })
       .where(eq(posts.id, postId));
 
-    if (scheduleRequested && payload.scheduledAt) {
-      const delay = Math.max(
-        0,
-        Math.floor((payload.scheduledAt.getTime() - Date.now()) / 1000),
-      );
-      await qstashClient.publishJSON({
-        url: `${env.APP_URL}/api/qstash`,
-        body: {
-          postId,
-          intendedScheduledAt: payload.scheduledAt.toISOString(),
-        },
-        delay,
-      });
-    }
-
-    revalidatePath("/app/dashboard");
-    revalidatePath("/app/calendar");
-    revalidatePath("/app/ideas");
-
+    revalidatePostPaths(postId);
     return { success: true, postId };
   } catch (error) {
     console.error("Update Post Error:", error);
@@ -558,4 +454,103 @@ function sanitizeOverrides(
     }
   }
   return out;
+}
+
+async function loadOwnedPost(postId: string, userId: string) {
+  const [row] = await db
+    .select({
+      id: posts.id,
+      userId: posts.userId,
+      status: posts.status,
+    })
+    .from(posts)
+    .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+    .limit(1);
+  if (!row) throw new Error("Post not found");
+  return row;
+}
+
+function revalidatePostPaths(postId?: string) {
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/calendar");
+  revalidatePath("/app/posts");
+  if (postId) revalidatePath(`/app/posts/${postId}`);
+}
+
+// Move a draft into review. Strict one-step-forward transition. Stamps
+// who submitted it and when so the Kanban card / detail view can show
+// "Submitted for review by X · 2h ago" once workspaces exist.
+export async function submitForReview(postId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const existing = await loadOwnedPost(postId, session.user.id);
+  assertTransition(existing.status as PostStatus, "in_review");
+
+  const now = new Date();
+  await db
+    .update(posts)
+    .set({
+      status: "in_review",
+      submittedForReviewAt: now,
+      submittedBy: session.user.id,
+      updatedAt: now,
+    })
+    .where(eq(posts.id, postId));
+
+  revalidatePostPaths(postId);
+  return { success: true };
+}
+
+// Approve a post that's in review. Does not schedule or publish — leaves
+// the post in `approved` state so the author can pick schedule-or-publish
+// from the composer.
+export async function approvePost(postId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const existing = await loadOwnedPost(postId, session.user.id);
+  assertTransition(existing.status as PostStatus, "approved");
+
+  const now = new Date();
+  await db
+    .update(posts)
+    .set({
+      status: "approved",
+      approvedAt: now,
+      approvedBy: session.user.id,
+      updatedAt: now,
+    })
+    .where(eq(posts.id, postId));
+
+  revalidatePostPaths(postId);
+  return { success: true };
+}
+
+// Backward reset from `in_review` or `approved` back to `draft`. Clears
+// the review audit fields so a re-submission gets a fresh timestamp and
+// reviewer identity. Deliberately does NOT preserve the prior stage —
+// the flow is always draft → in_review → approved, so after a reset the
+// author re-submits to advance again.
+export async function backToDraft(postId: string) {
+  const session = await auth();
+  if (!session?.user?.id) throw new Error("Unauthorized");
+
+  const existing = await loadOwnedPost(postId, session.user.id);
+  assertTransition(existing.status as PostStatus, "draft");
+
+  await db
+    .update(posts)
+    .set({
+      status: "draft",
+      submittedForReviewAt: null,
+      submittedBy: null,
+      approvedAt: null,
+      approvedBy: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(posts.id, postId));
+
+  revalidatePostPaths(postId);
+  return { success: true };
 }
