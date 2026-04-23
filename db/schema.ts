@@ -70,17 +70,87 @@ export const users = pgTable("users", {
   notificationsEnabled: boolean("notificationsEnabled").default(true).notNull(),
   notifyPostOutcomes: boolean("notifyPostOutcomes").default(true).notNull(),
   notifyInboxSyncIssues: boolean("notifyInboxSyncIssues").default(true).notNull(),
+  // Which workspace the user is currently acting inside. Nullable during
+  // Phase 2 rollout; backfill sets this to the user's personal workspace
+  // once it exists. Later phases tighten this + drive the workspace switch
+  // JWT claim.
+  activeWorkspaceId: uuid("activeWorkspaceId").references(
+    (): AnyPgColumn => workspaces.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
+
+// A tenant. Every piece of user-owned content (posts, channels, corpus,
+// subscriptions…) will be scoped to a workspace over the course of Phase 2.
+// For single-user users the workspace is created 1:1 during backfill and
+// owned by them. Multi-member workspaces arrive in Phase 4 via invites.
+export const workspaces = pgTable("workspaces", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  // The user who created / owns this workspace. Transfer-of-ownership
+  // lives in a later phase; for now this is always a member with role
+  // "owner" in `workspaceMembers`.
+  ownerUserId: uuid("ownerUserId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  timezone: text("timezone"),
+  // Semantic descriptor — lifted from the old `users.role`. Not a permission
+  // role (those live on `workspaceMembers.role`). Kept for onboarding nudges,
+  // pricing tiers, and analytics segmentation.
+  role: text("role", {
+    enum: ["solo", "creator", "team", "agency", "nonprofit"],
+  }),
+  // Billing customer pointer. Moves from `users.polarCustomerId` to here in
+  // Slice 2.7; kept nullable until then so backfill can populate it lazily.
+  polarCustomerId: text("polarCustomerId").unique(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+// Many-to-many between users and workspaces. A user can be a member of any
+// number of workspaces with different roles in each. Roles are set up with
+// the full Phase 4 enum now (it's free — everyone's `owner` until invites
+// land), so we don't need a separate migration to expand it later.
+export const workspaceMembers = pgTable(
+  "workspace_members",
+  {
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role", {
+      enum: ["owner", "admin", "editor", "reviewer", "viewer"],
+    })
+      .default("owner")
+      .notNull(),
+    invitedBy: uuid("invitedBy").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.workspaceId, table.userId] }),
+    index("workspace_members_user").on(table.userId),
+  ],
+);
 
 // One row per Polar subscription. A user with Basic + Muse has two rows;
 // the BillingService presents them as a single logical subscription.
 export const subscriptions = pgTable("subscriptions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  // Tenant scope. Nullable during the 2.7 backfill window; tightens to
+  // NOT NULL in a follow-up once every live subscription has been
+  // repointed at its workspace.
+  workspaceId: uuid("workspaceId").references(() => workspaces.id, {
+    onDelete: "cascade",
+  }),
   polarSubscriptionId: text("polarSubscriptionId").notNull().unique(),
   // Which product family this subscription is on. "basic" = Basic-only,
   // "bundle" = Basic+Muse combined. Switching between these is a product
@@ -109,6 +179,13 @@ export const accounts = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // Stays nullable on purpose: DrizzleAdapter inserts the account row
+    // during OAuth sign-in before our `linkAccount` event has a chance to
+    // stamp workspaceId. The event backfills it synchronously so the row
+    // is tenant-scoped for every query thereafter.
+    workspaceId: uuid("workspaceId").references(() => workspaces.id, {
+      onDelete: "cascade",
+    }),
     type: text("type").$type<AdapterAccountType>().notNull(),
     provider: text("provider").notNull(),
     providerAccountId: text("providerAccountId").notNull(),
@@ -180,9 +257,12 @@ export const authenticators = pgTable(
 
 export const posts = pgTable("posts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
   platforms: text("platforms").array().notNull(), // Stores ["twitter", "linkedin"]
   media: jsonb("media").$type<PostMedia[]>().default([]).notNull(),
@@ -296,10 +376,13 @@ export type PageTheme = {
 
 export const pages = pgTable("pages", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
     .notNull()
     .unique()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   slug: text("slug").notNull().unique(),
   title: text("title"),
   bio: text("bio"),
@@ -362,9 +445,12 @@ export const automations = pgTable(
   "automations",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    createdByUserId: uuid("createdByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     kind: text("kind").notNull(),
     name: text("name").notNull(),
     status: text("status", { enum: ["active", "paused", "draft"] })
@@ -437,9 +523,12 @@ export const automationRuns = pgTable(
 
 export const subscribers = pgTable("subscribers", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
   name: text("name"),
   tags: text("tags").array(),
@@ -460,9 +549,12 @@ export const sendingDomains = pgTable(
   "sending_domains",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    createdByUserId: uuid("createdByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     domain: text("domain").notNull(),
     resendDomainId: text("resendDomainId"),
     status: text("status", {
@@ -486,7 +578,7 @@ export const sendingDomains = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("sending_domains_user_domain").on(table.userId, table.domain),
+    uniqueIndex("sending_domains_user_domain").on(table.createdByUserId, table.domain),
   ],
 );
 
@@ -496,9 +588,12 @@ export const sendingDomains = pgTable(
 // `sendingDomainId` pins which verified domain the From address uses.
 export const broadcasts = pgTable("broadcasts", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   subject: text("subject").notNull(),
   preheader: text("preheader"),
   body: text("body").notNull(),
@@ -585,6 +680,9 @@ export const blueskyCredentials = pgTable("bluesky_credentials", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   handle: text("handle").notNull(),
   appPassword: text("appPassword").notNull(),
   did: text("did"),
@@ -601,10 +699,15 @@ export const notionCredentials = pgTable("notion_credentials", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   accessToken: text("accessToken").notNull(),
-  workspaceId: text("workspaceId").notNull(),
-  workspaceName: text("workspaceName"),
-  workspaceIcon: text("workspaceIcon"),
+  // Notion's own workspace identifier from the OAuth response — disambiguated
+  // from our tenant-scoping `workspaceId` column above.
+  notionWorkspaceId: text("notionWorkspaceId").notNull(),
+  notionWorkspaceName: text("notionWorkspaceName"),
+  notionWorkspaceIcon: text("notionWorkspaceIcon"),
   botId: text("botId").notNull(),
   // Flipped to true when a sync call returns 401 (user revoked the
   // integration inside Notion). Cleared on successful reconnect via the
@@ -623,9 +726,12 @@ export const brandCorpus = pgTable(
   "brand_corpus",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    createdByUserId: uuid("createdByUserId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     source: text("source", {
       enum: ["notion", "google_docs", "upload", "manual"],
     }).notNull(),
@@ -640,8 +746,8 @@ export const brandCorpus = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("brand_corpus_user_source_sourceid").on(
-      table.userId,
+    uniqueIndex("brand_corpus_workspace_source_sourceid").on(
+      table.workspaceId,
       table.source,
       table.sourceId,
     ),
@@ -654,9 +760,12 @@ export const brandCorpus = pgTable(
 // "generated from" provenance in the library UI.
 export const assets = pgTable("assets", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   source: text("source", {
     enum: ["upload", "generated", "imported"],
   }).notNull(),
@@ -689,9 +798,12 @@ export const assets = pgTable("assets", {
 // draft post id.
 export const campaigns = pgTable("campaigns", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   goal: text("goal").notNull(),
   kind: text("kind", {
@@ -726,9 +838,9 @@ export const feeds = pgTable(
   "feeds",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    workspaceId: uuid("workspaceId")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     url: text("url").notNull(),
     siteUrl: text("siteUrl"),
     title: text("title").notNull(),
@@ -743,7 +855,9 @@ export const feeds = pgTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("feeds_user_url").on(table.userId, table.url)],
+  (table) => [
+    uniqueIndex("feeds_workspace_url").on(table.workspaceId, table.url),
+  ],
 );
 
 // One row per item pulled from a feed. Dedupe on (feedId, guid) — guid
@@ -779,9 +893,12 @@ export const feedItems = pgTable(
 // suggestions) lands later.
 export const ideas = pgTable("ideas", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  createdByUserId: uuid("createdByUserId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   source: text("source", {
     enum: ["manual", "url_clip", "feed", "notion", "inbox"],
   }).notNull(),
@@ -805,6 +922,9 @@ export const mastodonCredentials = pgTable("mastodon_credentials", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   instanceUrl: text("instanceUrl").notNull(),
   accessToken: text("accessToken").notNull(),
   accountId: text("accountId").notNull(),
@@ -819,6 +939,9 @@ export const telegramCredentials = pgTable("telegram_credentials", {
     .notNull()
     .unique()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   // User's phone number (used for authentication)
   phoneNumber: text("phoneNumber").notNull(),
   // Session data after authentication (auth_key, server_salt, etc.)
@@ -844,6 +967,9 @@ export const inboxMessages = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     remoteId: text("remoteId").notNull(),
     threadId: text("threadId"),
@@ -879,10 +1005,10 @@ export const inboxMessages = pgTable(
 // rate, hook patterns) so prompts don't have to re-derive each call.
 export const brandVoice = pgTable("brand_voice", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("userId")
+  workspaceId: uuid("workspaceId")
     .notNull()
     .unique()
-    .references(() => users.id, { onDelete: "cascade" }),
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   tone: jsonb("tone").$type<Record<string, unknown>>().default({}).notNull(),
   features: jsonb("features")
     .$type<Record<string, unknown>>()
@@ -905,9 +1031,9 @@ export const brandVoiceChannels = pgTable(
   "brand_voice_channels",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    workspaceId: uuid("workspaceId")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     overrides: jsonb("overrides")
       .$type<Record<string, unknown>>()
@@ -918,8 +1044,8 @@ export const brandVoiceChannels = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("brand_voice_channels_user_channel").on(
-      table.userId,
+    uniqueIndex("brand_voice_channels_workspace_channel").on(
+      table.workspaceId,
       table.channel,
     ),
   ],
@@ -935,9 +1061,9 @@ export const channelStates = pgTable(
   "channel_states",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    workspaceId: uuid("workspaceId")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     publishMode: text("publishMode", {
       enum: ["auto", "review_pending", "manual_assist"],
@@ -952,7 +1078,10 @@ export const channelStates = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("channel_states_user_channel").on(table.userId, table.channel),
+    uniqueIndex("channel_states_workspace_channel").on(
+      table.workspaceId,
+      table.channel,
+    ),
   ],
 );
 
@@ -966,6 +1095,9 @@ export const channelNotifications = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
   },
@@ -986,9 +1118,9 @@ export const channelProfiles = pgTable(
   "channel_profiles",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("userId")
+    workspaceId: uuid("workspaceId")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     // Platform-native account id (e.g. twitter user id, bluesky did,
     // mastodon account id). Stored so future refreshes can verify we're
@@ -1007,8 +1139,8 @@ export const channelProfiles = pgTable(
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex("channel_profiles_user_channel").on(
-      table.userId,
+    uniqueIndex("channel_profiles_workspace_channel").on(
+      table.workspaceId,
       table.channel,
     ),
   ],
@@ -1023,6 +1155,9 @@ export const museEnabledChannels = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     channel: text("channel").notNull(),
     enabledAt: timestamp("enabledAt", { mode: "date" }).defaultNow().notNull(),
     createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1047,6 +1182,9 @@ export const featureAccess = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     feature: text("feature").notNull(),
     requestedAt: timestamp("requestedAt"),
     grantedAt: timestamp("grantedAt"),
@@ -1098,6 +1236,9 @@ export const generations = pgTable("generations", {
   userId: uuid("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   feature: text("feature").notNull(),
   templateName: text("templateName"),
   templateVersion: integer("templateVersion"),
@@ -1132,6 +1273,9 @@ export const generations = pgTable("generations", {
 export const aiJobs = pgTable("ai_jobs", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("userId").references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   kind: text("kind").notNull(),
   payload: jsonb("payload")
     .$type<Record<string, unknown>>()
@@ -1164,6 +1308,9 @@ export const platformInsights = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     remotePostId: text("remotePostId").notNull(),
     postId: uuid("postId").references(() => posts.id, { onDelete: "set null" }),
@@ -1195,6 +1342,9 @@ export const platformContentCache = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     remotePostId: text("remotePostId").notNull(),
     content: text("content").notNull(),
@@ -1226,6 +1376,9 @@ export const notifications = pgTable("notifications", {
   userId: uuid("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
+  workspaceId: uuid("workspaceId")
+    .notNull()
+    .references(() => workspaces.id, { onDelete: "cascade" }),
   kind: text("kind", {
     enum: [
       "post_published",
@@ -1252,6 +1405,9 @@ export const inboxSyncCursors = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     cursor: text("cursor"),
     lastSyncedAt: timestamp("lastSyncedAt", { mode: "date" }),
@@ -1277,6 +1433,9 @@ export const postComments = pgTable(
     userId: uuid("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    workspaceId: uuid("workspaceId")
+      .notNull()
+      .references(() => workspaces.id, { onDelete: "cascade" }),
     platform: text("platform").notNull(),
     remoteId: text("remoteId").notNull(),
     // Immediate parent in the reply chain. For a direct reply to the post,
