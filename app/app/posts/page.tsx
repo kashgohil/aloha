@@ -6,7 +6,7 @@ import {
 	posts,
 	telegramCredentials,
 } from "@/db/schema";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { cn } from "@/lib/utils";
 import { FilterTabs } from "@/components/ui/filter-tabs";
@@ -129,8 +129,9 @@ export default async function PostsPage({
 }: {
 	searchParams: SearchParams;
 }) {
-	const user = (await getCurrentUser())!;
-	const tz = user.timezone ?? "UTC";
+	const ctx = (await getCurrentContext())!;
+	const { user, workspace } = ctx;
+	const tz = workspace.timezone ?? user.timezone ?? "UTC";
 
 	const params = await searchParams;
 	const filter: StatusFilter = STATUSES.includes(
@@ -146,7 +147,7 @@ export default async function PostsPage({
 
 	// Build query conditions. Board view ignores the status filter — it
 	// renders one column per status — but still hides deleted posts.
-	const where = [eq(posts.userId, user.id)];
+	const where = [eq(posts.workspaceId, workspace.id)];
 	if (view === "board" || filter === "all") {
 		where.push(sql`${posts.status} != 'deleted'`);
 	} else {
@@ -161,7 +162,7 @@ export default async function PostsPage({
 
 	// Counts are filtered by channels (if selected) but cover all statuses,
 	// so "deleted" reflects accurately.
-	const countWhere = [eq(posts.userId, user.id)];
+	const countWhere = [eq(posts.workspaceId, workspace.id)];
 	if (selectedChannels.length > 0) {
 		const channelCondition = arrayOverlaps(posts.platforms, selectedChannels);
 		if (channelCondition) {
@@ -179,24 +180,24 @@ export default async function PostsPage({
 			.from(accounts)
 			.where(
 				and(
-					eq(accounts.userId, user.id),
+					eq(accounts.workspaceId, workspace.id),
 					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
 				),
 			),
 		db
 			.select({ id: blueskyCredentials.id })
 			.from(blueskyCredentials)
-			.where(eq(blueskyCredentials.userId, user.id))
+			.where(eq(blueskyCredentials.workspaceId, workspace.id))
 			.limit(1),
 		db
 			.select({ id: mastodonCredentials.id })
 			.from(mastodonCredentials)
-			.where(eq(mastodonCredentials.userId, user.id))
+			.where(eq(mastodonCredentials.workspaceId, workspace.id))
 			.limit(1),
 		db
 			.select({ id: telegramCredentials.id })
 			.from(telegramCredentials)
-			.where(eq(telegramCredentials.userId, user.id))
+			.where(eq(telegramCredentials.workspaceId, workspace.id))
 			.limit(1),
 		db
 			.select({

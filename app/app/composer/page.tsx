@@ -1,5 +1,5 @@
 import { and, eq, notInArray } from "drizzle-orm";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { db } from "@/db";
@@ -31,12 +31,13 @@ export default async function ComposerPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const user = (await getCurrentUser())!;
+  const ctx = (await getCurrentContext())!;
+  const { user, workspace } = ctx;
   const params = await searchParams;
   const ideaId = first(params.idea) ?? null;
   const postId = first(params.post) ?? null;
 
-  const timezone = user.timezone ?? "UTC";
+  const timezone = workspace.timezone ?? user.timezone ?? "UTC";
 
   const [connected, bestWindows, channelStates, museAccess, profileRows] = await Promise.all([
     db
@@ -44,7 +45,7 @@ export default async function ComposerPage({
       .from(accounts)
       .where(
         and(
-          eq(accounts.userId, user.id),
+          eq(accounts.workspaceId, workspace.id),
           notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
         ),
       ),
@@ -61,7 +62,7 @@ export default async function ComposerPage({
         followerCount: channelProfiles.followerCount,
       })
       .from(channelProfiles)
-      .where(eq(channelProfiles.userId, user.id)),
+      .where(eq(channelProfiles.workspaceId, workspace.id)),
   ]);
   const channelProfilesById: Record<string, ChannelProfileView> = Object.fromEntries(
     profileRows.map((p) => [p.channel, p as ChannelProfileView]),
@@ -102,13 +103,13 @@ export default async function ComposerPage({
           draftMeta: posts.draftMeta,
         })
         .from(posts)
-        .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
+        .where(and(eq(posts.id, postId), eq(posts.workspaceId, workspace.id)))
         .limit(1),
       db
         .select({ id: ideas.id, title: ideas.title, body: ideas.body })
         .from(ideas)
         .innerJoin(posts, eq(posts.sourceIdeaId, ideas.id))
-        .where(and(eq(posts.id, postId), eq(posts.userId, user.id)))
+        .where(and(eq(posts.id, postId), eq(posts.workspaceId, workspace.id)))
         .limit(1),
     ]);
     const [post] = postRows;
@@ -132,7 +133,7 @@ export default async function ComposerPage({
     const [idea] = await db
       .select({ id: ideas.id, title: ideas.title, body: ideas.body })
       .from(ideas)
-      .where(and(eq(ideas.id, ideaId), eq(ideas.userId, user.id)))
+      .where(and(eq(ideas.id, ideaId), eq(ideas.workspaceId, workspace.id)))
       .limit(1);
     if (idea) {
       initialContent = idea.body;

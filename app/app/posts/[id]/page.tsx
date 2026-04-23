@@ -6,7 +6,7 @@ import {
   type ChannelOverride,
   type PostMedia,
 } from "@/db/schema";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -99,8 +99,9 @@ export default async function PostDetailPage({
   params: RouteParams;
   searchParams: SearchParams;
 }) {
-  const user = (await getCurrentUser())!;
-  const tz = user.timezone ?? "UTC";
+  const ctx = (await getCurrentContext())!;
+  const { user, workspace } = ctx;
+  const tz = workspace.timezone ?? user.timezone ?? "UTC";
 
   const { id } = await params;
   const sp = await searchParams;
@@ -108,7 +109,7 @@ export default async function PostDetailPage({
   const [post] = await db
     .select()
     .from(posts)
-    .where(and(eq(posts.id, id), eq(posts.userId, user.id)))
+    .where(and(eq(posts.id, id), eq(posts.workspaceId, workspace.id)))
     .limit(1);
 
   if (!post) notFound();
@@ -130,7 +131,7 @@ export default async function PostDetailPage({
       avatarUrl: channelProfiles.avatarUrl,
     })
     .from(channelProfiles)
-    .where(eq(channelProfiles.userId, user.id));
+    .where(eq(channelProfiles.workspaceId, workspace.id));
   const profileByChannel = new Map(
     profileRows.map((p) => [
       p.channel,
@@ -315,6 +316,7 @@ export default async function PostDetailPage({
 
           <PostReplies
             userId={user.id}
+            workspaceId={workspace.id}
             platform={selectedChannel}
             rootRemoteId={selectedDelivery?.remotePostId ?? null}
             tz={tz}

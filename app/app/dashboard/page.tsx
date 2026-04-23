@@ -19,7 +19,7 @@ import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getLogicalSubscription } from "@/lib/billing/service";
 import { PLATFORM_GATING } from "@/lib/channel-state";
 import { ChannelChip } from "@/components/channel-chip";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { previewContent } from "@/lib/post-preview";
 import { getReachLast7Days } from "@/lib/reach-cache";
 import { and, count, desc, eq, gte, notInArray, sql } from "drizzle-orm";
@@ -61,8 +61,9 @@ const PROVIDER_LABELS: Record<string, string> = {
 export default async function DashboardPage() {
 	// Header renders synchronously from the session (no DB). The rest of
 	// the dashboard streams in via Suspense so the shell paints fast.
-	const user = (await getCurrentUser())!;
-	const tz = user.timezone ?? "UTC";
+	const ctx = (await getCurrentContext())!;
+	const { user, workspace } = ctx;
+	const tz = workspace.timezone ?? user.timezone ?? "UTC";
 	const firstName = (user.name ?? user.email).split(/\s|@/)[0];
 	const greeting = greet(new Date(), tz);
 
@@ -101,7 +102,7 @@ export default async function DashboardPage() {
 			</header>
 
 			<Suspense fallback={<DashboardSkeleton />}>
-				<DashboardContent user={user} tz={tz} />
+				<DashboardContent user={user} workspaceId={workspace.id} tz={tz} />
 			</Suspense>
 		</div>
 	);
@@ -109,9 +110,11 @@ export default async function DashboardPage() {
 
 async function DashboardContent({
 	user,
+	workspaceId,
 	tz,
 }: {
 	user: CurrentUser;
+	workspaceId: string;
 	tz: string;
 }) {
 	const startOfWeek = (() => {
@@ -166,7 +169,7 @@ async function DashboardContent({
 				publishedThisWeek: sql<number>`count(*) filter (where ${posts.status} = 'published' and ${posts.publishedAt} >= ${startOfWeek.toISOString()})`,
 			})
 			.from(posts)
-			.where(eq(posts.userId, user.id)),
+			.where(eq(posts.workspaceId, workspaceId)),
 
 		db
 			.select({
@@ -175,7 +178,7 @@ async function DashboardContent({
 			.from(accounts)
 			.where(
 				and(
-					eq(accounts.userId, user.id),
+					eq(accounts.workspaceId, workspaceId),
 					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
 				),
 			),
@@ -183,17 +186,17 @@ async function DashboardContent({
 		db
 			.select({ value: count() })
 			.from(blueskyCredentials)
-			.where(eq(blueskyCredentials.userId, user.id)),
+			.where(eq(blueskyCredentials.workspaceId, workspaceId)),
 
 		db
 			.select({ value: count() })
 			.from(mastodonCredentials)
-			.where(eq(mastodonCredentials.userId, user.id)),
+			.where(eq(mastodonCredentials.workspaceId, workspaceId)),
 
 		db
 			.select({ value: count() })
 			.from(telegramCredentials)
-			.where(eq(telegramCredentials.userId, user.id)),
+			.where(eq(telegramCredentials.workspaceId, workspaceId)),
 
 		db
 			.select({
@@ -206,7 +209,7 @@ async function DashboardContent({
 			.from(posts)
 			.where(
 				and(
-					eq(posts.userId, user.id),
+					eq(posts.workspaceId, workspaceId),
 					eq(posts.status, "scheduled"),
 					gte(posts.scheduledAt, now),
 				),
@@ -223,7 +226,7 @@ async function DashboardContent({
 				publishedAt: posts.publishedAt,
 			})
 			.from(posts)
-			.where(and(eq(posts.userId, user.id), eq(posts.status, "published")))
+			.where(and(eq(posts.workspaceId, workspaceId), eq(posts.status, "published")))
 			.orderBy(desc(posts.publishedAt))
 			.limit(3),
 
@@ -232,7 +235,7 @@ async function DashboardContent({
 			.from(accounts)
 			.where(
 				and(
-					eq(accounts.userId, user.id),
+					eq(accounts.workspaceId, workspaceId),
 					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
 				),
 			),
@@ -240,19 +243,19 @@ async function DashboardContent({
 		db
 			.select({ value: sql<number>`1` })
 			.from(blueskyCredentials)
-			.where(eq(blueskyCredentials.userId, user.id))
+			.where(eq(blueskyCredentials.workspaceId, workspaceId))
 			.limit(1),
 
 		db
 			.select({ value: sql<number>`1` })
 			.from(mastodonCredentials)
-			.where(eq(mastodonCredentials.userId, user.id))
+			.where(eq(mastodonCredentials.workspaceId, workspaceId))
 			.limit(1),
 
 		db
 			.select({ value: sql<number>`1` })
 			.from(telegramCredentials)
-			.where(eq(telegramCredentials.userId, user.id))
+			.where(eq(telegramCredentials.workspaceId, workspaceId))
 			.limit(1),
 
 		db
@@ -260,7 +263,7 @@ async function DashboardContent({
 			.from(accounts)
 			.where(
 				and(
-					eq(accounts.userId, user.id),
+					eq(accounts.workspaceId, workspaceId),
 					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
 				),
 			),
@@ -288,7 +291,7 @@ async function DashboardContent({
 			.from(campaigns)
 			.where(
 				and(
-					eq(campaigns.userId, user.id),
+					eq(campaigns.workspaceId, workspaceId),
 					notInArray(campaigns.status, ["archived", "complete"]),
 				),
 			)
@@ -301,7 +304,7 @@ async function DashboardContent({
 				total: count(),
 			})
 			.from(ideas)
-			.where(eq(ideas.userId, user.id)),
+			.where(eq(ideas.workspaceId, workspaceId)),
 
 		db
 			.select({
@@ -312,7 +315,7 @@ async function DashboardContent({
 				createdAt: ideas.createdAt,
 			})
 			.from(ideas)
-			.where(and(eq(ideas.userId, user.id), eq(ideas.status, "new")))
+			.where(and(eq(ideas.workspaceId, workspaceId), eq(ideas.status, "new")))
 			.orderBy(desc(ideas.createdAt))
 			.limit(3),
 
@@ -323,7 +326,7 @@ async function DashboardContent({
 			})
 			.from(feedItems)
 			.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
-			.where(eq(feeds.userId, user.id)),
+			.where(eq(feeds.workspaceId, workspaceId)),
 
 		db
 			.select({
@@ -336,7 +339,7 @@ async function DashboardContent({
 			})
 			.from(feedItems)
 			.innerJoin(feeds, eq(feedItems.feedId, feeds.id))
-			.where(eq(feeds.userId, user.id))
+			.where(eq(feeds.workspaceId, workspaceId))
 			.orderBy(desc(feedItems.publishedAt))
 			.limit(3),
 
@@ -346,23 +349,23 @@ async function DashboardContent({
 				unread: sql<number>`count(*) filter (where ${inboxMessages.isRead} = false)`,
 			})
 			.from(inboxMessages)
-			.where(eq(inboxMessages.userId, user.id)),
+			.where(eq(inboxMessages.workspaceId, workspaceId)),
 
 		db
 			.select({
-				workspaceName: notionCredentials.workspaceName,
+				workspaceName: notionCredentials.notionWorkspaceName,
 				lastSyncedAt: notionCredentials.lastSyncedAt,
 				reauthRequired: notionCredentials.reauthRequired,
 			})
 			.from(notionCredentials)
-			.where(eq(notionCredentials.userId, user.id))
+			.where(eq(notionCredentials.workspaceId, workspaceId))
 			.limit(1),
 
 		db
 			.select({ total: count() })
 			.from(brandCorpus)
 			.where(
-				and(eq(brandCorpus.userId, user.id), eq(brandCorpus.source, "notion")),
+				and(eq(brandCorpus.workspaceId, workspaceId), eq(brandCorpus.source, "notion")),
 			),
 
 		// Subscribed feed sources — used by FeedDigestCard to show *what*
@@ -375,7 +378,7 @@ async function DashboardContent({
 				siteUrl: feeds.siteUrl,
 			})
 			.from(feeds)
-			.where(eq(feeds.userId, user.id))
+			.where(eq(feeds.workspaceId, workspaceId))
 			.orderBy(desc(feeds.lastFetchedAt))
 			.limit(12),
 
