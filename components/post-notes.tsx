@@ -8,6 +8,7 @@ import {
 	deleteNote,
 	editNote,
 	type PostNote,
+	type PostNoteMention,
 } from "@/app/actions/post-notes";
 import {
 	Popover,
@@ -19,9 +20,73 @@ import { cn } from "@/lib/utils";
 type Props = {
 	postId: string;
 	initialNotes: PostNote[];
+	// Workspace members that can be @-mentioned. Empty array = feature off.
+	members?: PostNoteMention[];
 };
 
-export function PostNotes({ postId, initialNotes }: Props) {
+// Parse `@Name` tokens out of the body and resolve them to member ids.
+// Matching: take the first word of each member's name (case-insensitive).
+// Skips duplicates and mentions that don't match any member. This is a
+// lightweight model — no typeahead needed for the common case of a
+// workspace with a handful of members.
+function extractMentions(
+	body: string,
+	members: PostNoteMention[],
+): string[] {
+	if (members.length === 0) return [];
+	const byFirstName = new Map<string, string>();
+	for (const m of members) {
+		if (!m.name) continue;
+		const first = m.name.trim().split(/\s+/)[0]?.toLowerCase();
+		if (first && !byFirstName.has(first)) byFirstName.set(first, m.userId);
+	}
+	const matches = new Set<string>();
+	const re = /@([A-Za-z][A-Za-z0-9_-]*)/g;
+	let m: RegExpExecArray | null;
+	while ((m = re.exec(body)) !== null) {
+		const id = byFirstName.get(m[1].toLowerCase());
+		if (id) matches.add(id);
+	}
+	return Array.from(matches);
+}
+
+// Renders the body with `@Name` tokens that matched a workspace member
+// turned into subtle chips. Unmatched `@whatever` stays plain text.
+function renderBody(body: string, mentions: PostNoteMention[]): React.ReactNode {
+	if (mentions.length === 0) return body;
+	const byFirstName = new Map<string, PostNoteMention>();
+	for (const m of mentions) {
+		if (!m.name) continue;
+		const first = m.name.trim().split(/\s+/)[0]?.toLowerCase();
+		if (first) byFirstName.set(first, m);
+	}
+	const parts: React.ReactNode[] = [];
+	const re = /@([A-Za-z][A-Za-z0-9_-]*)/g;
+	let lastIndex = 0;
+	let m: RegExpExecArray | null;
+	let key = 0;
+	while ((m = re.exec(body)) !== null) {
+		if (m.index > lastIndex) parts.push(body.slice(lastIndex, m.index));
+		const matched = byFirstName.get(m[1].toLowerCase());
+		if (matched) {
+			parts.push(
+				<span
+					key={`m${key++}`}
+					className="inline-flex items-center px-1 rounded bg-peach-100 text-ink font-medium"
+				>
+					@{matched.name?.split(/\s+/)[0] ?? m[1]}
+				</span>,
+			);
+		} else {
+			parts.push(m[0]);
+		}
+		lastIndex = m.index + m[0].length;
+	}
+	if (lastIndex < body.length) parts.push(body.slice(lastIndex));
+	return parts;
+}
+
+export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 	const [notes, setNotes] = useState<PostNote[]>(initialNotes);
 	const [body, setBody] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
@@ -31,10 +96,14 @@ export function PostNotes({ postId, initialNotes }: Props) {
 	const handleAdd = () => {
 		const trimmed = body.trim();
 		if (!trimmed || isPending) return;
+		const mentionIds = extractMentions(trimmed, members);
+		const resolvedMentions = members.filter((m) =>
+			mentionIds.includes(m.userId),
+		);
 		const toastId = toast.loading("Posting…");
 		startTransition(async () => {
 			try {
-				const row = await addNote(postId, trimmed);
+				const row = await addNote(postId, trimmed, mentionIds);
 				setNotes((prev) => [
 					...prev,
 					{
@@ -44,6 +113,7 @@ export function PostNotes({ postId, initialNotes }: Props) {
 						authorName: null,
 						authorImage: null,
 						body: row.body,
+						mentions: resolvedMentions,
 						createdAt: row.createdAt,
 						updatedAt: row.updatedAt,
 						editedAt: row.editedAt,
@@ -181,7 +251,7 @@ export function PostNotes({ postId, initialNotes }: Props) {
 								</div>
 							) : (
 								<p className="mt-2 text-[13px] text-ink whitespace-pre-wrap leading-relaxed">
-									{note.body}
+									{renderBody(note.body, note.mentions)}
 								</p>
 							)}
 						</li>
