@@ -53,6 +53,7 @@ async function loadCandidateWinners(
   userId: string,
   lookbackSince: Date,
 ): Promise<WinnerRow[]> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const rows = await db
     .select({
       postId: platformInsights.postId,
@@ -62,7 +63,7 @@ async function loadCandidateWinners(
     .from(platformInsights)
     .where(
       and(
-        eq(platformInsights.userId, userId),
+        eq(platformInsights.workspaceId, workspaceId),
         isNotNull(platformInsights.postId),
         gte(platformInsights.platformPostedAt, lookbackSince),
       ),

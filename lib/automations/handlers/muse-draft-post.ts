@@ -40,10 +40,11 @@ async function resolveChannel(
   if (configured && configured !== "any") {
     return CHANNEL_ALIASES[configured] ?? configured;
   }
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select({ channel: museEnabledChannels.channel })
     .from(museEnabledChannels)
-    .where(eq(museEnabledChannels.userId, userId))
+    .where(eq(museEnabledChannels.workspaceId, workspaceId))
     .orderBy(desc(museEnabledChannels.enabledAt))
     .limit(1);
   return row?.channel ?? "linkedin";
