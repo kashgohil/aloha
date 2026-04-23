@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import { createWorkspaceAction } from "@/app/actions/workspace-switch";
 import { getCurrentUser } from "@/lib/current-user";
+import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
 
 const ROLE_CHOICES: Array<{ value: string; label: string; hint: string }> = [
 	{ value: "solo", label: "Solo", hint: "Just me, personal brand." },
@@ -16,6 +17,7 @@ export const dynamic = "force-dynamic";
 export default async function NewWorkspacePage() {
 	const user = (await getCurrentUser())!;
 	const timezone = user.timezone ?? "UTC";
+	const entitlement = await getWorkspaceCreationEntitlement(user.id);
 
 	return (
 		<div className="max-w-xl space-y-8">
@@ -36,6 +38,39 @@ export default async function NewWorkspacePage() {
 				</p>
 			</div>
 
+			{!entitlement.allowed ? (
+				<div className="rounded-3xl border border-border bg-background-elev p-6 space-y-4">
+					<div className="flex items-start gap-3">
+						<span className="grid place-items-center w-9 h-9 rounded-full bg-peach-100/70 shrink-0">
+							<Sparkles className="w-4 h-4 text-ink" />
+						</span>
+						<div className="min-w-0">
+							<p className="text-[14px] font-medium text-ink">
+								You&apos;re on the free plan
+							</p>
+							<p className="mt-1 text-[13px] text-ink/65 leading-[1.55]">
+								Free workspaces are capped at <strong>{entitlement.limit}</strong>. Upgrade to a
+								paid plan to spin up more tenants — each with its own billing,
+								channels, and members.
+							</p>
+						</div>
+					</div>
+					<div className="flex items-center justify-end gap-3 border-t border-border pt-4">
+						<Link
+							href="/app/dashboard"
+							className="inline-flex items-center h-10 px-4 rounded-full text-[13px] text-ink/65 hover:text-ink transition-colors"
+						>
+							Back
+						</Link>
+						<Link
+							href="/app/settings/billing"
+							className="inline-flex items-center h-10 px-5 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
+						>
+							Upgrade
+						</Link>
+					</div>
+				</div>
+			) : (
 			<form
 				action={createWorkspaceAction}
 				className="rounded-3xl border border-border bg-background-elev p-6 space-y-6"
@@ -98,6 +133,7 @@ export default async function NewWorkspacePage() {
 					</button>
 				</div>
 			</form>
+			)}
 		</div>
 	);
 }
