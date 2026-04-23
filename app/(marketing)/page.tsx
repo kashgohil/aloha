@@ -3,6 +3,7 @@ import { routes } from "@/lib/routes";
 import { faqJsonLd, makeMetadata, softwareApplicationJsonLd } from "@/lib/seo";
 import { ArrowRight, ArrowUpRight, Check, Smile, Sparkle } from "lucide-react";
 import Link from "next/link";
+import { HeroDoodle } from "./_components/hero-doodle";
 import { SOCIAL_ICONS } from "./_components/social-icons";
 import { EngageInbox } from "./engage-inbox";
 import { FaqList } from "./faq-list";
@@ -57,190 +58,76 @@ export default function LandingPage() {
 				]}
 			/>
 			{/* ─── HERO ──────────────────────────────────────────────────────── */}
-			<section className="bg-peach-200 wavy min-h-[calc(100vh-72px)]">
-				<div className="relative flex-1 max-w-[1320px] w-full mx-auto px-6 lg:px-10 pt-16 lg:pt-28 pb-20 lg:pb-32 grid grid-cols-12 gap-x-0 gap-y-12 lg:gap-8 items-end">
-					<div className="col-span-12 lg:col-span-7 relative">
-						<div className="inline-flex items-center gap-2 mb-6 lg:mb-8 text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70">
+			<section className="bg-peach-200 wavy min-h-[calc(100vh-72px)] relative overflow-hidden">
+				<HeroDoodle />
+
+				<div className="relative max-w-[1320px] w-full mx-auto px-6 lg:px-10 pt-20 lg:pt-32 pb-24 lg:pb-32 grid grid-cols-12 gap-y-10">
+					<div className="col-span-12 lg:col-start-2 lg:col-span-10 xl:col-start-3 xl:col-span-8 text-center">
+						<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/70 mb-6">
 							The calm social media OS
-						</div>
-
-						<h1 className="font-display font-normal text-ink leading-[0.95] sm:leading-[1.02] tracking-[-0.035em] text-[44px] sm:text-[72px] lg:text-[112px]">
-							Show up
-							<br />
-							everywhere
-							<span className="text-ink/70">,</span>
-							<br />
-							<span className="text-primary font-light">without losing</span>
-							<br />
-							<span className="text-primary font-light">yourself to it.</span>
-						</h1>
-
-						<p className="mt-6 lg:mt-10 max-w-[520px] text-[15.5px] lg:text-[18px] leading-[1.55] text-ink/70">
-							Aloha is the quiet operator behind creators who post on six
-							platforms and still have a life. Plan, write, schedule, automate —
-							and get the afternoon back.
 						</p>
 
-						<div className="mt-8 lg:mt-10 flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-							<Link
-								href="/auth/signin"
-								className="inline-flex items-center gap-2 h-14 px-7 rounded-full bg-primary text-primary-foreground font-medium text-[15px] shadow-[0_8px_0_-2px_rgba(46,42,133,0.35)] hover:shadow-[0_10px_0_-2px_rgba(46,42,133,0.4)] hover:-translate-y-0.5 transition-all"
-							>
-								Start free — no card
-								<ArrowRight className="w-4 h-4" />
-							</Link>
-							<a
-								href="#product"
-								className="pencil-link inline-flex items-center gap-2 text-[15px] font-medium text-ink"
-							>
-								See it work
-								<ArrowUpRight className="w-4 h-4" />
-							</a>
-						</div>
-					</div>
+						<h1 className="font-display font-normal text-ink leading-[0.96] tracking-[-0.03em] text-[48px] sm:text-[76px] lg:text-[112px]">
+							Show up everywhere.
+							<br />
+							<span className="text-primary">Stay yourself throughout.</span>
+						</h1>
 
-					{/* Hero visual — campaign card */}
-					<div className="col-span-12 lg:col-span-5 relative">
-						<div className="relative animate-[float-soft_9s_ease-in-out_infinite]">
-							<div className="rounded-3xl bg-background-elev border border-border-strong shadow-[0_30px_60px_-20px_rgba(23,20,18,0.25)] overflow-hidden">
-								{/* top bar */}
-								<div className="px-4 sm:px-5 py-3 flex items-center justify-between gap-3 border-b border-border bg-muted/40">
-									<div className="flex items-center gap-2 text-[10px] sm:text-[10.5px] font-mono uppercase tracking-[0.14em] sm:tracking-[0.18em] text-ink/70 min-w-0">
-										<span className="relative flex w-2 h-2 shrink-0">
-											<span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
-											<span className="relative w-2 h-2 rounded-full bg-primary" />
-										</span>
-										<span className="truncate">campaign · monday note</span>
-									</div>
-									<span className="text-[10px] sm:text-[10.5px] text-ink/65 font-mono shrink-0">
-										TUE · 13 APR
-									</span>
-								</div>
+						<p className="mt-8 lg:mt-10 max-w-[620px] mx-auto text-[16.5px] lg:text-[18px] leading-[1.55] text-ink/75">
+							The quiet operator behind creators who post across every platform
+							that matters — with{" "}
+							<span className="text-ink font-medium">Muse</span>, the voice
+							model trained on your past writing so nothing sounds like a
+							template.
+						</p>
 
-								{/* hero image — editorial */}
-								<div className="aspect-5/4 bg-primary-soft relative overflow-hidden">
-									<span className="absolute top-4 left-5 text-[10px] font-mono uppercase tracking-[0.2em] text-primary-deep/80">
-										Field No. 041
-									</span>
-									<span className="absolute top-4 right-5 w-8 h-8 rounded-full border border-primary-deep/30 grid place-items-center text-primary-deep/70 font-display text-[15px]">
-										✳
-									</span>
-									<div className="absolute bottom-4 left-5 right-5">
-										<p className="font-display text-primary-deep text-[40px] sm:text-[46px] lg:text-[52px] leading-[0.9] tracking-[-0.02em]">
-											a monday
-											<br />
-											<span className="text-primary">note.</span>
-										</p>
-									</div>
-								</div>
-
-								{/* caption */}
-								<div className="px-5 py-4 border-b border-border">
-									<p className="text-[13.5px] leading-[1.55] text-ink">
-										Monday reminder: the thing you're avoiding is usually the
-										thing you should write about.{" "}
-										<span className="text-primary">#creatorlife</span>
-									</p>
-								</div>
-
-								{/* distribution table */}
-								<div className="px-5 pt-4 pb-5">
-									<div className="flex items-center justify-between mb-3">
-										<p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-ink/65">
-											Shipping to
-										</p>
-										<p className="text-[10px] font-mono text-ink/70">
-											4 networks · on-voice · Muse
-										</p>
-									</div>
-
-									<ul className="divide-y divide-border">
-										{[
-											{
-												n: "Instagram",
-												meta: "1 image · caption",
-												t: "09:30 a",
-												tone: "bg-primary",
-											},
-											{
-												n: "LinkedIn",
-												meta: "long-form · hook rewritten",
-												t: "07:45 a",
-												tone: "bg-primary",
-											},
-											{
-												n: "X",
-												meta: "tightened to 119 chars",
-												t: "08:15 a",
-												tone: "bg-primary",
-											},
-											{
-												n: "Threads",
-												meta: "auto-mirror from IG",
-												t: "09:00 a",
-												tone: "bg-peach-400",
-											},
-										].map((p) => (
-											<li
-												key={p.n}
-												className="flex items-start justify-between gap-3 py-2.5 text-[13px]"
-											>
-												<div className="flex items-start gap-2.5 min-w-0 flex-1">
-													<span
-														className={`w-1.5 h-1.5 rounded-full shrink-0 mt-2 ${p.tone}`}
-													/>
-													<div className="min-w-0 flex-1 sm:flex sm:items-baseline sm:gap-3">
-														<span className="font-medium text-ink sm:w-[84px] sm:shrink-0 block">
-															{p.n}
-														</span>
-														<span className="text-ink/70 text-[11.5px] sm:text-[12px] block sm:truncate leading-snug">
-															{p.meta}
-														</span>
-													</div>
-												</div>
-												<span className="text-[11.5px] text-ink/70 font-mono shrink-0 mt-0.5">
-													{p.t}
-												</span>
-											</li>
-										))}
-									</ul>
-								</div>
-
-								{/* footer */}
-								<div className="px-4 sm:px-5 py-3 border-t border-border bg-muted/40 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-									<span className="text-[11px] text-ink/70">ready to ship</span>
-									<div className="flex items-center gap-3 flex-wrap">
-										<span
-											aria-hidden
-											className="text-[11.5px] text-ink/70 pencil-link pointer-events-none"
-										>
-											Preview each
-										</span>
-										<span
-											aria-hidden
-											className="inline-flex items-center gap-1.5 h-8 px-3 sm:px-3.5 rounded-full bg-ink text-background text-[11.5px] font-medium pointer-events-none"
-										>
-											Schedule all
-											<ArrowRight className="w-3 h-3" />
-										</span>
-									</div>
-								</div>
+						{/* inline signup */}
+						<form
+							action="/auth/signin"
+							method="get"
+							className="mt-9 lg:mt-10 w-full max-w-[500px] mx-auto"
+						>
+							<div className="flex flex-col sm:flex-row items-stretch gap-2 sm:gap-2 bg-background-elev border border-ink/10 rounded-full shadow-[0_14px_36px_-22px_rgba(23,20,18,0.3)] p-1.5 sm:pl-5 focus-within:border-primary/50 transition-colors">
+								<label className="flex-1 flex items-center min-w-0 pl-4 sm:pl-0">
+									<span className="sr-only">Work email</span>
+									<input
+										type="email"
+										name="email"
+										required
+										autoComplete="email"
+										placeholder="you@studio.com"
+										className="flex-1 bg-transparent h-11 text-[15px] text-ink placeholder:text-ink/45 outline-none min-w-0"
+									/>
+								</label>
+								<button
+									type="submit"
+									className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-full bg-primary text-primary-foreground font-medium text-[14.5px] shadow-[0_6px_0_-2px_rgba(46,42,133,0.35)] hover:shadow-[0_8px_0_-2px_rgba(46,42,133,0.45)] hover:-translate-y-0.5 transition-all shrink-0"
+								>
+									Start free
+									<ArrowRight className="w-4 h-4" />
+								</button>
 							</div>
+							<p className="mt-3.5 text-[12.5px] text-ink/65">
+								Free forever &middot; no card &middot; 3 channels &middot; 50 AI
+								generations / month
+							</p>
+						</form>
 
-							{/* single floating notification — flows inline on mobile, floats absolutely on sm+ */}
-							<div className="mt-4 sm:mt-0 sm:absolute sm:-bottom-5 sm:-left-6 lg:-left-10 inline-flex items-center gap-2.5 bg-background-elev text-ink border border-border-strong rounded-full pl-3 pr-4 py-2 shadow-[0_14px_30px_-16px_rgba(23,20,18,0.35)] sm:-rotate-3">
-								<span className="relative flex w-2 h-2 shrink-0">
-									<span className="absolute inset-0 rounded-full bg-primary/40 animate-ping" />
-									<span className="relative w-2 h-2 rounded-full bg-primary" />
-								</span>
-								<span className="text-[11.5px] font-medium">
-									+248 impressions
-								</span>
-								<span className="text-[11px] text-ink/65 font-mono">
-									LinkedIn · 2h
-								</span>
-							</div>
-						</div>
+						{/* mobile-only roster — stamps are hidden below md */}
+						<ul className="mt-10 flex md:hidden items-center justify-center gap-4 flex-wrap text-ink/70">
+							{SOCIAL_ICONS.slice(0, 8).map((icon) => (
+								<li key={icon.n} title={icon.n}>
+									<svg
+										viewBox="0 0 24 24"
+										className="w-[15px] h-[15px]"
+										fill={icon.custom ? undefined : "currentColor"}
+										aria-label={icon.n}
+									>
+										{icon.custom ?? <path d={icon.path} />}
+									</svg>
+								</li>
+							))}
+						</ul>
 					</div>
 				</div>
 			</section>
