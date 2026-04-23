@@ -142,9 +142,7 @@ export default async function AudiencePage() {
 					<div className="rounded-3xl border border-border bg-background-elev overflow-hidden">
 						<ToastForm
 							action={updatePage}
-							success={(res) =>
-								res?.created ? "Page created." : "Page saved."
-							}
+							success="Page saved."
 						>
 							<div className="p-6 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-6 sm:gap-7">
 								<div className="flex flex-col items-start gap-2">

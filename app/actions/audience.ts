@@ -62,7 +62,10 @@ export async function updatePage(formData: FormData) {
 
   revalidatePath("/app/audience");
   revalidatePath(`/u/${slug}`);
-  return { created: !existing };
+  return {
+    created: !existing,
+    message: existing ? "Page saved." : "Page created.",
+  };
 }
 
 export async function addLink(formData: FormData) {
