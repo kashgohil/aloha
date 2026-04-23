@@ -11,6 +11,7 @@ import {
   channelProfiles,
   mastodonCredentials,
   telegramCredentials,
+  users,
 } from "@/db/schema";
 import { AtpAgent } from "@atproto/api";
 import { getFreshToken } from "@/lib/publishers/tokens";
@@ -25,16 +26,30 @@ export type ChannelProfileInput = {
   followerCount?: number | null;
 };
 
+async function resolveWorkspaceId(userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ workspaceId: users.activeWorkspaceId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return row?.workspaceId ?? null;
+}
+
 export async function upsertChannelProfile(
   userId: string,
   channel: string,
   input: ChannelProfileInput,
 ) {
   const now = new Date();
+  const workspaceId = await resolveWorkspaceId(userId);
+  // Profile fetch is best-effort — if the user has no workspace yet (can
+  // happen mid-OAuth, before onboarding completes), skip rather than
+  // block the connection. Next profile refresh will retry.
+  if (!workspaceId) return;
   await db
     .insert(channelProfiles)
     .values({
-      userId,
+      workspaceId,
       channel,
       providerAccountId: input.providerAccountId ?? null,
       displayName: input.displayName ?? null,
@@ -46,7 +61,7 @@ export async function upsertChannelProfile(
       fetchedAt: now,
     })
     .onConflictDoUpdate({
-      target: [channelProfiles.userId, channelProfiles.channel],
+      target: [channelProfiles.workspaceId, channelProfiles.channel],
       set: {
         providerAccountId: input.providerAccountId ?? null,
         displayName: input.displayName ?? null,

@@ -5,6 +5,7 @@ import type { PostMedia } from "@/db/schema";
 import { db } from "@/db";
 import { telegramCredentials } from "@/db/schema";
 import { PublishError } from "./errors";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 export type TelegramPostResult = {
 	remotePostId: string;
@@ -231,10 +232,12 @@ export async function startTelegramAuth(
 		);
 
 		// Store initial credentials (pending code)
+		const workspaceId = await requireActiveWorkspaceId(userId);
 		await db
 			.insert(telegramCredentials)
 			.values({
 				userId,
+				workspaceId,
 				phoneNumber,
 				chatId,
 				username: username || null,

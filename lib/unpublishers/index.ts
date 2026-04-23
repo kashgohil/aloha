@@ -112,7 +112,7 @@ export async function unpublishPost(postId: string): Promise<UnpublishSummary> {
 		try {
 			const unpublisher = UNPUBLISHERS[delivery.platform];
 			await unpublisher({
-				userId: post.userId,
+				userId: post.createdByUserId,
 				remotePostId: delivery.remotePostId,
 			});
 			await db

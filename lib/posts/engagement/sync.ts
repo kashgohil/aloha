@@ -61,7 +61,7 @@ export async function syncPostDeliveryMetrics(
       platform: postDeliveries.platform,
       remotePostId: postDeliveries.remotePostId,
       status: postDeliveries.status,
-      userId: posts.userId,
+      userId: posts.createdByUserId,
     })
     .from(postDeliveries)
     .innerJoin(posts, eq(posts.id, postDeliveries.postId))

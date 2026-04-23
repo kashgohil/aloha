@@ -65,7 +65,8 @@ export async function syncPostDeliveryComments(
       platform: postDeliveries.platform,
       remotePostId: postDeliveries.remotePostId,
       status: postDeliveries.status,
-      userId: posts.userId,
+      userId: posts.createdByUserId,
+      workspaceId: posts.workspaceId,
     })
     .from(postDeliveries)
     .innerJoin(posts, eq(posts.id, postDeliveries.postId))
@@ -108,6 +109,7 @@ export async function syncPostDeliveryComments(
   if (result.comments.length > 0) {
     const rows = result.comments.map((c) => ({
       userId: row.userId,
+      workspaceId: row.workspaceId,
       platform: row.platform,
       remoteId: c.remoteId,
       parentRemoteId: c.parentRemoteId,

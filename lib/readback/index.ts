@@ -14,6 +14,7 @@ import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/db";
 import { reachTag } from "@/lib/reach-cache";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import {
   accounts,
   aiJobs,
@@ -195,8 +196,10 @@ async function upsertBatch(
     return { itemsCached: 0, insightsUpserted: 0 };
   }
 
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const contentRows = batch.items.map((item) => ({
     userId,
+    workspaceId,
     platform,
     remotePostId: item.remotePostId,
     content: item.content,
@@ -230,6 +233,7 @@ async function upsertBatch(
     .filter((item) => item.metrics !== null)
     .map((item) => ({
       userId,
+      workspaceId,
       platform,
       remotePostId: item.remotePostId,
       metrics: item.metrics!,
@@ -277,10 +281,12 @@ function sqlExcluded(col: string) {
 }
 
 async function startJob(userId: string, platform: string): Promise<string> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .insert(aiJobs)
     .values({
       userId,
+      workspaceId,
       kind: "readback",
       payload: { platform },
       status: "running",

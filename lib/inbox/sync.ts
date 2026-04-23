@@ -2,6 +2,7 @@ import { db } from "@/db";
 import { inboxMessages, inboxSyncCursors } from "@/db/schema";
 import { Logger, captureException } from "@/lib/logger";
 import { createNotification } from "@/lib/notifications";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { and, eq } from "drizzle-orm";
 import { fetchBlueskyNotifications } from "./bluesky";
 import { fetchBlueskyDms } from "./dms/bluesky";
@@ -93,6 +94,7 @@ export async function syncInbox(
   platform: Platform,
 ): Promise<{ mentionsSynced: number; dmsSynced: number }> {
   const routes = FETCHERS[platform];
+  const workspaceId = await requireActiveWorkspaceId(userId);
 
   const [cursorRow] = await db
     .select({ cursor: inboxSyncCursors.cursor })
@@ -131,6 +133,7 @@ export async function syncInbox(
   if (allMessages.length > 0) {
     const rows = allMessages.map((m) => ({
       userId,
+      workspaceId,
       platform,
       remoteId: m.remoteId,
       threadId: m.threadId,
@@ -163,6 +166,7 @@ export async function syncInbox(
     .insert(inboxSyncCursors)
     .values({
       userId,
+      workspaceId,
       platform,
       cursor: mentionResult.newCursor,
       lastSyncedAt: new Date(),

@@ -20,6 +20,7 @@ import {
   mastodonCredentials,
 } from "@/db/schema";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import type {
   EffectiveState,
   PublishMode,
@@ -56,6 +57,7 @@ export async function loadChannelState(
   userId: string,
   channel: string,
 ): Promise<ChannelStateRow> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [row] = await db
     .select({
       publishMode: channelStates.publishMode,
@@ -63,7 +65,12 @@ export async function loadChannelState(
       notes: channelStates.notes,
     })
     .from(channelStates)
-    .where(and(eq(channelStates.userId, userId), eq(channelStates.channel, channel)))
+    .where(
+      and(
+        eq(channelStates.workspaceId, workspaceId),
+        eq(channelStates.channel, channel),
+      ),
+    )
     .limit(1);
   if (row) return row;
 
@@ -75,16 +82,17 @@ export async function loadChannelState(
   const gating = PLATFORM_GATING[channel] ?? "ready";
   if (gating === "pending_approval") {
     const now = new Date();
+    const workspaceId = await requireActiveWorkspaceId(userId);
     await db
       .insert(channelStates)
       .values({
-        userId,
+        workspaceId,
         channel,
         publishMode: "auto",
         reviewStartedAt: now,
       })
       .onConflictDoNothing({
-        target: [channelStates.userId, channelStates.channel],
+        target: [channelStates.workspaceId, channelStates.channel],
       });
     return {
       publishMode: "auto",
@@ -167,17 +175,18 @@ export async function setChannelPublishMode(
   channel: string,
   mode: PublishMode,
 ): Promise<void> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .insert(channelStates)
     .values({
-      userId,
+      workspaceId,
       channel,
       publishMode: mode,
       reviewStartedAt:
         PLATFORM_GATING[channel] === "pending_approval" ? new Date() : null,
     })
     .onConflictDoUpdate({
-      target: [channelStates.userId, channelStates.channel],
+      target: [channelStates.workspaceId, channelStates.channel],
       set: {
         publishMode: mode,
         updatedAt: new Date(),
@@ -191,6 +200,7 @@ export async function setChannelPublishMode(
 export async function getEffectiveStatesForUser(
   userId: string,
 ): Promise<Record<string, EffectiveState>> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   const [oauthRows, blueskyRow, mastodonRow, stateRows] = await Promise.all([
     db
       .select({ provider: accounts.provider })
@@ -219,7 +229,7 @@ export async function getEffectiveStatesForUser(
         notes: channelStates.notes,
       })
       .from(channelStates)
-      .where(eq(channelStates.userId, userId)),
+      .where(eq(channelStates.workspaceId, workspaceId)),
   ]);
 
   const connected = new Set<string>(oauthRows.map((r) => r.provider));
@@ -253,14 +263,14 @@ export async function getEffectiveStatesForUser(
       .insert(channelStates)
       .values(
         toSeed.map((s) => ({
-          userId,
+          workspaceId,
           channel: s.channel,
           publishMode: "auto" as const,
           reviewStartedAt: now,
         })),
       )
       .onConflictDoNothing({
-        target: [channelStates.userId, channelStates.channel],
+        target: [channelStates.workspaceId, channelStates.channel],
       });
     for (const s of toSeed) {
       overrides.set(s.channel, {

@@ -13,6 +13,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { feedItems, feeds } from "@/db/schema";
 import { parseFeed, FeedParseError, type ParsedItem } from "./parser";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 const USER_AGENT = "AlohaBot/1.0 (+https://usealoha.app) feed-reader";
 const FETCH_TIMEOUT_MS = 15_000;
@@ -37,12 +38,13 @@ export async function subscribe(
   category: string | null = null,
 ): Promise<SubscribeResult> {
   const url = normalizeUrl(rawUrl);
+  const workspaceId = await requireActiveWorkspaceId(userId);
 
   // Dedup against existing subscription.
   const [existing] = await db
     .select({ id: feeds.id, title: feeds.title })
     .from(feeds)
-    .where(and(eq(feeds.userId, userId), eq(feeds.url, url)))
+    .where(and(eq(feeds.workspaceId, workspaceId), eq(feeds.url, url)))
     .limit(1);
   if (existing) {
     return { feedId: existing.id, title: existing.title, itemsAdded: 0 };
@@ -54,7 +56,7 @@ export async function subscribe(
   const [row] = await db
     .insert(feeds)
     .values({
-      userId,
+      workspaceId,
       url,
       siteUrl: parsed.siteUrl,
       title: parsed.title,
@@ -73,9 +75,10 @@ export async function subscribe(
 }
 
 export async function unsubscribe(userId: string, feedId: string): Promise<void> {
+  const workspaceId = await requireActiveWorkspaceId(userId);
   await db
     .delete(feeds)
-    .where(and(eq(feeds.userId, userId), eq(feeds.id, feedId)));
+    .where(and(eq(feeds.workspaceId, workspaceId), eq(feeds.id, feedId)));
 }
 
 export type SyncOutcome = {

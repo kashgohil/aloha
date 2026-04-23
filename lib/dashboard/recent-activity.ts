@@ -44,7 +44,7 @@ export async function getRecentActivity(
       )
       .innerJoin(posts, eq(posts.id, postDeliveries.postId))
       .where(
-        and(eq(postComments.userId, userId), eq(posts.userId, userId)),
+        and(eq(postComments.userId, userId), eq(posts.createdByUserId, userId)),
       )
       .orderBy(desc(postComments.platformCreatedAt))
       .limit(COMMENTS_LIMIT),

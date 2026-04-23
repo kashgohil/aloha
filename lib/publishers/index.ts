@@ -95,7 +95,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			continue;
 		}
 
-		const decision = await decideForPublish(post.userId, platform);
+		const decision = await decideForPublish(post.createdByUserId, platform);
 		if (decision.kind === "skip") {
 			// Channel is in a gated state — record it on the delivery and move
 			// on. A scheduled re-drive can pick it up once state flips.
@@ -149,7 +149,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			const publisher = PUBLISHERS[platform];
 			const override = post.channelContent?.[platform];
 			const { remotePostId, remoteUrl } = await publisher({
-				userId: post.userId,
+				userId: post.createdByUserId,
 				text: override?.content ?? post.content,
 				media: override?.media ?? post.media,
 			});
@@ -168,7 +168,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				})
 				.where(eq(postDeliveries.id, delivery.id));
 			// Clear any stale reauth flag — the token is proven working.
-			await setReauthRequired(post.userId, platform, false);
+			await setReauthRequired(post.createdByUserId, platform, false);
 			results.push({ platform, ok: true, publishedAt });
 		} catch (err) {
 			const code =
@@ -186,7 +186,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				})
 				.where(eq(postDeliveries.id, delivery.id));
 			if (code === "needs_reauth") {
-				await setReauthRequired(post.userId, platform, true);
+				await setReauthRequired(post.createdByUserId, platform, true);
 			}
 			results.push({
 				platform,
@@ -243,7 +243,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			post_failed: `Post failed to publish`,
 		} as const;
 		await createNotification({
-			userId: post.userId,
+			userId: post.createdByUserId,
 			kind,
 			title: titleByKind[kind],
 			body: snippet ? `"${snippet}"` : null,
@@ -254,7 +254,7 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 		if (kind === "post_published" || kind === "post_partial") {
 			dispatchEvent({
 				triggerKind: "post_published",
-				userId: post.userId,
+				userId: post.createdByUserId,
 				payload: { postId, okChannels, failedChannels },
 			}).catch((err) =>
 				console.error("[automations] post_published dispatch failed", err),

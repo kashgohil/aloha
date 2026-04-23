@@ -32,7 +32,7 @@ export async function redrivePendingReview(): Promise<RedriveOutcome[]> {
     .select({
       postId: postDeliveries.postId,
       platform: postDeliveries.platform,
-      userId: posts.userId,
+      userId: posts.createdByUserId,
       postStatus: posts.status,
     })
     .from(postDeliveries)
