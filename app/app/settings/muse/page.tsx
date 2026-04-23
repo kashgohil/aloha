@@ -29,6 +29,7 @@ import {
 import { requestMuseAccessAction } from "@/app/actions/muse-access";
 import { loadAllChannelVoices, loadCurrentVoice } from "@/lib/ai/voice";
 import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { getMuseAccessState } from "@/lib/billing/muse";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
@@ -44,6 +45,8 @@ const CHANNEL_DELTA_MIN_SAMPLES = 15;
 
 export default async function MuseSettingsPage() {
   const user = (await getCurrentUser())!;
+  const ctx = (await getCurrentContext())!;
+  const { workspace } = ctx;
 
   const access = await getMuseAccessState(user.id);
   if (!access.granted) {
@@ -63,14 +66,14 @@ export default async function MuseSettingsPage() {
     loadCurrentVoice(user.id),
     db
       .select({
-        workspaceId: notionCredentials.workspaceId,
-        workspaceName: notionCredentials.workspaceName,
-        workspaceIcon: notionCredentials.workspaceIcon,
+        workspaceId: notionCredentials.notionWorkspaceId,
+        workspaceName: notionCredentials.notionWorkspaceName,
+        workspaceIcon: notionCredentials.notionWorkspaceIcon,
         reauthRequired: notionCredentials.reauthRequired,
         lastSyncedAt: notionCredentials.lastSyncedAt,
       })
       .from(notionCredentials)
-      .where(eq(notionCredentials.userId, user.id))
+      .where(eq(notionCredentials.workspaceId, workspace.id))
       .limit(1)
       .then((rows) => rows[0] ?? null),
     db
@@ -80,7 +83,7 @@ export default async function MuseSettingsPage() {
         fetchedAt: brandCorpus.fetchedAt,
       })
       .from(brandCorpus)
-      .where(eq(brandCorpus.userId, user.id))
+      .where(eq(brandCorpus.workspaceId, workspace.id))
       .orderBy(desc(brandCorpus.fetchedAt)),
     db
       .select({
@@ -88,7 +91,7 @@ export default async function MuseSettingsPage() {
         count: sql<number>`count(*)::int`,
       })
       .from(platformContentCache)
-      .where(eq(platformContentCache.userId, user.id))
+      .where(eq(platformContentCache.workspaceId, workspace.id))
       .groupBy(platformContentCache.platform),
     loadAllChannelVoices(user.id),
     // Pull every non-deleted post's platforms and aggregate in JS — matches
@@ -97,7 +100,7 @@ export default async function MuseSettingsPage() {
     db
       .select({ platforms: posts.platforms })
       .from(posts)
-      .where(and(eq(posts.userId, user.id), ne(posts.status, "deleted")))
+      .where(and(eq(posts.workspaceId, workspace.id), ne(posts.status, "deleted")))
       .then((rows) => {
         const perChannel = new Map<string, number>();
         for (const row of rows) {
@@ -118,7 +121,7 @@ export default async function MuseSettingsPage() {
       .from(ideas)
       .where(
         and(
-          eq(ideas.userId, user.id),
+          eq(ideas.workspaceId, workspace.id),
           or(eq(ideas.source, "manual"), eq(ideas.source, "url_clip")),
         ),
       )
@@ -132,24 +135,24 @@ export default async function MuseSettingsPage() {
         .from(accounts)
         .where(
           and(
-            eq(accounts.userId, user.id),
+            eq(accounts.workspaceId, workspace.id),
             notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
           ),
         ),
       db
         .select({ id: blueskyCredentials.id })
         .from(blueskyCredentials)
-        .where(eq(blueskyCredentials.userId, user.id))
+        .where(eq(blueskyCredentials.workspaceId, workspace.id))
         .limit(1),
       db
         .select({ id: mastodonCredentials.id })
         .from(mastodonCredentials)
-        .where(eq(mastodonCredentials.userId, user.id))
+        .where(eq(mastodonCredentials.workspaceId, workspace.id))
         .limit(1),
       db
         .select({ id: telegramCredentials.id })
         .from(telegramCredentials)
-        .where(eq(telegramCredentials.userId, user.id))
+        .where(eq(telegramCredentials.workspaceId, workspace.id))
         .limit(1),
     ]).then(([oauthRows, blueskyRows, mastodonRows, telegramRows]) =>
       Array.from(

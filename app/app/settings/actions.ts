@@ -16,6 +16,7 @@ import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
 import { startTelegramAuth, completeTelegramAuth } from "@/lib/publishers/telegram";
 import { upsertChannelProfile, refreshChannelProfile } from "@/lib/channels/profiles";
+import { requireContext } from "@/lib/current-context";
 
 const VALID_PUBLISH_MODES: readonly PublishMode[] = [
   "auto",
@@ -53,8 +54,13 @@ async function requireUserId() {
   return session.user.id;
 }
 
+async function requireWorkspace() {
+  const ctx = await requireContext();
+  return { userId: ctx.user.id, workspaceId: ctx.workspace.id };
+}
+
 export async function updateProfile(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   const name = String(formData.get("name") ?? "").trim() || null;
   const workspaceName =
@@ -85,7 +91,7 @@ export async function updateProfile(formData: FormData) {
 }
 
 export async function connectChannel(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
   const provider = String(formData.get("provider") ?? "");
   if (!provider) return;
 
@@ -108,7 +114,7 @@ export async function connectChannel(formData: FormData) {
 // account or bump the user past their seat limit. Best-effort: silent if
 // the fetch fails, revalidates so the refresh icon stops spinning.
 export async function refreshChannelProfileAction(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
   const provider = String(formData.get("provider") ?? "");
   if (!provider) return;
 
@@ -118,28 +124,28 @@ export async function refreshChannelProfileAction(formData: FormData) {
     const [row] = await db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.userId, userId))
+      .where(eq(blueskyCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return;
   } else if (provider === "mastodon") {
     const [row] = await db
       .select({ id: mastodonCredentials.id })
       .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.userId, userId))
+      .where(eq(mastodonCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return;
   } else if (provider === "telegram") {
     const [row] = await db
       .select({ id: telegramCredentials.id })
       .from(telegramCredentials)
-      .where(eq(telegramCredentials.userId, userId))
+      .where(eq(telegramCredentials.workspaceId, workspaceId))
       .limit(1);
     if (!row) return;
   } else {
     const [row] = await db
       .select({ providerAccountId: accounts.providerAccountId })
       .from(accounts)
-      .where(and(eq(accounts.userId, userId), eq(accounts.provider, provider)))
+      .where(and(eq(accounts.workspaceId, workspaceId), eq(accounts.provider, provider)))
       .limit(1);
     if (!row) return;
   }
@@ -149,7 +155,7 @@ export async function refreshChannelProfileAction(formData: FormData) {
 }
 
 export async function disconnectChannel(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
   const provider = String(formData.get("provider") ?? "");
   if (!provider) return;
 
@@ -171,13 +177,13 @@ export async function disconnectChannel(formData: FormData) {
   await db
     .delete(accounts)
     .where(
-      and(eq(accounts.userId, userId), eq(accounts.provider, provider)),
+      and(eq(accounts.workspaceId, workspaceId), eq(accounts.provider, provider)),
     );
   await db
     .delete(channelProfiles)
     .where(
       and(
-        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.workspaceId, workspaceId),
         eq(channelProfiles.channel, provider),
       ),
     );
@@ -194,30 +200,37 @@ export async function disconnectChannel(formData: FormData) {
 }
 
 async function currentChannelCount(userId: string): Promise<number> {
+  const [userRow] = await db
+    .select({ workspaceId: users.activeWorkspaceId })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  const workspaceId = userRow?.workspaceId ?? null;
+  if (!workspaceId) return 0;
   const [oauthRows, blueskyRow, mastodonRow, telegramRow] = await Promise.all([
     db
       .select({ provider: accounts.provider })
       .from(accounts)
       .where(
         and(
-          eq(accounts.userId, userId),
+          eq(accounts.workspaceId, workspaceId),
           notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
         ),
       ),
     db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.userId, userId))
+      .where(eq(blueskyCredentials.workspaceId, workspaceId))
       .limit(1),
     db
       .select({ id: mastodonCredentials.id })
       .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.userId, userId))
+      .where(eq(mastodonCredentials.workspaceId, workspaceId))
       .limit(1),
     db
       .select({ id: telegramCredentials.id })
       .from(telegramCredentials)
-      .where(eq(telegramCredentials.userId, userId))
+      .where(eq(telegramCredentials.workspaceId, workspaceId))
       .limit(1),
   ]);
   return (
@@ -232,7 +245,7 @@ export async function connectBluesky(
   _prevState: { error?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string } | null> {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   const handle = String(formData.get("handle") ?? "").trim();
   const appPassword = String(formData.get("appPassword") ?? "").trim();
@@ -281,6 +294,7 @@ export async function connectBluesky(
     .insert(blueskyCredentials)
     .values({
       userId,
+      workspaceId,
       handle,
       appPassword,
       did,
@@ -311,16 +325,16 @@ export async function connectBluesky(
 }
 
 export async function disconnectBluesky() {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   await db
     .delete(blueskyCredentials)
-    .where(eq(blueskyCredentials.userId, userId));
+    .where(eq(blueskyCredentials.workspaceId, workspaceId));
   await db
     .delete(channelProfiles)
     .where(
       and(
-        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.workspaceId, workspaceId),
         eq(channelProfiles.channel, "bluesky"),
       ),
     );
@@ -333,7 +347,7 @@ export async function connectMastodon(
   _prevState: { error?: string } | null,
   formData: FormData,
 ): Promise<{ error?: string } | null> {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   const instanceUrl = String(formData.get("instanceUrl") ?? "").trim();
   const accessToken = String(formData.get("accessToken") ?? "").trim();
@@ -407,6 +421,7 @@ export async function connectMastodon(
     .insert(mastodonCredentials)
     .values({
       userId,
+      workspaceId,
       instanceUrl: instanceBase,
       accessToken,
       accountId,
@@ -439,16 +454,16 @@ export async function connectMastodon(
 }
 
 export async function disconnectMastodon() {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   await db
     .delete(mastodonCredentials)
-    .where(eq(mastodonCredentials.userId, userId));
+    .where(eq(mastodonCredentials.workspaceId, workspaceId));
   await db
     .delete(channelProfiles)
     .where(
       and(
-        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.workspaceId, workspaceId),
         eq(channelProfiles.channel, "mastodon"),
       ),
     );
@@ -461,7 +476,7 @@ export async function connectTelegram(
   _prevState: { error?: string; needsCode?: boolean; needsPassword?: boolean } | null,
   formData: FormData,
 ): Promise<{ error?: string; needsCode?: boolean; needsPassword?: boolean } | null> {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   const phoneNumber = String(formData.get("phoneNumber") ?? "").trim();
   const chatId = String(formData.get("chatId") ?? "").trim();
@@ -495,7 +510,7 @@ export async function connectTelegram(
     const [tgRow] = await db
       .select({ chatId: telegramCredentials.chatId, username: telegramCredentials.username })
       .from(telegramCredentials)
-      .where(eq(telegramCredentials.userId, userId))
+      .where(eq(telegramCredentials.workspaceId, workspaceId))
       .limit(1);
     if (tgRow) {
       const handle = tgRow.username ? `@${tgRow.username}` : null;
@@ -530,7 +545,7 @@ export async function connectTelegram(
   const [tgRow] = await db
     .select({ chatId: telegramCredentials.chatId, username: telegramCredentials.username })
     .from(telegramCredentials)
-    .where(eq(telegramCredentials.userId, userId))
+    .where(eq(telegramCredentials.workspaceId, workspaceId))
     .limit(1);
   if (tgRow) {
     const handle = tgRow.username ? `@${tgRow.username}` : null;
@@ -548,16 +563,16 @@ export async function connectTelegram(
 }
 
 export async function disconnectTelegram() {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   await db
     .delete(telegramCredentials)
-    .where(eq(telegramCredentials.userId, userId));
+    .where(eq(telegramCredentials.workspaceId, workspaceId));
   await db
     .delete(channelProfiles)
     .where(
       and(
-        eq(channelProfiles.userId, userId),
+        eq(channelProfiles.workspaceId, workspaceId),
         eq(channelProfiles.channel, "telegram"),
       ),
     );
@@ -570,7 +585,7 @@ export async function disconnectTelegram() {
 // silent queue (`review_pending`) vs. reminder-me mode (`manual_assist`) —
 // or leave it on `auto` which defers to the platform's current gating status.
 export async function updateChannelPublishMode(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
   const channel = String(formData.get("channel") ?? "");
   const mode = formData.get("mode");
 
@@ -582,7 +597,7 @@ export async function updateChannelPublishMode(formData: FormData) {
 }
 
 export async function updateNotificationPreferences(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
 
   await db
     .update(users)
@@ -601,13 +616,13 @@ export async function updateNotificationPreferences(formData: FormData) {
 // Stores their interest and emails them a confirmation. Subsequent clicks
 // for the same channel are no-ops (no duplicate confirmations).
 export async function notifyWhenAvailable(formData: FormData) {
-  const userId = await requireUserId();
+  const { userId, workspaceId } = await requireWorkspace();
   const provider = String(formData.get("provider") ?? "");
   if (!provider) throw new Error("provider is required");
 
   const inserted = await db
     .insert(channelNotifications)
-    .values({ userId, channel: provider })
+    .values({ userId, workspaceId, channel: provider })
     .onConflictDoNothing({
       target: [channelNotifications.userId, channelNotifications.channel],
     })

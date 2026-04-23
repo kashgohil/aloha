@@ -23,7 +23,7 @@ import {
   type EffectiveState,
   type PublishMode,
 } from "@/lib/channel-state";
-import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
 import { getEntitlements } from "@/lib/billing/entitlements";
 import { cn } from "@/lib/utils";
 import { connectChannel, refreshChannelProfileAction, updateChannelPublishMode, notifyWhenAvailable } from "../actions";
@@ -275,7 +275,8 @@ export default async function ChannelsSettingsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const user = (await getCurrentUser())!;
+  const ctx = (await getCurrentContext())!;
+  const { user, workspace } = ctx;
 
   const [rows, blueskyRows, mastodonRows, telegramRows, stateRows, notifyRows, profileRows] = await Promise.all([
     db
@@ -286,24 +287,24 @@ export default async function ChannelsSettingsPage({
       .from(accounts)
       .where(
         and(
-          eq(accounts.userId, user.id),
+          eq(accounts.workspaceId, workspace.id),
           notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
         ),
       ),
     db
       .select({ id: blueskyCredentials.id })
       .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.userId, user.id))
+      .where(eq(blueskyCredentials.workspaceId, workspace.id))
       .limit(1),
     db
       .select({ id: mastodonCredentials.id })
       .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.userId, user.id))
+      .where(eq(mastodonCredentials.workspaceId, workspace.id))
       .limit(1),
     db
       .select({ id: telegramCredentials.id, reauthRequired: telegramCredentials.reauthRequired })
       .from(telegramCredentials)
-      .where(eq(telegramCredentials.userId, user.id))
+      .where(eq(telegramCredentials.workspaceId, workspace.id))
       .limit(1),
     db
       .select({
@@ -313,11 +314,11 @@ export default async function ChannelsSettingsPage({
         notes: channelStates.notes,
       })
       .from(channelStates)
-      .where(eq(channelStates.userId, user.id)),
+      .where(eq(channelStates.workspaceId, workspace.id)),
     db
       .select({ channel: channelNotifications.channel })
       .from(channelNotifications)
-      .where(eq(channelNotifications.userId, user.id)),
+      .where(eq(channelNotifications.workspaceId, workspace.id)),
     db
       .select({
         channel: channelProfiles.channel,
@@ -328,7 +329,7 @@ export default async function ChannelsSettingsPage({
         followerCount: channelProfiles.followerCount,
       })
       .from(channelProfiles)
-      .where(eq(channelProfiles.userId, user.id)),
+      .where(eq(channelProfiles.workspaceId, workspace.id)),
   ]);
   const notifiedChannels = new Set(notifyRows.map((r) => r.channel));
   const profileByChannel = new Map<string, ChannelProfileView>(

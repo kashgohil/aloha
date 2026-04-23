@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, workspaceMembers, workspaces } from "@/db/schema";
 
 const MAX_NAME_LEN = 60;
 const VALID_ROLES = [
@@ -50,6 +50,45 @@ export async function saveWorkspace(formData: FormData) {
     .set({ workspaceName: name, role, updatedAt: new Date() })
     .where(eq(users.id, userId));
 
+  // Ensure the user has a personal workspace. Mirrors the backfill script
+  // so onboarding creates one the same way older users got theirs.
+  const [owned] = await db
+    .select({ id: workspaces.id })
+    .from(workspaces)
+    .where(eq(workspaces.ownerUserId, userId))
+    .limit(1);
+
+  let workspaceId = owned?.id ?? null;
+  if (!workspaceId) {
+    const [created] = await db
+      .insert(workspaces)
+      .values({
+        name,
+        ownerUserId: userId,
+        role,
+      })
+      .returning({ id: workspaces.id });
+    workspaceId = created.id;
+  } else {
+    // Keep workspace name / role in sync with what onboarding collected.
+    await db
+      .update(workspaces)
+      .set({ name, role, updatedAt: new Date() })
+      .where(eq(workspaces.id, workspaceId));
+  }
+
+  await db
+    .insert(workspaceMembers)
+    .values({ workspaceId, userId, role: "owner" })
+    .onConflictDoNothing({
+      target: [workspaceMembers.workspaceId, workspaceMembers.userId],
+    });
+
+  await db
+    .update(users)
+    .set({ activeWorkspaceId: workspaceId })
+    .where(eq(users.id, userId));
+
   await unstable_update({ user: {} });
   revalidatePath("/auth/onboarding", "layout");
   redirect("/auth/onboarding/preferences");
@@ -70,6 +109,13 @@ export async function finishOnboarding(formData: FormData) {
       updatedAt: new Date(),
     })
     .where(eq(users.id, userId));
+
+  // Propagate timezone to the user's workspace so future workspace-scoped
+  // code (scheduling, analytics windows) has it available.
+  await db
+    .update(workspaces)
+    .set({ timezone, updatedAt: new Date() })
+    .where(eq(workspaces.ownerUserId, userId));
 
   await unstable_update({ user: {} });
   revalidatePath("/app", "layout");

@@ -18,6 +18,7 @@ import { and, eq, notInArray } from "drizzle-orm";
 import { Sparkle } from "lucide-react";
 import { redirect } from "next/navigation";
 import { FlashToast } from "@/components/ui/flash-toast";
+import { getCurrentContext } from "@/lib/current-context";
 import { ChannelAdjuster } from "./_components/channel-adjuster";
 import { DangerZone } from "./_components/danger-zone";
 import { IntervalSwitch } from "./_components/interval-switch";
@@ -47,6 +48,8 @@ export default async function BillingPage() {
 	if (!session?.user?.id) redirect(routes.signin);
 
 	const userId = session.user.id;
+	const ctx = (await getCurrentContext())!;
+	const workspaceId = ctx.workspace.id;
 	const sub = await getLogicalSubscription(userId);
 	const flashToast = (
 		<FlashToast
@@ -74,24 +77,24 @@ export default async function BillingPage() {
 				.from(accounts)
 				.where(
 					and(
-						eq(accounts.userId, userId),
+						eq(accounts.workspaceId, workspaceId),
 						notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
 					),
 				),
 			db
 				.select({ id: blueskyCredentials.id })
 				.from(blueskyCredentials)
-				.where(eq(blueskyCredentials.userId, userId))
+				.where(eq(blueskyCredentials.workspaceId, workspaceId))
 				.limit(1),
 			db
 				.select({ id: mastodonCredentials.id })
 				.from(mastodonCredentials)
-				.where(eq(mastodonCredentials.userId, userId))
+				.where(eq(mastodonCredentials.workspaceId, workspaceId))
 				.limit(1),
 			db
 				.select({ id: telegramCredentials.id })
 				.from(telegramCredentials)
-				.where(eq(telegramCredentials.userId, userId))
+				.where(eq(telegramCredentials.workspaceId, workspaceId))
 				.limit(1),
 		]);
 	const connectedChannels =
