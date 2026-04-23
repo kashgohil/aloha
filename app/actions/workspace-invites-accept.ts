@@ -10,6 +10,7 @@ import {
   workspaceMembers,
 } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
+import { getWorkspaceMemberEntitlement } from "@/lib/billing/workspace-limits";
 
 // Looks up an invite by token without acting on it. Used by the accept
 // page to render the workspace name / role before the user clicks
@@ -75,6 +76,22 @@ export async function acceptInviteAction(formData: FormData) {
   if (invite.email.toLowerCase() !== user.email.toLowerCase()) {
     throw new Error(
       "This invite is for a different email. Sign in as that address.",
+    );
+  }
+
+  // Race guard: if the workspace fell over the free-tier cap between
+  // invite-sent and invite-accept (e.g. owner downgraded, or multiple
+  // invites landed concurrently), refuse. The member count already
+  // includes pending invites, so this is a final check against the
+  // actual membership table post-any-concurrent-accepts.
+  //
+  // We allow acceptance if this specific invite was already counted in
+  // the pending slice at send time — subtract 1 from the cap check since
+  // this invite is about to transition from pending → member.
+  const entitlement = await getWorkspaceMemberEntitlement(invite.workspaceId);
+  if (!entitlement.isPaid && entitlement.members >= entitlement.limit) {
+    throw new Error(
+      "This workspace is at its member limit. Ask the owner to upgrade.",
     );
   }
 

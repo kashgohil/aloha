@@ -15,6 +15,7 @@ import { workspaceInviteEmail } from "@/lib/email/templates/workspace-invite";
 import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import type { WorkspaceRole } from "@/lib/current-context";
+import { getWorkspaceMemberEntitlement } from "@/lib/billing/workspace-limits";
 
 // 7-day expiry is the sweet spot: long enough to survive a weekend
 // inbox, short enough that forgotten invites don't hang around forever.
@@ -98,6 +99,14 @@ export async function sendWorkspaceInvite(formData: FormData) {
     .limit(1);
   if (existingMember) {
     throw new Error("That email already belongs to a workspace member.");
+  }
+
+  // Free-tier member cap: existing members + pending invites. Checked
+  // here so sending an invite that couldn't be accepted is blocked up
+  // front; acceptance re-checks as a race guard.
+  const entitlement = await getWorkspaceMemberEntitlement(ctx.workspace.id);
+  if (!entitlement.allowed) {
+    throw new Error(entitlement.reason ?? "Member limit reached.");
   }
 
   const token = generateToken();
