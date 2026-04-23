@@ -1,26 +1,26 @@
 // Dispatcher + upsert helpers for nightly platform read-back.
 //
 // Shape:
-//   runReadbackForAccount(userId, platform) — one adapter call, upsert batch,
-//       log to ai_jobs. Safe to call standalone (tests, manual refresh).
-//   runReadbackAllAccounts() — iterate every connected (user × platform),
+//   runReadbackForAccount(workspaceId, platform) — one adapter call, upsert
+//       batch, log to ai_jobs. Safe to call standalone (tests, manual refresh).
+//   runReadbackAllAccounts() — iterate every connected (workspace × platform),
 //       call the above. Per-account failures don't abort the batch.
 //
 // Rate-limit posture: nightly cadence is generous enough that we don't need
-// jitter yet for a single user. Revisit when multi-user lands — stagger per
+// jitter yet for a single workspace. Revisit when volume grows — stagger per
 // account within the cron window and honor 429 Retry-After.
 
 import { eq, sql } from "drizzle-orm";
 import { revalidateTag } from "next/cache";
 import { db } from "@/db";
 import { reachTag } from "@/lib/reach-cache";
-import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import {
   accounts,
   aiJobs,
   blueskyCredentials,
   platformContentCache,
   platformInsights,
+  workspaces,
 } from "@/db/schema";
 import { getFreshToken } from "@/lib/publishers/tokens";
 import type {
@@ -44,7 +44,7 @@ const ADAPTERS: Record<string, ReadbackAdapter> = {
 type RefreshableProvider = Parameters<typeof getFreshToken>[1];
 
 export type ReadbackOutcome = {
-  userId: string;
+  workspaceId: string;
   platform: string;
   status: "ok" | "gated" | "failed";
   itemsCached: number;
@@ -53,13 +53,13 @@ export type ReadbackOutcome = {
 };
 
 export async function runReadbackForAccount(
-  userId: string,
+  workspaceId: string,
   platform: string,
 ): Promise<ReadbackOutcome> {
   const adapter = ADAPTERS[platform];
   if (!adapter) {
     return {
-      userId,
+      workspaceId,
       platform,
       status: "failed",
       itemsCached: 0,
@@ -68,19 +68,19 @@ export async function runReadbackForAccount(
     };
   }
 
-  const jobId = await startJob(userId, platform);
+  const jobId = await startJob(workspaceId, platform);
 
   try {
-    const ctx = await buildContext(userId, adapter);
+    const ctx = await buildContext(workspaceId, adapter);
     const batch = await adapter.fetch(ctx);
     const { itemsCached, insightsUpserted } = await upsertBatch(
-      userId,
+      workspaceId,
       platform,
       batch,
     );
     await finishJob(jobId, "done", null);
     return {
-      userId,
+      workspaceId,
       platform,
       status: "ok",
       itemsCached,
@@ -91,7 +91,7 @@ export async function runReadbackForAccount(
     if (err instanceof ReadbackGatedError) {
       await finishJob(jobId, "done", `gated: ${message}`);
       return {
-        userId,
+        workspaceId,
         platform,
         status: "gated",
         itemsCached: 0,
@@ -101,7 +101,7 @@ export async function runReadbackForAccount(
     }
     await finishJob(jobId, "failed", message);
     return {
-      userId,
+      workspaceId,
       platform,
       status: "failed",
       itemsCached: 0,
@@ -112,25 +112,23 @@ export async function runReadbackForAccount(
 }
 
 export async function runReadbackAllAccounts(): Promise<ReadbackOutcome[]> {
-  const pairs: Array<{ userId: string; platform: string }> = [];
+  const pairs: Array<{ workspaceId: string; platform: string }> = [];
 
   // OAuth-source adapters: look up the OAuth provider (may differ from the
   // platform key — Threads reuses the Facebook account).
   const oauthRows = await db
-    .select({ userId: accounts.userId, provider: accounts.provider })
+    .select({
+      workspaceId: accounts.workspaceId,
+      provider: accounts.provider,
+    })
     .from(accounts)
     .where(eq(accounts.reauthRequired, false));
-  const oauthPairs = new Set(
-    oauthRows.map((r) => `${r.userId}:${r.provider}`),
-  );
   for (const adapter of Object.values(ADAPTERS)) {
     if (adapter.source.kind !== "oauth") continue;
     for (const row of oauthRows) {
-      if (
-        row.provider === adapter.source.oauthProvider &&
-        oauthPairs.has(`${row.userId}:${row.provider}`)
-      ) {
-        pairs.push({ userId: row.userId, platform: adapter.platform });
+      if (!row.workspaceId) continue;
+      if (row.provider === adapter.source.oauthProvider) {
+        pairs.push({ workspaceId: row.workspaceId, platform: adapter.platform });
       }
     }
   }
@@ -139,30 +137,30 @@ export async function runReadbackAllAccounts(): Promise<ReadbackOutcome[]> {
   for (const adapter of Object.values(ADAPTERS)) {
     if (adapter.source.kind !== "bluesky_creds") continue;
     const bsRows = await db
-      .select({ userId: blueskyCredentials.userId })
+      .select({ workspaceId: blueskyCredentials.workspaceId })
       .from(blueskyCredentials);
     for (const row of bsRows) {
-      pairs.push({ userId: row.userId, platform: adapter.platform });
+      pairs.push({ workspaceId: row.workspaceId, platform: adapter.platform });
     }
   }
 
   const outcomes: ReadbackOutcome[] = [];
   for (const pair of pairs) {
-    outcomes.push(await runReadbackForAccount(pair.userId, pair.platform));
+    outcomes.push(await runReadbackForAccount(pair.workspaceId, pair.platform));
   }
   return outcomes;
 }
 
 async function buildContext(
-  userId: string,
+  workspaceId: string,
   adapter: ReadbackAdapter,
 ): Promise<ReadbackContext> {
   if (adapter.source.kind === "oauth") {
     const account = await getFreshToken(
-      userId,
+      workspaceId,
       adapter.source.oauthProvider as RefreshableProvider,
     );
-    return { userId, account };
+    return { workspaceId, account };
   }
   // bluesky_creds
   const [row] = await db
@@ -172,13 +170,13 @@ async function buildContext(
       did: blueskyCredentials.did,
     })
     .from(blueskyCredentials)
-    .where(eq(blueskyCredentials.userId, userId))
+    .where(eq(blueskyCredentials.workspaceId, workspaceId))
     .limit(1);
   if (!row) {
-    throw new Error(`Bluesky credentials missing for user ${userId}`);
+    throw new Error(`Bluesky credentials missing for workspace ${workspaceId}`);
   }
   return {
-    userId,
+    workspaceId,
     blueskyCreds: {
       handle: row.handle,
       appPassword: row.appPassword,
@@ -188,7 +186,7 @@ async function buildContext(
 }
 
 async function upsertBatch(
-  userId: string,
+  workspaceId: string,
   platform: string,
   batch: ReadbackBatch,
 ): Promise<{ itemsCached: number; insightsUpserted: number }> {
@@ -196,9 +194,7 @@ async function upsertBatch(
     return { itemsCached: 0, insightsUpserted: 0 };
   }
 
-  const workspaceId = await requireActiveWorkspaceId(userId);
   const contentRows = batch.items.map((item) => ({
-    userId,
     workspaceId,
     platform,
     remotePostId: item.remotePostId,
@@ -215,7 +211,7 @@ async function upsertBatch(
     .values(contentRows)
     .onConflictDoUpdate({
       target: [
-        platformContentCache.userId,
+        platformContentCache.workspaceId,
         platformContentCache.platform,
         platformContentCache.remotePostId,
       ],
@@ -232,7 +228,6 @@ async function upsertBatch(
   const insightRows = batch.items
     .filter((item) => item.metrics !== null)
     .map((item) => ({
-      userId,
       workspaceId,
       platform,
       remotePostId: item.remotePostId,
@@ -248,7 +243,7 @@ async function upsertBatch(
       .values(insightRows)
       .onConflictDoUpdate({
         target: [
-          platformInsights.userId,
+          platformInsights.workspaceId,
           platformInsights.platform,
           platformInsights.remotePostId,
         ],
@@ -264,7 +259,7 @@ async function upsertBatch(
   if (insightRows.length > 0) {
     // "max" → stale-while-revalidate; next dashboard visit refetches
     // without blocking on the cron job.
-    revalidateTag(reachTag(userId), "max");
+    revalidateTag(reachTag(workspaceId), "max");
   }
 
   return {
@@ -280,8 +275,15 @@ function sqlExcluded(col: string) {
   return sql.raw(`excluded."${col}"`);
 }
 
-async function startJob(userId: string, platform: string): Promise<string> {
-  const workspaceId = await requireActiveWorkspaceId(userId);
+async function startJob(workspaceId: string, platform: string): Promise<string> {
+  const [owner] = await db
+    .select({ ownerUserId: workspaces.ownerUserId })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+  const userId = owner?.ownerUserId;
+  if (!userId) throw new Error(`Workspace ${workspaceId} not found`);
+
   const [row] = await db
     .insert(aiJobs)
     .values({

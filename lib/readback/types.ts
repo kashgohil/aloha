@@ -36,7 +36,7 @@ export type BlueskyCreds = {
 };
 
 export type ReadbackContext = {
-  userId: string;
+  workspaceId: string;
   // Present when the adapter declares `source.kind === "oauth"`.
   account?: ProviderAccount;
   // Present when the adapter declares `source.kind === "bluesky_creds"`.
