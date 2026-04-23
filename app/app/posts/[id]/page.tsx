@@ -26,6 +26,8 @@ import { PostReplies } from "./_components/post-replies";
 import { RefreshRepliesButton } from "./_components/refresh-replies-button";
 import { RescheduleButton } from "./_components/reschedule-button";
 import { PostPreviewCard } from "@/components/post-preview-card";
+import { PostNotes } from "@/components/post-notes";
+import { listNotes } from "@/app/actions/post-notes";
 
 export const dynamic = "force-dynamic";
 
@@ -174,6 +176,8 @@ export default async function PostDetailPage({
 
   const publishedLabel = formatDateTime(post.publishedAt, tz);
 
+  const notes = await listNotes(post.id);
+
   return (
     <div className="space-y-8">
       <div>
@@ -220,13 +224,15 @@ export default async function PostDetailPage({
           {post.status === "published" && (
             <RefreshRepliesButton postId={post.id} />
           )}
-          {(post.status === "draft" || post.status === "scheduled") && (
+          {post.status !== "published" &&
+            post.status !== "failed" &&
+            post.status !== "deleted" && (
             <Link
               href={`/app/composer?post=${post.id}`}
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border bg-background text-[13px] font-medium text-ink hover:border-ink/40 transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" />
-              Edit
+              {post.status === "draft" ? "Edit" : "Open"}
             </Link>
           )}
         </div>
@@ -315,6 +321,8 @@ export default async function PostDetailPage({
           />
         </section>
       )}
+
+      <PostNotes postId={post.id} initialNotes={notes} />
         </div>
 
         {/* Right column — sticky preview */}
