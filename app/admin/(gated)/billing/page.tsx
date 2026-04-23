@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { subscriptions, users } from "@/db/schema";
+import { subscriptions, users, workspaces } from "@/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 import {
   AdminPageHeader,
@@ -83,6 +83,8 @@ export default async function AdminBillingPage() {
     .select({
       id: subscriptions.id,
       email: users.email,
+      workspaceId: workspaces.id,
+      workspaceName: workspaces.name,
       productKey: subscriptions.productKey,
       status: subscriptions.status,
       interval: subscriptions.interval,
@@ -90,7 +92,8 @@ export default async function AdminBillingPage() {
       currentPeriodEnd: subscriptions.currentPeriodEnd,
     })
     .from(subscriptions)
-    .innerJoin(users, eq(subscriptions.createdByUserId, users.id))
+    .innerJoin(workspaces, eq(subscriptions.workspaceId, workspaces.id))
+    .innerJoin(users, eq(workspaces.ownerUserId, users.id))
     .orderBy(desc(subscriptions.createdAt))
     .limit(100);
 
@@ -150,7 +153,8 @@ export default async function AdminBillingPage() {
           <table className="w-full text-sm">
             <thead className="text-[11px] uppercase tracking-[0.14em] text-ink/55 border-b border-border">
               <tr>
-                <Th>Email</Th>
+                <Th>Workspace</Th>
+                <Th>Owner</Th>
                 <Th>Product</Th>
                 <Th>Status</Th>
                 <Th>Interval</Th>
@@ -166,8 +170,9 @@ export default async function AdminBillingPage() {
                   className="border-b border-border last:border-b-0 hover:bg-muted/40"
                 >
                   <Td>
-                    <span className="text-ink font-medium">{r.email}</span>
+                    <span className="text-ink font-medium">{r.workspaceName}</span>
                   </Td>
+                  <Td className="text-ink/70">{r.email}</Td>
                   <Td>
                     <span className="inline-flex items-center h-6 px-2 rounded-full bg-peach-100/70 text-[11px] text-ink capitalize">
                       {r.productKey}
@@ -191,7 +196,7 @@ export default async function AdminBillingPage() {
               {rows.length === 0 && (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="px-4 py-10 text-center text-ink/55 text-[13px]"
                   >
                     No subscriptions yet.
