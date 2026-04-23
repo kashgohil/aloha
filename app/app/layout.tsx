@@ -1,6 +1,7 @@
 import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { listMyWorkspaces } from "@/app/actions/workspace-switch";
+import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
 import { routes } from "@/lib/routes";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -19,9 +20,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 		redirect(routes.onboarding.workspace);
 	}
 
-	const [workspaces, ctx] = await Promise.all([
+	const [workspaces, ctx, creationEntitlement] = await Promise.all([
 		listMyWorkspaces(),
 		getCurrentContext(),
+		getWorkspaceCreationEntitlement(user.id),
 	]);
 	const role = ctx?.role ?? null;
 
@@ -31,7 +33,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 				<NavProgress />
 			</Suspense>
 			<div className="min-h-screen flex bg-background text-foreground">
-				<AppSidebar user={user} workspaces={workspaces} role={role} />
+				<AppSidebar
+					user={user}
+					workspaces={workspaces}
+					role={role}
+					canCreateWorkspace={creationEntitlement.allowed}
+				/>
 				<div className="flex-1 min-w-0 flex flex-col">
 					<AppTopBar user={user} role={role} />
 					<main className="flex-1">

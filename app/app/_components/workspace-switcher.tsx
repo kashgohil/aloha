@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Building2, Check, ChevronsUpDown, Loader2, Plus } from "lucide-react";
+import { Building2, Check, ChevronsUpDown, Loader2, Lock, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
 	Popover,
@@ -28,9 +28,11 @@ const ROLE_LABEL: Record<WorkspaceChoice["role"], string> = {
 export function WorkspaceSwitcher({
 	initial,
 	collapsed,
+	canCreate,
 }: {
 	initial: WorkspaceChoice[];
 	collapsed: boolean;
+	canCreate: boolean;
 }) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
@@ -153,14 +155,31 @@ export function WorkspaceSwitcher({
 					))}
 				</ul>
 				<div className="border-t border-border mt-1 pt-1">
-					<Link
-						href="/app/workspace/new"
-						onClick={() => setOpen(false)}
-						className="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-ink/70 hover:text-ink hover:bg-muted/60 transition-colors"
-					>
-						<Plus className="w-3.5 h-3.5" />
-						Create workspace
-					</Link>
+					{canCreate ? (
+						<Link
+							href="/app/workspace/new"
+							onClick={() => setOpen(false)}
+							className="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-ink/70 hover:text-ink hover:bg-muted/60 transition-colors"
+						>
+							<Plus className="w-3.5 h-3.5" />
+							Create workspace
+						</Link>
+					) : (
+						<Link
+							href="/app/settings/billing"
+							onClick={() => setOpen(false)}
+							className="flex items-center gap-2 px-3 py-2 rounded-lg text-[13px] text-ink/70 hover:text-ink hover:bg-muted/60 transition-colors"
+							title="Free plan is limited to one workspace"
+						>
+							<Lock className="w-3.5 h-3.5" />
+							<span className="min-w-0 flex-1">
+								<span className="block">Upgrade to add workspaces</span>
+								<span className="block text-[10.5px] text-ink/50">
+									Free plan cap: 1
+								</span>
+							</span>
+						</Link>
+					)}
 				</div>
 			</PopoverContent>
 		</Popover>

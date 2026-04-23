@@ -19,10 +19,12 @@ export function AppSidebar({
   user,
   workspaces,
   role,
+  canCreateWorkspace,
 }: {
   user: CurrentUser;
   workspaces: WorkspaceChoice[];
   role: import("@/lib/current-context").WorkspaceRole | null;
+  canCreateWorkspace: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
@@ -88,7 +90,11 @@ export function AppSidebar({
         </div>
 
         <div className="px-3 pb-3">
-          <WorkspaceSwitcher initial={workspaces} collapsed={collapsed} />
+          <WorkspaceSwitcher
+            initial={workspaces}
+            collapsed={collapsed}
+            canCreate={canCreateWorkspace}
+          />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3">
