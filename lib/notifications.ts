@@ -6,7 +6,12 @@ export type NotificationKind =
   | "post_published"
   | "post_partial"
   | "post_failed"
-  | "inbox_sync_failed";
+  | "inbox_sync_failed"
+  | "post_submitted"
+  | "post_approved"
+  | "post_comment"
+  | "post_assigned"
+  | "post_mention";
 
 type CreateArgs = {
   userId: string;
