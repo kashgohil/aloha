@@ -1,6 +1,12 @@
 import "server-only";
 
 import { desc, eq } from "drizzle-orm";
+
+// Muse automation outputs land in the review queue, not straight into
+// drafts. Rationale: the user didn't write these themselves, so a human
+// checkpoint before scheduling is the default posture. Flip this to
+// "draft" to send them to the regular draft bin instead.
+const MUSE_AUTOMATION_INITIAL_STATUS = "in_review" as const;
 import { db } from "@/db";
 import { museEnabledChannels, posts, type DraftMeta } from "@/db/schema";
 import { generate } from "@/lib/ai/router";
@@ -129,14 +135,17 @@ registerAction(
 
       const { body, meta } = parseRichDraft(result.text);
 
+      const now = new Date();
       const [row] = await db
         .insert(posts)
         .values({
           userId,
           content: body,
           platforms: [platform],
-          status: "draft",
+          status: MUSE_AUTOMATION_INITIAL_STATUS,
           draftMeta: meta,
+          submittedForReviewAt: now,
+          submittedBy: userId,
         })
         .returning({ id: posts.id });
 
