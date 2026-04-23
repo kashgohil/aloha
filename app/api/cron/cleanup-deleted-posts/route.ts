@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
 		const postsToDelete = await db
 			.select({
 				id: posts.id,
-				userId: posts.userId,
+				userId: posts.createdByUserId,
 				deletedAt: posts.deletedAt,
 			})
 			.from(posts)

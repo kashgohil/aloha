@@ -97,7 +97,7 @@ async function handleFire(tick: TickBody) {
   const firedAt = new Date();
   await startRun({
     automationId: automation.id,
-    userId: automation.userId,
+    userId: automation.createdByUserId,
     steps,
     trigger: { kind: "schedule", firedAt: firedAt.toISOString() },
   });
@@ -156,7 +156,7 @@ async function handleResume(tick: TickBody) {
   await resumeRun({
     runId: run.id,
     automationId: automation.id,
-    userId: automation.userId,
+    userId: automation.createdByUserId,
     steps: resolveSteps(automation),
     cursor: run.cursor,
     snapshot: run.snapshot ?? {},

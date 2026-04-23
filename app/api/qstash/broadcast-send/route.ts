@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
   }
 
   const owner = await db.query.users.findFirst({
-    where: eq(users.id, broadcast.userId),
+    where: eq(users.id, broadcast.createdByUserId),
   });
   const senderLabel =
     broadcast.fromName ?? owner?.workspaceName ?? owner?.name ?? "this list";

@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
       await resumeRun({
         runId: run.id,
         automationId: automation.id,
-        userId: automation.userId,
+        userId: automation.createdByUserId,
         steps: resolveSteps(automation),
         cursor: run.cursor,
         snapshot: run.snapshot ?? {},
@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
     try {
       await startRun({
         automationId: automation.id,
-        userId: automation.userId,
+        userId: automation.createdByUserId,
         steps,
         trigger: { kind: "schedule", firedAt: now.toISOString() },
       });

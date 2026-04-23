@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { assets } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { env } from "@/lib/env";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 
 // 5MB — matches LinkedIn's image upper bound and is plenty for X's 5MB cap.
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -51,10 +52,12 @@ export async function POST(req: Request) {
     token: env.BLOB_READ_WRITE_TOKEN,
   });
 
+  const workspaceId = await requireActiveWorkspaceId(user.id);
   const [row] = await db
     .insert(assets)
     .values({
-      userId: user.id,
+      createdByUserId: user.id,
+      workspaceId,
       source: "upload",
       url: blob.url,
       mimeType: file.type,

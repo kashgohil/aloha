@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   const alreadyIds = existing.map((r) => r.subscriberId);
 
   const whereActive = and(
-    eq(subscribers.userId, broadcast.userId),
+    eq(subscribers.workspaceId, broadcast.createdByUserId),
     isNull(subscribers.unsubscribedAt),
   );
 

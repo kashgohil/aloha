@@ -51,6 +51,8 @@ export async function POST(req: NextRequest) {
 					cancelAtPeriodEnd: s.cancelAtPeriodEnd ?? null,
 					externalCustomerId:
 						(s.customer as { externalId?: string | null } | null)?.externalId ?? null,
+					polarCustomerId:
+						(s.customer as { id?: string | null } | null)?.id ?? null,
 					metadata: (s.metadata ?? null) as Record<string, unknown> | null,
 				});
 				console.log(`[polar.webhook] ${event.type} written to DB`);
