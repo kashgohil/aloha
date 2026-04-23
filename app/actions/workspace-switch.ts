@@ -7,6 +7,7 @@ import { unstable_update } from "@/auth";
 import { db } from "@/db";
 import { users, workspaceMembers, workspaces } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
+import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
 
 export type WorkspaceChoice = {
   id: string;
@@ -108,6 +109,13 @@ const isValidTimezone = (tz: string) => {
 export async function createWorkspaceAction(formData: FormData) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Unauthorized");
+
+  // Free-tier gate — owners on free plan cap at one workspace. Checked
+  // here in addition to the UI affordance so a direct POST can't skip it.
+  const entitlement = await getWorkspaceCreationEntitlement(user.id);
+  if (!entitlement.allowed) {
+    throw new Error(entitlement.reason ?? "Workspace limit reached.");
+  }
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) throw new Error("Workspace name is required.");
