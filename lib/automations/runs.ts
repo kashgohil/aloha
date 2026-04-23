@@ -90,7 +90,7 @@ export async function recordRun(input: RecordRunInput): Promise<void> {
 
   await db.transaction(async (tx) => {
     const [owner] = await tx
-      .select({ userId: automations.userId })
+      .select({ userId: automations.createdByUserId })
       .from(automations)
       .where(eq(automations.id, input.automationId))
       .limit(1);

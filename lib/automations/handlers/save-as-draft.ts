@@ -36,7 +36,7 @@ registerAction(
         deletedAt: posts.deletedAt,
       })
       .from(posts)
-      .where(and(eq(posts.id, postId), eq(posts.userId, userId)))
+      .where(and(eq(posts.id, postId), eq(posts.createdByUserId, userId)))
       .limit(1);
 
     if (!row) {

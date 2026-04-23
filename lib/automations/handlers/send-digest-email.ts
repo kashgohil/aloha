@@ -52,7 +52,7 @@ async function loadWeekPosts(userId: string): Promise<DigestPost[]> {
     .from(posts)
     .where(
       and(
-        eq(posts.userId, userId),
+        eq(posts.createdByUserId, userId),
         eq(posts.status, "published"),
         gte(posts.publishedAt, since),
         isNull(posts.deletedAt),
@@ -181,7 +181,7 @@ registerAction(
       })
       .from(subscribers)
       .where(
-        and(eq(subscribers.userId, userId), isNull(subscribers.unsubscribedAt)),
+        and(eq(subscribers.createdByUserId, userId), isNull(subscribers.unsubscribedAt)),
       );
 
     if (recipients.length === 0) {

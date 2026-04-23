@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { broadcasts, sendingDomains } from "@/db/schema";
 import { hasBroadcastEntitlement } from "@/lib/billing/broadcasts";
 import { env } from "@/lib/env";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import {
   registerAction,
   type ActionContext,
@@ -41,7 +42,7 @@ async function resolveSendingDomain(
       })
       .from(sendingDomains)
       .where(
-        and(eq(sendingDomains.id, triggerDomainId), eq(sendingDomains.userId, userId)),
+        and(eq(sendingDomains.id, triggerDomainId), eq(sendingDomains.createdByUserId, userId)),
       )
       .limit(1);
     if (!row) return { error: "Trigger's sending domain not found for user" };
@@ -55,7 +56,7 @@ async function resolveSendingDomain(
     .select({ id: sendingDomains.id, domain: sendingDomains.domain })
     .from(sendingDomains)
     .where(
-      and(eq(sendingDomains.userId, userId), eq(sendingDomains.status, "verified")),
+      and(eq(sendingDomains.createdByUserId, userId), eq(sendingDomains.status, "verified")),
     )
     .limit(2);
 
@@ -110,10 +111,12 @@ registerAction(
     const audienceFilter: { tags?: string[] } =
       audience === "tagged" ? { tags: ["early"] } : {};
 
+    const broadcastWorkspaceId = await requireActiveWorkspaceId(userId);
     const [row] = await db
       .insert(broadcasts)
       .values({
-        userId,
+        createdByUserId: userId,
+        workspaceId: broadcastWorkspaceId,
         subject,
         body,
         fromAddress,

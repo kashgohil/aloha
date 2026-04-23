@@ -95,7 +95,7 @@ async function resolveRecipients(
       })
       .from(subscribers)
       .where(
-        and(eq(subscribers.id, triggerSubscriberId), eq(subscribers.userId, userId)),
+        and(eq(subscribers.id, triggerSubscriberId), eq(subscribers.createdByUserId, userId)),
       )
       .limit(1);
     if (!row || row.unsubscribedAt) return [];
@@ -111,7 +111,7 @@ async function resolveRecipients(
         unsubscribedAt: subscribers.unsubscribedAt,
       })
       .from(subscribers)
-      .where(and(eq(subscribers.email, triggerEmail), eq(subscribers.userId, userId)))
+      .where(and(eq(subscribers.email, triggerEmail), eq(subscribers.createdByUserId, userId)))
       .limit(1);
     if (row?.unsubscribedAt) return [];
     // If no subscriber row exists, still send — direct-address case — but
@@ -144,7 +144,7 @@ async function resolveRecipients(
       .from(subscribers)
       .where(
         and(
-          eq(subscribers.userId, userId),
+          eq(subscribers.createdByUserId, userId),
           inArray(subscribers.id, subscriberIds),
           isNull(subscribers.unsubscribedAt),
         ),

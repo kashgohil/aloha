@@ -9,6 +9,7 @@ import { desc, eq } from "drizzle-orm";
 const MUSE_AUTOMATION_INITIAL_STATUS = "in_review" as const;
 import { db } from "@/db";
 import { museEnabledChannels, posts, type DraftMeta } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadChannelVoice, loadCurrentVoice } from "@/lib/ai/voice";
@@ -136,10 +137,12 @@ registerAction(
       const { body, meta } = parseRichDraft(result.text);
 
       const now = new Date();
+      const workspaceId = await requireActiveWorkspaceId(userId);
       const [row] = await db
         .insert(posts)
         .values({
-          userId,
+          createdByUserId: userId,
+          workspaceId,
           content: body,
           platforms: [platform],
           status: MUSE_AUTOMATION_INITIAL_STATUS,

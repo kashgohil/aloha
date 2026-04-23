@@ -43,7 +43,7 @@ registerCondition(
       .from(subscribers)
       .where(
         and(
-          eq(subscribers.userId, userId),
+          eq(subscribers.createdByUserId, userId),
           gte(subscribers.unsubscribedAt, cutoff),
         ),
       );
@@ -53,7 +53,7 @@ registerCondition(
       .from(subscribers)
       .where(
         and(
-          eq(subscribers.userId, userId),
+          eq(subscribers.createdByUserId, userId),
           lt(subscribers.createdAt, cutoff),
           or(
             isNull(subscribers.unsubscribedAt),

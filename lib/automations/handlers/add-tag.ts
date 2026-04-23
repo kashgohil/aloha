@@ -34,8 +34,8 @@ registerAction(
     }
 
     const whereClause = subscriberId
-      ? and(eq(subscribers.id, subscriberId), eq(subscribers.userId, userId))
-      : and(eq(subscribers.email, email!), eq(subscribers.userId, userId));
+      ? and(eq(subscribers.id, subscriberId), eq(subscribers.createdByUserId, userId))
+      : and(eq(subscribers.email, email!), eq(subscribers.createdByUserId, userId));
 
     // `array_append` is a no-op if the array already contains the value when
     // combined with the `NOT (tag = ANY(tags))` guard — keeps the column

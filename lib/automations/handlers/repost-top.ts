@@ -8,6 +8,7 @@ import {
   type DraftMeta,
   type PostMedia,
 } from "@/db/schema";
+import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
@@ -84,7 +85,7 @@ async function findRecentRepostSources(
   const rows = await db
     .select({ draftMeta: posts.draftMeta })
     .from(posts)
-    .where(and(eq(posts.userId, userId), gte(posts.createdAt, since)));
+    .where(and(eq(posts.createdByUserId, userId), gte(posts.createdAt, since)));
   const set = new Set<string>();
   for (const r of rows) {
     const src = r.draftMeta?.sourcePostId;
@@ -165,7 +166,7 @@ registerAction(
         media: posts.media,
       })
       .from(posts)
-      .where(and(eq(posts.id, winner.postId), eq(posts.userId, userId)))
+      .where(and(eq(posts.id, winner.postId), eq(posts.createdByUserId, userId)))
       .limit(1);
 
     if (!source) {
@@ -207,10 +208,12 @@ registerAction(
           : `Reposted top performer — original caption kept`,
     };
 
+    const workspaceId = await requireActiveWorkspaceId(userId);
     const [row] = await db
       .insert(posts)
       .values({
-        userId,
+        createdByUserId: userId,
+        workspaceId,
         content: body,
         platforms: source.platforms,
         media: source.media as PostMedia[],

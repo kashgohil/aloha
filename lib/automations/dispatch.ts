@@ -28,7 +28,7 @@ export async function dispatchEvent(args: {
     .from(automations)
     .where(
       and(
-        eq(automations.userId, args.userId),
+        eq(automations.createdByUserId, args.userId),
         eq(automations.status, "active"),
         inArray(automations.kind, kinds),
       ),
@@ -38,7 +38,7 @@ export async function dispatchEvent(args: {
     rows.map((row) =>
       startRun({
         automationId: row.id,
-        userId: row.userId,
+        userId: row.createdByUserId,
         steps: resolveSteps(row),
         trigger: { kind: args.triggerKind, ...(args.payload ?? {}) },
       }).catch((err) => {

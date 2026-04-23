@@ -38,7 +38,7 @@ registerAction(
       .from(subscribers)
       .where(
         and(
-          eq(subscribers.userId, userId),
+          eq(subscribers.createdByUserId, userId),
           isNull(subscribers.unsubscribedAt),
           lt(subscribers.createdAt, cutoff),
           sql`NOT EXISTS (
