@@ -32,10 +32,10 @@ function stripHtml(html: string): string {
 }
 
 export async function fetchMastodonPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
 ): Promise<CommentsFetchResult> {
-  const credentials = await getMastodonCredentials(userId);
+  const credentials = await getMastodonCredentials(workspaceId);
 
   const res = await fetch(
     `${credentials.instanceUrl}/api/v1/statuses/${rootRemoteId}/context`,

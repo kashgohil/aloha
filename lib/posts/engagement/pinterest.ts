@@ -54,17 +54,17 @@ async function fetchOnce(
 }
 
 export async function fetchPinterestPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  let account = await getFreshToken(userId, "pinterest");
+  let account = await getFreshToken(workspaceId, "pinterest");
 
   let res: PinAnalytics;
   try {
     res = await fetchOnce(account.accessToken, remotePostId);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(userId, "pinterest");
+      account = await forceRefresh(workspaceId, "pinterest");
       res = await fetchOnce(account.accessToken, remotePostId);
     } else {
       throw err;

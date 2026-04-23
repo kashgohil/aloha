@@ -41,17 +41,17 @@ async function fetchOnce(
 }
 
 export async function fetchXPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  let account = await getFreshToken(userId, "twitter");
+  let account = await getFreshToken(workspaceId, "twitter");
 
   let res: TweetResponse;
   try {
     res = await fetchOnce(account.accessToken, remotePostId);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(userId, "twitter");
+      account = await forceRefresh(workspaceId, "twitter");
       res = await fetchOnce(account.accessToken, remotePostId);
     } else {
       throw err;
@@ -71,7 +71,7 @@ export async function fetchXPostMetrics(
   // from "this post is too old" during debugging.
   if (!priv) {
     log.warn("non_public_metrics absent", {
-      userId,
+      workspaceId,
       tweetId: remotePostId,
     });
   } else if (
@@ -79,7 +79,7 @@ export async function fetchXPostMetrics(
     priv.user_profile_clicks === undefined
   ) {
     log.warn("non_public_metrics present but empty", {
-      userId,
+      workspaceId,
       tweetId: remotePostId,
     });
   }

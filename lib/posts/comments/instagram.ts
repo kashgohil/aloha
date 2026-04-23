@@ -74,17 +74,17 @@ async function fetchPage(
 }
 
 export async function fetchInstagramPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
   cursor: string | null,
 ): Promise<CommentsFetchResult> {
-  let account = await getFreshToken(userId, "instagram");
+  let account = await getFreshToken(workspaceId, "instagram");
   let pageToken: string;
   try {
     pageToken = await getPageAccessToken(account.accessToken);
   } catch (err) {
     if (String(err).includes("401") || String(err).includes("190")) {
-      account = await forceRefresh(userId, "instagram");
+      account = await forceRefresh(workspaceId, "instagram");
       pageToken = await getPageAccessToken(account.accessToken);
     } else {
       throw err;

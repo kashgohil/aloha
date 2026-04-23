@@ -49,10 +49,10 @@ function walk(
 }
 
 export async function fetchBlueskyPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
 ): Promise<CommentsFetchResult> {
-  const credentials = await getBlueskyCredentials(userId);
+  const credentials = await getBlueskyCredentials(workspaceId);
   const agent = await createSession(credentials);
 
   // post_deliveries.remotePostId stores just the record key (rkey) for

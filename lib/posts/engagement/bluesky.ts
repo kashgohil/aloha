@@ -5,10 +5,10 @@ import {
 import type { NormalizedSnapshot } from "./types";
 
 export async function fetchBlueskyPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  const credentials = await getBlueskyCredentials(userId);
+  const credentials = await getBlueskyCredentials(workspaceId);
   const agent = await createSession(credentials);
 
   const uri = remotePostId.startsWith("at://")

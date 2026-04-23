@@ -38,18 +38,18 @@ const SUPPORTED: readonly Platform[] = [
 const FETCHERS: Record<
   Platform,
   (
-    userId: string,
+    workspaceId: string,
     rootRemoteId: string,
     cursor: string | null,
   ) => Promise<CommentsFetchResult>
 > = {
-  bluesky: (u, r) => fetchBlueskyPostComments(u, r),
-  twitter: (u, r, c) => fetchXPostComments(u, r, c),
-  mastodon: (u, r) => fetchMastodonPostComments(u, r),
-  instagram: (u, r, c) => fetchInstagramPostComments(u, r, c),
-  pinterest: (u, r, c) => fetchPinterestPostComments(u, r, c),
-  linkedin: (u, r, c) => fetchLinkedInPostComments(u, r, c),
-  threads: (u, r, c) => fetchThreadsPostComments(u, r, c),
+  bluesky: (w, r) => fetchBlueskyPostComments(w, r),
+  twitter: (w, r, c) => fetchXPostComments(w, r, c),
+  mastodon: (w, r) => fetchMastodonPostComments(w, r),
+  instagram: (w, r, c) => fetchInstagramPostComments(w, r, c),
+  pinterest: (w, r, c) => fetchPinterestPostComments(w, r, c),
+  linkedin: (w, r, c) => fetchLinkedInPostComments(w, r, c),
+  threads: (w, r, c) => fetchThreadsPostComments(w, r, c),
 };
 
 function isSupported(platform: string): platform is Platform {
@@ -65,7 +65,6 @@ export async function syncPostDeliveryComments(
       platform: postDeliveries.platform,
       remotePostId: postDeliveries.remotePostId,
       status: postDeliveries.status,
-      userId: posts.createdByUserId,
       workspaceId: posts.workspaceId,
     })
     .from(postDeliveries)
@@ -93,7 +92,7 @@ export async function syncPostDeliveryComments(
   let result: CommentsFetchResult;
   try {
     result = await FETCHERS[row.platform](
-      row.userId,
+      row.workspaceId,
       row.remotePostId,
       cursorRow?.cursor ?? null,
     );
@@ -108,7 +107,6 @@ export async function syncPostDeliveryComments(
   let synced = 0;
   if (result.comments.length > 0) {
     const rows = result.comments.map((c) => ({
-      userId: row.userId,
       workspaceId: row.workspaceId,
       platform: row.platform,
       remoteId: c.remoteId,
@@ -141,7 +139,7 @@ export async function syncPostDeliveryComments(
       .from(postComments)
       .where(
         and(
-          eq(postComments.userId, row.userId),
+          eq(postComments.workspaceId, row.workspaceId),
           eq(postComments.platform, row.platform),
           eq(postComments.rootRemoteId, row.remotePostId),
         ),
@@ -153,7 +151,7 @@ export async function syncPostDeliveryComments(
       .delete(postComments)
       .where(
         and(
-          eq(postComments.userId, row.userId),
+          eq(postComments.workspaceId, row.workspaceId),
           eq(postComments.platform, row.platform),
           eq(postComments.rootRemoteId, row.remotePostId),
           ne(postComments.parentRemoteId, row.remotePostId),

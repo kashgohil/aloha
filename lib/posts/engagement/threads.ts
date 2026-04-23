@@ -19,16 +19,16 @@ async function getPageAccessToken(userAccessToken: string): Promise<string> {
 }
 
 export async function fetchThreadsPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  let account = await getFreshToken(userId, "threads");
+  let account = await getFreshToken(workspaceId, "threads");
   let pageToken: string;
   try {
     pageToken = await getPageAccessToken(account.accessToken);
   } catch (err) {
     if (String(err).includes("401") || String(err).includes("190")) {
-      account = await forceRefresh(userId, "threads");
+      account = await forceRefresh(workspaceId, "threads");
       pageToken = await getPageAccessToken(account.accessToken);
     } else {
       throw err;

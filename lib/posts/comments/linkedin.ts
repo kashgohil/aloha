@@ -40,11 +40,11 @@ async function fetchPage(
 }
 
 export async function fetchLinkedInPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
   cursor: string | null,
 ): Promise<CommentsFetchResult> {
-  let account = await getFreshToken(userId, "linkedin");
+  let account = await getFreshToken(workspaceId, "linkedin");
 
   const start = cursor ? parseInt(cursor, 10) || 0 : 0;
 
@@ -53,7 +53,7 @@ export async function fetchLinkedInPostComments(
     res = await fetchPage(account.accessToken, rootRemoteId, start);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(userId, "linkedin");
+      account = await forceRefresh(workspaceId, "linkedin");
       res = await fetchPage(account.accessToken, rootRemoteId, start);
     } else {
       throw err;

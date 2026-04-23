@@ -27,16 +27,16 @@ async function getPageAccessToken(userAccessToken: string): Promise<string> {
 }
 
 export async function fetchInstagramPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  let account = await getFreshToken(userId, "instagram");
+  let account = await getFreshToken(workspaceId, "instagram");
   let pageToken: string;
   try {
     pageToken = await getPageAccessToken(account.accessToken);
   } catch (err) {
     if (String(err).includes("401") || String(err).includes("190")) {
-      account = await forceRefresh(userId, "instagram");
+      account = await forceRefresh(workspaceId, "instagram");
       pageToken = await getPageAccessToken(account.accessToken);
     } else {
       throw err;
@@ -64,14 +64,14 @@ export async function fetchInstagramPostMetrics(
       views = data.data?.[0]?.values?.[0]?.value ?? null;
       if (views === null) {
         log.warn("insights/reach returned no value", {
-          userId,
+          workspaceId,
           mediaId: remotePostId,
         });
       }
     } else {
       const detail = await insightsRes.text().catch(() => "");
       log.warn("insights/reach request failed", {
-        userId,
+        workspaceId,
         mediaId: remotePostId,
         status: insightsRes.status,
         detail: detail.slice(0, 300),
@@ -79,7 +79,7 @@ export async function fetchInstagramPostMetrics(
     }
   } catch (err) {
     log.warn("insights/reach threw", {
-      userId,
+      workspaceId,
       mediaId: remotePostId,
       error: err instanceof Error ? err.message : String(err),
     });

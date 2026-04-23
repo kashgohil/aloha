@@ -37,7 +37,7 @@ const SUPPORTED: readonly Platform[] = [
 
 const FETCHERS: Record<
   Platform,
-  (userId: string, remotePostId: string) => Promise<NormalizedSnapshot>
+  (workspaceId: string, remotePostId: string) => Promise<NormalizedSnapshot>
 > = {
   bluesky: fetchBlueskyPostMetrics,
   twitter: fetchXPostMetrics,
@@ -61,7 +61,7 @@ export async function syncPostDeliveryMetrics(
       platform: postDeliveries.platform,
       remotePostId: postDeliveries.remotePostId,
       status: postDeliveries.status,
-      userId: posts.createdByUserId,
+      workspaceId: posts.workspaceId,
     })
     .from(postDeliveries)
     .innerJoin(posts, eq(posts.id, postDeliveries.postId))
@@ -74,7 +74,7 @@ export async function syncPostDeliveryMetrics(
 
   let snapshot: NormalizedSnapshot;
   try {
-    snapshot = await FETCHERS[row.platform](row.userId, row.remotePostId);
+    snapshot = await FETCHERS[row.platform](row.workspaceId, row.remotePostId);
   } catch (err) {
     await captureException(err, {
       tags: { source: "post.engagement.sync", platform: row.platform },

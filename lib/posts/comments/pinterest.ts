@@ -40,18 +40,18 @@ async function fetchPage(
 }
 
 export async function fetchPinterestPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
   cursor: string | null,
 ): Promise<CommentsFetchResult> {
-  let account = await getFreshToken(userId, "pinterest");
+  let account = await getFreshToken(workspaceId, "pinterest");
 
   let res: CommentsResponse;
   try {
     res = await fetchPage(account.accessToken, rootRemoteId, cursor ?? undefined);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(userId, "pinterest");
+      account = await forceRefresh(workspaceId, "pinterest");
       res = await fetchPage(account.accessToken, rootRemoteId, cursor ?? undefined);
     } else {
       throw err;

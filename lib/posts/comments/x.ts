@@ -55,11 +55,11 @@ async function searchPage(
 }
 
 export async function fetchXPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
   cursor: string | null,
 ): Promise<CommentsFetchResult> {
-  let account = await getFreshToken(userId, "twitter");
+  let account = await getFreshToken(workspaceId, "twitter");
 
   const comments: NormalizedComment[] = [];
   let token = cursor ?? undefined;
@@ -71,7 +71,7 @@ export async function fetchXPostComments(
       res = await searchPage(account.accessToken, rootRemoteId, token);
     } catch (err) {
       if (pagesRead === 0 && String(err).includes("401")) {
-        account = await forceRefresh(userId, "twitter");
+        account = await forceRefresh(workspaceId, "twitter");
         res = await searchPage(account.accessToken, rootRemoteId, token);
       } else {
         throw err;

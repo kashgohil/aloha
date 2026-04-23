@@ -8,10 +8,10 @@ type Status = {
 };
 
 export async function fetchMastodonPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  const credentials = await getMastodonCredentials(userId);
+  const credentials = await getMastodonCredentials(workspaceId);
 
   const res = await fetch(
     `${credentials.instanceUrl}/api/v1/statuses/${remotePostId}`,

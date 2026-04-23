@@ -29,17 +29,17 @@ async function fetchOnce(
 }
 
 export async function fetchLinkedInPostMetrics(
-  userId: string,
+  workspaceId: string,
   remotePostId: string,
 ): Promise<NormalizedSnapshot> {
-  let account = await getFreshToken(userId, "linkedin");
+  let account = await getFreshToken(workspaceId, "linkedin");
 
   let res: SocialActionsResponse;
   try {
     res = await fetchOnce(account.accessToken, remotePostId);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(userId, "linkedin");
+      account = await forceRefresh(workspaceId, "linkedin");
       res = await fetchOnce(account.accessToken, remotePostId);
     } else {
       throw err;

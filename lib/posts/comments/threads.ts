@@ -55,17 +55,17 @@ async function fetchPage(
 }
 
 export async function fetchThreadsPostComments(
-  userId: string,
+  workspaceId: string,
   rootRemoteId: string,
   cursor: string | null,
 ): Promise<CommentsFetchResult> {
-  let account = await getFreshToken(userId, "threads");
+  let account = await getFreshToken(workspaceId, "threads");
   let pageToken: string;
   try {
     pageToken = await getPageAccessToken(account.accessToken);
   } catch (err) {
     if (String(err).includes("401") || String(err).includes("190")) {
-      account = await forceRefresh(userId, "threads");
+      account = await forceRefresh(workspaceId, "threads");
       pageToken = await getPageAccessToken(account.accessToken);
     } else {
       throw err;
