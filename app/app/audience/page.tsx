@@ -263,6 +263,7 @@ export default async function AudiencePage() {
 						</div>
 
 						<LinkList
+							key={pageLinks.map((l) => l.id).join(",")}
 							initialLinks={pageLinks.map((l) => ({
 								id: l.id,
 								title: l.title,
