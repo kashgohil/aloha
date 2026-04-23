@@ -131,11 +131,13 @@ function CommentNode({
 
 export async function PostReplies({
   userId,
+  workspaceId,
   platform,
   rootRemoteId,
   tz,
 }: {
   userId: string;
+  workspaceId: string;
   platform: string;
   rootRemoteId: string | null;
   tz: string;
@@ -157,7 +159,7 @@ export async function PostReplies({
     .from(postComments)
     .where(
       and(
-        eq(postComments.userId, userId),
+        eq(postComments.workspaceId, workspaceId),
         eq(postComments.platform, platform),
         eq(postComments.rootRemoteId, rootRemoteId),
       ),

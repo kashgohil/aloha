@@ -25,7 +25,7 @@ export default async function UnsubscribePage(props: {
       ownerName: users.name,
     })
     .from(subscribers)
-    .leftJoin(users, eq(users.id, subscribers.userId))
+    .leftJoin(users, eq(users.id, subscribers.createdByUserId))
     .where(eq(subscribers.id, subscriberId))
     .limit(1);
 

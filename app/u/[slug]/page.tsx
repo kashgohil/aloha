@@ -43,7 +43,7 @@ export default async function PublicProfilePage({
   // Owner may have downgraded after customizing — fall back to the default
   // template + defaults but keep their saved choices in the DB so an upgrade
   // restores them.
-  const themeAllowed = await isCustomThemeEnabled(page.userId);
+  const themeAllowed = await isCustomThemeEnabled(page.createdByUserId);
   const effectiveTemplateId = themeAllowed
     ? page.templateId
     : DEFAULT_TEMPLATE_ID;
@@ -58,7 +58,7 @@ export default async function PublicProfilePage({
     <Template
       page={{
         id: page.id,
-        userId: page.userId,
+        userId: page.createdByUserId,
         slug: page.slug,
         title: page.title,
         bio: page.bio,
@@ -78,7 +78,7 @@ export default async function PublicProfilePage({
       backgroundUrl={backgroundUrl}
       subscribeSlot={
         <SubscribeForm
-          userId={page.userId}
+          userId={page.createdByUserId}
           variant={template.subscribeVariant ?? "default"}
           accentColor={getAccent(theme.accentId).color}
         />

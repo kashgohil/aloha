@@ -90,7 +90,7 @@ export default async function AdminBillingPage() {
       currentPeriodEnd: subscriptions.currentPeriodEnd,
     })
     .from(subscriptions)
-    .innerJoin(users, eq(subscriptions.userId, users.id))
+    .innerJoin(users, eq(subscriptions.createdByUserId, users.id))
     .orderBy(desc(subscriptions.createdAt))
     .limit(100);
 
