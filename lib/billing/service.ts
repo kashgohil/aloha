@@ -51,8 +51,13 @@ export async function getLogicalSubscription(userId: string): Promise<LogicalSub
 				.where(eq(subscriptions.workspaceId, ws.workspaceId))
 		: [];
 
+	// Only the base plan row represents the "logical subscription". Add-on
+	// rows (workspace_addon, member_addon) live alongside but are surfaced
+	// through getAccountEntitlements, not here.
 	const active = rows.find(
-		(r) => r.status === "active" || r.status === "past_due",
+		(r) =>
+			(r.productKey === "basic" || r.productKey === "bundle") &&
+			(r.status === "active" || r.status === "past_due"),
 	);
 
 	if (!active) {
@@ -375,6 +380,14 @@ export async function upsertSubscriptionFromPolar(payload: {
 			.set({ polarCustomerId: payload.polarCustomerId, updatedAt: new Date() })
 			.where(eq(workspaces.id, workspaceId));
 	}
+
+	// Workspace add-on changes (seat count, cancellation) can flip the
+	// owner's quota below their current usage. Run the reconciler so any
+	// overage workspaces freeze and any newly-in-quota ones unfreeze.
+	if (productKey === "workspace_addon") {
+		const { reconcileOwnerQuota } = await import("./quota-reconciler");
+		await reconcileOwnerQuota(userId);
+	}
 }
 
 function productKeyFromPolarProductId(id: string): ProductKey | null {
@@ -384,14 +397,36 @@ function productKeyFromPolarProductId(id: string): ProductKey | null {
 	if (id === env.POLAR_PRODUCT_BUNDLE_MONTH || id === env.POLAR_PRODUCT_BUNDLE_YEAR) {
 		return "bundle";
 	}
+	if (
+		id === env.POLAR_PRODUCT_WORKSPACE_ADDON_MONTH ||
+		id === env.POLAR_PRODUCT_WORKSPACE_ADDON_YEAR
+	) {
+		return "workspace_addon";
+	}
+	if (
+		id === env.POLAR_PRODUCT_MEMBER_ADDON_MONTH ||
+		id === env.POLAR_PRODUCT_MEMBER_ADDON_YEAR
+	) {
+		return "member_addon";
+	}
 	return null;
 }
 
 function intervalFromPolarProductId(id: string): Interval | null {
-	if (id === env.POLAR_PRODUCT_BASIC_MONTH || id === env.POLAR_PRODUCT_BUNDLE_MONTH) {
+	if (
+		id === env.POLAR_PRODUCT_BASIC_MONTH ||
+		id === env.POLAR_PRODUCT_BUNDLE_MONTH ||
+		id === env.POLAR_PRODUCT_WORKSPACE_ADDON_MONTH ||
+		id === env.POLAR_PRODUCT_MEMBER_ADDON_MONTH
+	) {
 		return "month";
 	}
-	if (id === env.POLAR_PRODUCT_BASIC_YEAR || id === env.POLAR_PRODUCT_BUNDLE_YEAR) {
+	if (
+		id === env.POLAR_PRODUCT_BASIC_YEAR ||
+		id === env.POLAR_PRODUCT_BUNDLE_YEAR ||
+		id === env.POLAR_PRODUCT_WORKSPACE_ADDON_YEAR ||
+		id === env.POLAR_PRODUCT_MEMBER_ADDON_YEAR
+	) {
 		return "year";
 	}
 	return null;

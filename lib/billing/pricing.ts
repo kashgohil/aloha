@@ -20,6 +20,29 @@ export const BANDS: Band[] = [
 export const ANNUAL_DISCOUNT = 0.2;
 export const FREE_TIER_CHANNELS = 3;
 
+// Flat-priced add-ons on top of the base channel-band plan. Each sold as
+// a single graduated Polar tier with unlimited ceiling so we can bump
+// seat quantity without re-provisioning.
+//
+// Yearly prices apply ANNUAL_DISCOUNT (≈2 months free), matching the base
+// plan's yearly discount ratio. Kept here so scripts/polar-setup.ts and
+// the UI preview always agree on the number.
+export const WORKSPACE_ADDON_MONTHLY_USD = 25;
+export const WORKSPACE_ADDON_YEARLY_USD =
+  Math.round(WORKSPACE_ADDON_MONTHLY_USD * 12 * (1 - ANNUAL_DISCOUNT));
+export const MEMBER_ADDON_MONTHLY_USD = 3;
+export const MEMBER_ADDON_YEARLY_USD =
+  Math.round(MEMBER_ADDON_MONTHLY_USD * 12 * (1 - ANNUAL_DISCOUNT));
+
+// A workspace add-on seat bundles these quotas alongside the new tenant.
+// Consumed by lib/billing/workspace-limits.ts to compute real entitlements.
+export const WORKSPACE_ADDON_CHANNELS_INCLUDED = 3;
+export const WORKSPACE_ADDON_MEMBERS_INCLUDED = 3;
+
+// Base paid-plan included allowances.
+export const BASE_PLAN_WORKSPACES_INCLUDED = 1;
+export const BASE_PLAN_MEMBERS_INCLUDED = 5;
+
 export function bandFor(position: number): Band {
 	return BANDS.find((b) => position >= b.from && position <= b.to) ?? BANDS[BANDS.length - 1];
 }
