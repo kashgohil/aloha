@@ -197,6 +197,13 @@
       "when": 1777029298996,
       "tag": "0027_clever_morph",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1777062901084,
+      "tag": "0028_aberrant_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

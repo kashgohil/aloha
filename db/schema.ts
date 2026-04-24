@@ -28,6 +28,19 @@ export type ChannelOverride = {
   media?: PostMedia[];
 };
 
+// When a draft enters Studio mode it is pinned to a single channel + post
+// form (e.g. X thread, LinkedIn article). `platforms` narrows to `[channel]`
+// and the publisher reads `studio_payload` instead of the flat `content`.
+// Null for drafts composed the regular multi-channel way.
+export type StudioMode = {
+  channel: string;
+  form: string;
+};
+
+// Channel-form-specific structured content. Shape is validated by the
+// capability registry for the declared `{ channel, form }`. Opaque here.
+export type StudioPayload = Record<string, unknown>;
+
 // Structured draft metadata emitted by Muse generation. `content` stays the
 // canonical body used by publishers; draftMeta is additive scaffolding the
 // composer can surface (alt hooks, CTA options, media hint, why-this-works).
@@ -332,6 +345,12 @@ export const posts = pgTable("posts", {
   // `content`; this is additive, the composer reads it to surface a sidebar
   // with alt hooks and rationale. Null for manual drafts.
   draftMeta: jsonb("draftMeta").$type<DraftMeta>(),
+  // Studio mode pins this draft to one channel + post form. When set,
+  // `platforms` is expected to be `[studio_mode.channel]` and the publisher
+  // dispatches to the capability registry using `studio_payload`. Null means
+  // regular multi-channel fanout using `content` + `channelContent`.
+  studioMode: jsonb("studio_mode").$type<StudioMode>(),
+  studioPayload: jsonb("studio_payload").$type<StudioPayload>(),
   status: text("status", {
     enum: [
       "draft",
