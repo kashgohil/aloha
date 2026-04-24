@@ -1,10 +1,13 @@
 import { AlertCircle, Building2, Heart, Sparkles, User, Users } from "lucide-react";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { getCurrentUser } from "@/lib/current-user";
+import { getCurrentContext } from "@/lib/current-context";
+import { hasRole, ROLES as WORKSPACE_ROLES } from "@/lib/workspaces/roles";
 import { updateProfile } from "../actions";
 import { TimezoneSelect } from "@/app/auth/onboarding/_components/timezone-select";
 import { PendingSubmitButton } from "@/components/ui/pending-submit";
 import { cn } from "@/lib/utils";
+import { DeleteWorkspaceSection } from "./_components/delete-workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +42,9 @@ function getTimezones(): string[] {
 
 export default async function ProfileSettingsPage() {
   const user = (await getCurrentUser())!;
+  const ctx = await getCurrentContext();
   const zones = getTimezones();
+  const isOwner = hasRole(ctx?.role ?? null, WORKSPACE_ROLES.OWNER);
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -156,6 +161,15 @@ export default async function ProfileSettingsPage() {
           </PendingSubmitButton>
         </div>
       </form>
+
+      {isOwner && ctx ? (
+        <div className="pt-8 mt-8 border-t border-border">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55 mb-3">
+            Danger zone
+          </p>
+          <DeleteWorkspaceSection workspaceName={ctx.workspace.name} />
+        </div>
+      ) : null}
     </div>
   );
 }
