@@ -70,6 +70,10 @@ const envSchema = z.object({
   POLAR_PRODUCT_BASIC_YEAR: z.string().optional(),
   POLAR_PRODUCT_BUNDLE_MONTH: z.string().optional(),
   POLAR_PRODUCT_BUNDLE_YEAR: z.string().optional(),
+  POLAR_PRODUCT_WORKSPACE_ADDON_MONTH: z.string().optional(),
+  POLAR_PRODUCT_WORKSPACE_ADDON_YEAR: z.string().optional(),
+  POLAR_PRODUCT_MEMBER_ADDON_MONTH: z.string().optional(),
+  POLAR_PRODUCT_MEMBER_ADDON_YEAR: z.string().optional(),
 
   // Vercel Blob — keep dev and prod on separate stores. Create one "development"
   // Blob store and one "production" Blob store on Vercel, then set this token
