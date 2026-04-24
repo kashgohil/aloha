@@ -7,20 +7,46 @@ import {
   SectionHeader,
   StatCard,
 } from "../../_components/page-header";
-import { effectivePrice } from "@/lib/billing/pricing";
+import {
+  ANNUAL_DISCOUNT,
+  MEMBER_ADDON_MONTHLY_USD,
+  WORKSPACE_ADDON_MONTHLY_USD,
+  effectivePrice,
+} from "@/lib/billing/pricing";
+
+const PRODUCT_LABEL: Record<
+  "basic" | "bundle" | "workspace_addon" | "member_addon",
+  string
+> = {
+  basic: "Basic",
+  bundle: "Bundle",
+  workspace_addon: "Workspace",
+  member_addon: "Member seat",
+};
 
 // Monthly-equivalent value of a single subscription row. Annual plans are
-// divided by 12 so MRR is apples-to-apples.
+// divided by 12 so MRR is apples-to-apples across both intervals and
+// across base plans and add-ons.
 function monthlyValue(row: {
-  productKey: "basic" | "bundle";
+  productKey: "basic" | "bundle" | "workspace_addon" | "member_addon";
   interval: "month" | "year";
   seats: number;
 }) {
-  const { effectivePerMonth } = effectivePrice(row.seats, {
-    muse: row.productKey === "bundle",
-    interval: row.interval,
-  });
-  return effectivePerMonth;
+  if (row.productKey === "basic" || row.productKey === "bundle") {
+    const { effectivePerMonth } = effectivePrice(row.seats, {
+      muse: row.productKey === "bundle",
+      interval: row.interval,
+    });
+    return effectivePerMonth;
+  }
+  // Flat-priced add-ons: base monthly rate × seats, with the yearly
+  // discount amortized back across months when the row is annual.
+  const monthlyPerSeat =
+    row.productKey === "workspace_addon"
+      ? WORKSPACE_ADDON_MONTHLY_USD
+      : MEMBER_ADDON_MONTHLY_USD;
+  const discount = row.interval === "year" ? 1 - ANNUAL_DISCOUNT : 1;
+  return monthlyPerSeat * row.seats * discount;
 }
 
 export default async function AdminBillingPage() {
@@ -174,8 +200,8 @@ export default async function AdminBillingPage() {
                   </Td>
                   <Td className="text-ink/70">{r.email}</Td>
                   <Td>
-                    <span className="inline-flex items-center h-6 px-2 rounded-full bg-peach-100/70 text-[11px] text-ink capitalize">
-                      {r.productKey}
+                    <span className="inline-flex items-center h-6 px-2 rounded-full bg-peach-100/70 text-[11px] text-ink">
+                      {PRODUCT_LABEL[r.productKey]}
                     </span>
                   </Td>
                   <Td>

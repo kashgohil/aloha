@@ -5,7 +5,7 @@ import {
   workspaceMembers,
   workspaces,
 } from "@/db/schema";
-import { asc, desc, eq, ilike, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
 import { Search } from "lucide-react";
 import {
   AdminPageHeader,
@@ -35,13 +35,22 @@ export default async function AdminWorkspacesPage({
 
   // Summary counts for the stat strip — computed across all workspaces,
   // not just the page window, so numbers don't jitter with search.
+  // Join filters to base plans only so a workspace with add-on rows
+  // doesn't get counted twice.
+  const baseOnly = or(
+    eq(subscriptions.productKey, "basic"),
+    eq(subscriptions.productKey, "bundle"),
+  );
   const [totals] = await db
     .select({
       total: sql<number>`count(*)::int`,
       withSubscription: sql<number>`count(*) filter (where ${subscriptions.status} in ('active','trialing'))::int`,
     })
     .from(workspaces)
-    .leftJoin(subscriptions, eq(subscriptions.workspaceId, workspaces.id));
+    .leftJoin(
+      subscriptions,
+      and(eq(subscriptions.workspaceId, workspaces.id), baseOnly),
+    );
 
   const [memberTotals] = await db
     .select({
@@ -63,7 +72,10 @@ export default async function AdminWorkspacesPage({
     })
     .from(workspaces)
     .innerJoin(users, eq(users.id, workspaces.ownerUserId))
-    .leftJoin(subscriptions, eq(subscriptions.workspaceId, workspaces.id))
+    .leftJoin(
+      subscriptions,
+      and(eq(subscriptions.workspaceId, workspaces.id), baseOnly),
+    )
     .where(q ? ilike(workspaces.name, `%${q}%`) : undefined)
     .orderBy(desc(workspaces.createdAt))
     .limit(100);
