@@ -18,6 +18,7 @@ import {
 	type PostMedia,
 } from "@/db/schema";
 import { decideForPublish } from "@/lib/channel-state";
+import { getForm } from "@/lib/channels/capabilities";
 import { sendManualAssistReminderForDelivery } from "@/lib/manual-assist";
 import { createNotification } from "@/lib/notifications";
 import { dispatchEvent } from "@/lib/automations/dispatch";
@@ -167,13 +168,42 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 		}
 
 		try {
-			const publisher = PUBLISHERS[platform];
-			const override = post.channelContent?.[platform];
-			const { remotePostId, remoteUrl } = await publisher({
-				workspaceId: post.workspaceId,
-				text: override?.content ?? post.content,
-				media: override?.media ?? post.media,
-			});
+			let remotePostId: string;
+			let remoteUrl: string;
+			if (post.studioMode) {
+				// Studio-mode posts are pinned to one channel; the dispatcher
+				// only reaches this branch for that channel (save/schedule
+				// enforce platforms === [studio_mode.channel]).
+				if (post.studioMode.channel !== platform) {
+					throw new PublishError(
+						"forbidden",
+						`Studio post pinned to ${post.studioMode.channel} but dispatching to ${platform}`,
+					);
+				}
+				const form = getForm(platform, post.studioMode.form);
+				if (!form) {
+					throw new PublishError(
+						"unsupported_platform",
+						`No Studio capability registered for ${platform}/${post.studioMode.form}`,
+					);
+				}
+				const result = await form.publish({
+					workspaceId: post.workspaceId,
+					payload: post.studioPayload ?? {},
+				});
+				remotePostId = result.remotePostId;
+				remoteUrl = result.remoteUrl;
+			} else {
+				const publisher = PUBLISHERS[platform];
+				const override = post.channelContent?.[platform];
+				const result = await publisher({
+					workspaceId: post.workspaceId,
+					text: override?.content ?? post.content,
+					media: override?.media ?? post.media,
+				});
+				remotePostId = result.remotePostId;
+				remoteUrl = result.remoteUrl;
+			}
 			const publishedAt = new Date();
 			await db
 				.update(postDeliveries)
