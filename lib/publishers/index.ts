@@ -9,7 +9,14 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { captureException } from "@/lib/logger";
-import { accounts, postDeliveries, posts, telegramCredentials, type PostMedia } from "@/db/schema";
+import {
+	accounts,
+	postDeliveries,
+	posts,
+	telegramCredentials,
+	workspaces,
+	type PostMedia,
+} from "@/db/schema";
 import { decideForPublish } from "@/lib/channel-state";
 import { sendManualAssistReminderForDelivery } from "@/lib/manual-assist";
 import { createNotification } from "@/lib/notifications";
@@ -69,6 +76,20 @@ export type PublishSummary = {
 export async function publishPost(postId: string): Promise<PublishSummary> {
 	const post = await db.query.posts.findFirst({ where: eq(posts.id, postId) });
 	if (!post) throw new Error(`Post ${postId} not found`);
+
+	// Refuse to publish from a frozen workspace. The owner is over their
+	// seat allowance; the post stays in "scheduled" state so it'll retry
+	// once the workspace thaws (seat added or another workspace deleted).
+	// Worker-level guard covers both scheduled-tick and direct-invoke
+	// paths, so action-layer checks aren't required at every call site.
+	const [ws] = await db
+		.select({ frozenAt: workspaces.frozenAt })
+		.from(workspaces)
+		.where(eq(workspaces.id, post.workspaceId))
+		.limit(1);
+	if (ws?.frozenAt) {
+		return { allOk: false, anyOk: false, retryable: false };
+	}
 
 	const results: Array<{
 		platform: string;
