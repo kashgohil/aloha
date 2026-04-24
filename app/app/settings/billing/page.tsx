@@ -10,8 +10,17 @@ import {
 	users,
 	wishlist,
 } from "@/db/schema";
-import { effectivePrice, FREE_TIER_CHANNELS } from "@/lib/billing/pricing";
+import {
+	effectivePrice,
+	FREE_TIER_CHANNELS,
+	MEMBER_ADDON_MONTHLY_USD,
+	WORKSPACE_ADDON_MONTHLY_USD,
+} from "@/lib/billing/pricing";
 import { getLogicalSubscription, listInvoices } from "@/lib/billing/service";
+import {
+	getAccountEntitlements,
+	getWorkspaceQuota,
+} from "@/lib/billing/account-entitlements";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { routes } from "@/lib/routes";
 import { and, eq, notInArray } from "drizzle-orm";
@@ -24,8 +33,10 @@ import { ChannelAdjuster } from "./_components/channel-adjuster";
 import { DangerZone } from "./_components/danger-zone";
 import { IntervalSwitch } from "./_components/interval-switch";
 import { InvoicesList } from "./_components/invoices";
+import { MemberAddonSection } from "./_components/member-addon-section";
 import { MuseToggleSection } from "./_components/muse-toggle-section";
 import { PastDueBanner } from "./_components/past-due-banner";
+import { WorkspaceAddonSection } from "./_components/workspace-addon-section";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
@@ -156,6 +167,13 @@ export default async function BillingPage() {
 
 	const invoices = await listInvoices(userId);
 
+	// Aggregated entitlements across all owned workspaces. Powers the
+	// workspace + member add-on counters.
+	const [accountEnt, workspaceQuota] = await Promise.all([
+		getAccountEntitlements(userId),
+		getWorkspaceQuota(workspaceId),
+	]);
+
 	return (
 		<div className="max-w-4xl space-y-8">
 			{sub.pastDue ? <PastDueBanner /> : null}
@@ -177,6 +195,25 @@ export default async function BillingPage() {
 				interval={interval}
 				museEnabled={sub.museEnabled}
 				currentPeriodEndISO={currentPeriodEndISO}
+			/>
+
+			<WorkspaceAddonSection
+				included={accountEnt.workspaces.included}
+				addonSeats={accountEnt.workspaces.addonSeats}
+				usedWorkspaces={accountEnt.workspaces.used}
+				monthlyPerSeat={WORKSPACE_ADDON_MONTHLY_USD}
+				interval={interval}
+			/>
+
+			<MemberAddonSection
+				workspaceId={ctx.workspace.id}
+				workspaceName={ctx.workspace.name}
+				included={workspaceQuota.members.included}
+				addonSeats={workspaceQuota.members.addonSeats}
+				usedMembers={workspaceQuota.members.members}
+				pendingInvites={workspaceQuota.members.pendingInvites}
+				monthlyPerSeat={MEMBER_ADDON_MONTHLY_USD}
+				interval={interval}
 			/>
 
 			<MuseToggleSection
