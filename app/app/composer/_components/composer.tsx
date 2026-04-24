@@ -16,6 +16,7 @@ import {
 	submitForReview,
 	updatePost,
 } from "@/app/actions/posts";
+import { enterStudio } from "@/app/actions/studio";
 import {
 	availableActions,
 	isEditable,
@@ -81,6 +82,7 @@ import {
 	RotateCcw,
 	Send,
 	Sparkles,
+	Sliders,
 	Type,
 	Wand2,
 	X as XIcon,
@@ -94,6 +96,8 @@ import { FanoutPanel } from "./fanout-panel";
 import { ImportPanel } from "./import-panel";
 import { LibraryPanel } from "./library-panel";
 import { PostPreviewCard } from "@/components/post-preview-card";
+import { hasCapability } from "@/lib/channels/capabilities";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ScorePanel } from "./score-panel";
 import { VariantsPanel, type VariantPlatform } from "./variants-panel";
 
@@ -696,6 +700,41 @@ export function Composer({
 		return result.postId;
 	};
 
+	// Studio entry: save current draft, then route into the channel-specific
+	// editor. First-ever use shows a disclaimer (single-channel + lossy
+	// exit); subsequent uses skip straight through.
+	const [studioTargetChannel, setStudioTargetChannel] = useState<
+		string | null
+	>(null);
+	const [showStudioDisclaimer, setShowStudioDisclaimer] = useState(false);
+	const goToStudio = (channel: string) => {
+		const toastId = toast.loading("Opening Studio…");
+		startSaving(async () => {
+			try {
+				const id = await persistContent();
+				await enterStudio(id, channel);
+				toast.dismiss(toastId);
+				router.push(`/app/composer/${id}/studio`);
+			} catch {
+				toast.error("Couldn't open Studio. Please try again.", {
+					id: toastId,
+				});
+			}
+		});
+	};
+	const handleOpenStudio = (channel: string) => {
+		if (isReadOnly) return;
+		if (typeof window !== "undefined") {
+			const seen = window.localStorage.getItem("studio:disclaimer-seen");
+			if (seen === "1") {
+				goToStudio(channel);
+				return;
+			}
+		}
+		setStudioTargetChannel(channel);
+		setShowStudioDisclaimer(true);
+	};
+
 	const handleSaveDraft = () => {
 		if (!canSubmit || isReadOnly) return;
 		if (!canAct("saveDraft") && !canAct("saveContent")) return;
@@ -1174,15 +1213,28 @@ export function Composer({
 
 					<aside className="lg:col-span-5 p-4 lg:p-5 flex flex-col gap-4 h-full">
 						{activePlatform ? (
-							<div className="rounded-2xl w-fit shadow-[0_14px_32px_-18px_rgba(26,22,18,0.28)]">
-								<PostPreviewCard
-									channel={activePlatform.id}
-									author={author}
-									profile={channelProfiles[activePlatform.id] ?? null}
-									handle={activePlatform.handle}
-									content={effectiveContent(activePlatform.id)}
-									media={baseMedia}
-								/>
+							<div className="flex flex-col gap-2 w-fit">
+								{hasCapability(activePlatform.id) && !isReadOnly ? (
+									<button
+										type="button"
+										onClick={() => handleOpenStudio(activePlatform.id)}
+										disabled={isSaving}
+										className="self-end inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-muted/60 transition-colors disabled:opacity-50"
+									>
+										<Sliders className="w-3.5 h-3.5" />
+										Open in Studio
+									</button>
+								) : null}
+								<div className="rounded-2xl shadow-[0_14px_32px_-18px_rgba(26,22,18,0.28)]">
+									<PostPreviewCard
+										channel={activePlatform.id}
+										author={author}
+										profile={channelProfiles[activePlatform.id] ?? null}
+										handle={activePlatform.handle}
+										content={effectiveContent(activePlatform.id)}
+										media={baseMedia}
+									/>
+								</div>
 							</div>
 						) : (
 							<div className="rounded-2xl border border-dashed border-border-strong bg-background/60 px-6 py-12 text-center shadow-[0_14px_32px_-18px_rgba(26,22,18,0.18)]">
@@ -1716,6 +1768,37 @@ export function Composer({
 				/>
 				</div>
 			) : null}
+
+			<ConfirmDialog
+				isOpen={showStudioDisclaimer}
+				onClose={() => setShowStudioDisclaimer(false)}
+				variant="default"
+				confirmText="Open Studio"
+				cancelText="Not now"
+				title="Studio is single-channel"
+				description={
+					<div className="space-y-2">
+						<p>
+							Studio focuses this draft on one channel so you can use
+							its native post types (threads, articles, carousels, and
+							more). The draft will publish only to that channel while
+							you&apos;re in Studio.
+						</p>
+						<p>
+							You can return to Compose any time, but channel-specific
+							formatting gets flattened to plain text on the way out.
+						</p>
+					</div>
+				}
+				onConfirm={() => {
+					if (typeof window !== "undefined") {
+						window.localStorage.setItem("studio:disclaimer-seen", "1");
+					}
+					const channel = studioTargetChannel;
+					setStudioTargetChannel(null);
+					if (channel) goToStudio(channel);
+				}}
+			/>
 		</div>
 	);
 }
