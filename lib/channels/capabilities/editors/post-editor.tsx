@@ -1,30 +1,10 @@
 "use client";
 
 import { MediaPicker } from "@/components/media-picker";
-import type { PostMedia, StudioPayload } from "@/db/schema";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
+import { readPostPayload, type PostPayload } from "./post-payload";
 
-// Generic single-post editor. Shared across channels that just need a
-// text field + media attachment with a char limit (X, Bluesky, Threads,
-// LinkedIn long-form, Facebook, etc.). Channel-specific quirks (Mastodon
-// CW, LinkedIn mentions) should live in bespoke editors, not here.
-export type PostPayload = {
-  text: string;
-  media: PostMedia[];
-  // Optional content warning / spoiler text. Surfaced by channels that
-  // support it (Mastodon CW). Empty string = no warning.
-  spoilerText?: string;
-};
-
-export function readPostPayload(payload: StudioPayload): PostPayload {
-  const text = typeof payload.text === "string" ? payload.text : "";
-  const media = Array.isArray(payload.media)
-    ? (payload.media as PostMedia[])
-    : [];
-  const spoilerText =
-    typeof payload.spoilerText === "string" ? payload.spoilerText : undefined;
-  return { text, media, spoilerText };
-}
+export { readPostPayload, type PostPayload } from "./post-payload";
 
 export function makePostEditor(options: {
   maxChars: number;

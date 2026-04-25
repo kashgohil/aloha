@@ -2,40 +2,21 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { MediaPicker } from "@/components/media-picker";
-import type { PostMedia, StudioPayload } from "@/db/schema";
+import type { PostMedia } from "@/db/schema";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
+import {
+  readThreadPayload,
+  type ThreadPart,
+  type ThreadPayload,
+} from "./thread-payload";
 
-// Generic thread editor. Channels that support chained replies (X,
-// Bluesky, Threads, Mastodon) share this shell and only differ by char
-// limit + media cap.
-export type ThreadPart = {
-  text: string;
-  media: PostMedia[];
-};
-
-export type ThreadPayload = {
-  parts: ThreadPart[];
-  // Thread-level content warning. Applied to every part by publishers
-  // that support CW (Mastodon). Empty / undefined = no warning.
-  spoilerText?: string;
-};
-
-export function readThreadPayload(payload: StudioPayload): ThreadPayload {
-  const raw = Array.isArray(payload.parts) ? payload.parts : null;
-  const spoilerText =
-    typeof payload.spoilerText === "string" ? payload.spoilerText : undefined;
-  if (!raw || raw.length === 0) {
-    return { parts: [{ text: "", media: [] }], spoilerText };
-  }
-  const parts: ThreadPart[] = raw.map((p) => {
-    const part = p as Partial<ThreadPart>;
-    return {
-      text: typeof part.text === "string" ? part.text : "",
-      media: Array.isArray(part.media) ? (part.media as PostMedia[]) : [],
-    };
-  });
-  return { parts, spoilerText };
-}
+export {
+  readThreadPayload,
+  splitIntoThreadParts,
+  joinThreadParts,
+  type ThreadPart,
+  type ThreadPayload,
+} from "./thread-payload";
 
 export function makeThreadEditor(options: {
   maxChars: number;
@@ -176,23 +157,3 @@ export function makeThreadEditor(options: {
   };
 }
 
-// Helper: split a flat content body into thread parts on blank lines. A
-// blank line is a more explicit "new post" signal than a single newline
-// since single line-breaks are common within lists and quotes.
-export function splitIntoThreadParts(content: string): ThreadPart[] {
-  const chunks = content
-    .split(/\n{2,}/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-  if (chunks.length === 0) return [{ text: "", media: [] }];
-  return chunks.map((text) => ({ text, media: [] }));
-}
-
-// Helper: join structured thread parts back into a flat body for
-// exit-to-Compose.
-export function joinThreadParts(parts: ThreadPart[]): string {
-  return parts
-    .map((p) => p.text.trim())
-    .filter(Boolean)
-    .join("\n\n");
-}
