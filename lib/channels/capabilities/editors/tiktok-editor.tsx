@@ -1,25 +1,18 @@
 "use client";
 
 import { MediaPicker } from "@/components/media-picker";
-import type { PostMedia, StudioPayload } from "@/db/schema";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
+import {
+  readTikTokPayload,
+  type TikTokPayload,
+  type TikTokPrivacyLevel,
+} from "./tiktok-payload";
 
-export type TikTokPrivacyLevel =
-  | "PUBLIC_TO_EVERYONE"
-  | "MUTUAL_FOLLOW_FRIENDS"
-  | "FOLLOWER_OF_CREATOR"
-  | "SELF_ONLY";
-
-export type TikTokPayload = {
-  title: string;
-  video: PostMedia[];
-  privacyLevel: TikTokPrivacyLevel;
-  disableComment: boolean;
-  disableDuet: boolean;
-  disableStitch: boolean;
-  brandContentToggle: boolean;
-  brandOrganicToggle: boolean;
-};
+export {
+  readTikTokPayload,
+  type TikTokPayload,
+  type TikTokPrivacyLevel,
+} from "./tiktok-payload";
 
 const TITLE_MAX = 2200;
 
@@ -29,28 +22,6 @@ const PRIVACY_OPTIONS: { value: TikTokPrivacyLevel; label: string }[] = [
   { value: "FOLLOWER_OF_CREATOR", label: "Followers" },
   { value: "SELF_ONLY", label: "Only me" },
 ];
-
-export function readTikTokPayload(payload: StudioPayload): TikTokPayload {
-  const title = typeof payload.title === "string" ? payload.title : "";
-  const video = Array.isArray(payload.video)
-    ? (payload.video as PostMedia[])
-    : [];
-  const privacyLevel =
-    typeof payload.privacyLevel === "string" &&
-    PRIVACY_OPTIONS.some((p) => p.value === payload.privacyLevel)
-      ? (payload.privacyLevel as TikTokPrivacyLevel)
-      : "PUBLIC_TO_EVERYONE";
-  return {
-    title,
-    video,
-    privacyLevel,
-    disableComment: payload.disableComment === true,
-    disableDuet: payload.disableDuet === true,
-    disableStitch: payload.disableStitch === true,
-    brandContentToggle: payload.brandContentToggle === true,
-    brandOrganicToggle: payload.brandOrganicToggle === true,
-  };
-}
 
 export function TikTokEditor({
   payload,
