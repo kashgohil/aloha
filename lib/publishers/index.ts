@@ -157,7 +157,10 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			continue;
 		}
 
-		if (!isSupportedPlatform(platform)) {
+		// Studio-mode posts route through the capability registry, which
+		// has its own per-channel publishers — no need to gate on the
+		// legacy `PUBLISHERS` map.
+		if (!post.studioMode && !isSupportedPlatform(platform)) {
 			await markDeliveryFailed(
 				delivery.id,
 				"unsupported_platform",
@@ -194,6 +197,14 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				remotePostId = result.remotePostId;
 				remoteUrl = result.remoteUrl;
 			} else {
+				if (!isSupportedPlatform(platform)) {
+					// Already gated above; this branch is unreachable but
+					// the assertion narrows `platform` for `PUBLISHERS[platform]`.
+					throw new PublishError(
+						"unsupported_platform",
+						`Publishing to "${platform}" is not implemented yet.`,
+					);
+				}
 				const publisher = PUBLISHERS[platform];
 				const override = post.channelContent?.[platform];
 				const result = await publisher({
