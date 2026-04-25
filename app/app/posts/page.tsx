@@ -143,9 +143,6 @@ export default async function PostsPage({
 		: "all";
 	const view: "list" | "board" =
 		first(params.view) === "board" ? "board" : "list";
-	// `?assignee=me` filters Kanban cards to those assigned to the viewer.
-	// Only meaningful in board view; list view ignores it.
-	const assigneeFilter = first(params.assignee) === "me";
 
 	// Parse selected channels from URL
 	const selectedChannels = parseChannels(params.channels);
@@ -164,10 +161,6 @@ export default async function PostsPage({
 			where.push(channelCondition);
 		}
 	}
-	if (view === "board" && assigneeFilter) {
-		where.push(eq(posts.assignedReviewerId, user.id));
-	}
-
 	// Counts are filtered by channels (if selected) but cover all statuses,
 	// so "deleted" reflects accurately.
 	const countWhere = [eq(posts.workspaceId, workspace.id)];
@@ -257,20 +250,14 @@ export default async function PostsPage({
 		status?: StatusFilter;
 		channels?: string[];
 		view?: "list" | "board";
-		assignee?: "me" | null;
 	}) => {
 		const sp = new URLSearchParams();
 		const s = opts.status ?? filter;
 		const c = opts.channels ?? selectedChannels;
 		const v = opts.view ?? view;
-		const a =
-			opts.assignee === undefined
-				? (assigneeFilter ? "me" : null)
-				: opts.assignee;
 		if (s !== "all") sp.set("status", s);
 		if (c.length > 0) sp.set("channels", c.join(","));
 		if (v === "board") sp.set("view", "board");
-		if (a === "me") sp.set("assignee", "me");
 		const qs = sp.toString();
 		return qs ? `/app/posts?${qs}` : "/app/posts";
 	};
@@ -288,11 +275,14 @@ export default async function PostsPage({
 
 	const viewHref = (v: "list" | "board") => withParams({ view: v });
 
-	const assigneeToggleHref = () =>
-		withParams({ assignee: assigneeFilter ? null : "me" });
-
 	return (
-		<div className="space-y-10">
+		<div
+			className={cn(
+				"flex flex-col gap-6",
+				view === "board" &&
+					"h-[calc(100svh-80px)] lg:h-[calc(100svh-112px)]",
+			)}
+		>
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
@@ -315,83 +305,43 @@ export default async function PostsPage({
 				</Link>
 			</header>
 
-			{/* Channel Filter */}
-			{connectedChannels.length > 0 && (
-				<div className="space-y-3">
-					<div className="flex items-center gap-2">
-						<Filter className="w-4 h-4 text-ink/50" />
-						<span className="text-[12px] font-medium text-ink/70">
-							Filter by channel
-							{selectedChannels.length > 0 && (
-								<span className="ml-1 text-ink/50">
-									({selectedChannels.length} selected)
-								</span>
-								)}
-						</span>
-						{selectedChannels.length > 0 && (
-							<Link
-								href={clearChannelsHref()}
-								className="ml-auto inline-flex items-center gap-1 text-[11px] text-ink/50 hover:text-ink transition-colors"
-							>
-								<X className="w-3 h-3" />
-								Clear
-							</Link>
-						)}
-					</div>
-					<div className="flex flex-wrap gap-2">
-						{connectedChannels.map((channel) => {
-							const Icon = CHANNEL_ICONS[channel];
-							const isSelected = selectedChannels.includes(channel);
-							return (
-								<Link
-									key={channel}
-									href={buildChannelToggleHref(channel)}
-									className={cn(
-										"inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-medium transition-colors",
-										isSelected
-											? "bg-ink text-background border-ink"
-											: "bg-background text-ink/70 border-border hover:border-ink/30 hover:text-ink",
-									)}
-								>
-									{Icon ? <Icon className="w-3.5 h-3.5" /> : null}
-									{CHANNEL_LABELS[channel] ?? channel}
-								</Link>
-							);
-						})}
-					</div>
-				</div>
-			)}
-
 			<div className="flex items-center justify-between gap-4 flex-wrap">
-				{view === "board" ? (
-					<div className="flex items-center gap-3 flex-wrap">
-						<span className="text-[12px] text-ink/60">
-							Drag a post between columns to move it through review.
-						</span>
-						<Link
-							href={assigneeToggleHref()}
-							className={cn(
-								"inline-flex items-center gap-1.5 h-7 px-3 rounded-full border text-[11.5px] font-medium transition-colors",
-								assigneeFilter
-									? "bg-ink text-background border-ink"
-									: "bg-background text-ink/65 border-border hover:border-ink/30 hover:text-ink",
+				<div className="flex items-center gap-2 flex-wrap min-w-0">
+					{connectedChannels.length > 0 ? (
+						<>
+							<Filter className="w-3.5 h-3.5 text-ink/45 shrink-0" />
+							{connectedChannels.map((channel) => {
+								const Icon = CHANNEL_ICONS[channel];
+								const isSelected = selectedChannels.includes(channel);
+								return (
+									<Link
+										key={channel}
+										href={buildChannelToggleHref(channel)}
+										className={cn(
+											"inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-medium transition-colors",
+											isSelected
+												? "bg-ink text-background border-ink"
+												: "bg-background text-ink/70 border-border hover:border-ink/30 hover:text-ink",
+										)}
+									>
+										{Icon ? <Icon className="w-3.5 h-3.5" /> : null}
+										{CHANNEL_LABELS[channel] ?? channel}
+									</Link>
+								);
+							})}
+							{selectedChannels.length > 0 && (
+								<Link
+									href={clearChannelsHref()}
+									className="inline-flex items-center gap-1 text-[11px] text-ink/50 hover:text-ink transition-colors px-1"
+								>
+									<X className="w-3 h-3" />
+									Clear
+								</Link>
 							)}
-						>
-							Assigned to me
-						</Link>
-					</div>
-				) : (
-					<FilterTabs
-						activeKey={filter}
-						items={STATUSES.map((s) => ({
-							key: s,
-							label: s === "all" ? "All" : STATUS_META[s].label,
-							href: buildStatusHref(s),
-							count: countBy(s),
-						}))}
-					/>
-				)}
-				<div className="inline-flex rounded-full border border-border bg-background-elev p-0.5">
+						</>
+					) : null}
+				</div>
+				<div className="inline-flex rounded-full border border-border bg-background-elev p-0.5 shrink-0">
 					<Link
 						href={viewHref("list")}
 						className={cn(
@@ -418,6 +368,18 @@ export default async function PostsPage({
 					</Link>
 				</div>
 			</div>
+
+			{view === "list" && (
+				<FilterTabs
+					activeKey={filter}
+					items={STATUSES.map((s) => ({
+						key: s,
+						label: s === "all" ? "All" : STATUS_META[s].label,
+						href: buildStatusHref(s),
+						count: countBy(s),
+					}))}
+				/>
+			)}
 
 			{/* Deleted posts disclaimer */}
 			{filter === "deleted" && (
@@ -472,7 +434,9 @@ export default async function PostsPage({
 					)}
 				</div>
 			) : view === "board" ? (
-				<PostsBoard rows={rows} tz={tz} />
+				<div className="flex-1 min-h-0">
+					<PostsBoard rows={rows} tz={tz} />
+				</div>
 			) : (
 				<PostsList
 				rows={rows}
