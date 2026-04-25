@@ -114,14 +114,15 @@ async function uploadMedia(
 async function createPin(
 	account: ProviderAccount,
 	boardId: string,
-	text: string,
+	title: string,
+	description: string,
 	mediaId: string | null,
 	link: string | null,
 ): Promise<{ pinId: string; pinUrl: string }> {
 	const pinData: Record<string, unknown> = {
 		board_id: boardId,
-		title: text.slice(0, 100),
-		description: text.slice(0, 500),
+		title: title.slice(0, 100),
+		description: description.slice(0, 500),
 	};
 
 	if (mediaId) {
@@ -163,6 +164,11 @@ export async function publishToPinterest(args: {
 	text: string;
 	media?: PostMedia[];
 	link?: string | null;
+	// Explicit title/description override the auto-derive-from-text
+	// behavior. Studio Pin form always sets these; legacy fanout flow
+	// passes only `text` and relies on the 100/500 char slice fallback.
+	title?: string;
+	description?: string;
 }): Promise<PinterestPostResult> {
 	let account = await getFreshToken(args.workspaceId, "pinterest");
 
@@ -170,6 +176,9 @@ export async function publishToPinterest(args: {
 	account.providerAccountId = user.username;
 
 	const board = await getOrCreateBoard(account);
+
+	const title = args.title?.trim() || args.text.slice(0, 100);
+	const description = args.description?.trim() || args.text.slice(0, 500);
 
 	let mediaId: string | null = null;
 	if (args.media && args.media.length > 0) {
@@ -186,7 +195,14 @@ export async function publishToPinterest(args: {
 	}
 
 	try {
-		const result = await createPin(account, board.id, args.text, mediaId, args.link ?? null);
+		const result = await createPin(
+			account,
+			board.id,
+			title,
+			description,
+			mediaId,
+			args.link ?? null,
+		);
 		return {
 			remotePostId: result.pinId,
 			remoteUrl: result.pinUrl,
@@ -194,7 +210,14 @@ export async function publishToPinterest(args: {
 	} catch (err) {
 		if (err instanceof PublishError && err.category === "needs_reauth") {
 			account = await forceRefresh(args.workspaceId, "pinterest");
-			const result = await createPin(account, board.id, args.text, mediaId, args.link ?? null);
+			const result = await createPin(
+				account,
+				board.id,
+				title,
+				description,
+				mediaId,
+				args.link ?? null,
+			);
 			return {
 				remotePostId: result.pinId,
 				remoteUrl: result.pinUrl,
