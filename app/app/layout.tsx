@@ -45,7 +45,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 					{ctx?.workspace.frozenAt ? (
 						<FrozenBanner isOwner={ctx.user.id === ctx.workspace.ownerUserId} />
 					) : null}
-					<main className="flex-1">
+					<main className="relative flex-1">
 						<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-10 lg:py-14">
 							{children}
 						</div>
