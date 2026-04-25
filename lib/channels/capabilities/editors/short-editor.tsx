@@ -1,29 +1,12 @@
 "use client";
 
 import { MediaPicker } from "@/components/media-picker";
-import type { PostMedia, StudioPayload } from "@/db/schema";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
+import { readShortPayload, type ShortPayload } from "./short-payload";
 
-// Shared editor for vertical short-form video posts that have a real
-// title field (YouTube Shorts, future TikTok). Reels reuse `ReelEditor`
-// because Instagram Reels don't have a separate title — caption only.
-export type ShortPayload = {
-  title: string;
-  description: string;
-  video: PostMedia[];
-};
+export { readShortPayload, type ShortPayload } from "./short-payload";
 
 const TITLE_MAX = 100;
-
-export function readShortPayload(payload: StudioPayload): ShortPayload {
-  const title = typeof payload.title === "string" ? payload.title : "";
-  const description =
-    typeof payload.description === "string" ? payload.description : "";
-  const video = Array.isArray(payload.video)
-    ? (payload.video as PostMedia[])
-    : [];
-  return { title, description, video };
-}
 
 export function makeShortEditor(options: { descriptionMax: number }) {
   const { descriptionMax } = options;
