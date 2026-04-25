@@ -24,6 +24,9 @@ type RegisterUploadResponse = {
 
 async function registerUpload(
 	account: ProviderAccount,
+	recipe:
+		| "urn:li:digitalmediaRecipe:feedshare-image"
+		| "urn:li:digitalmediaRecipe:feedshare-document" = "urn:li:digitalmediaRecipe:feedshare-image",
 ): Promise<{ asset: string; uploadUrl: string }> {
 	const res = await fetch(
 		"https://api.linkedin.com/v2/assets?action=registerUpload",
@@ -36,7 +39,7 @@ async function registerUpload(
 			body: JSON.stringify({
 				registerUploadRequest: {
 					owner: `urn:li:person:${account.providerAccountId}`,
-					recipes: ["urn:li:digitalmediaRecipe:feedshare-image"],
+					recipes: [recipe],
 					serviceRelationships: [
 						{
 							identifier: "urn:li:userGeneratedContent",
@@ -192,6 +195,112 @@ export async function publishToLinkedIn(args: {
 		throw new PublishError(
 			"transient",
 			"LinkedIn publish returned no post URN",
+		);
+	}
+	return {
+		remotePostId: urn,
+		remoteUrl: `https://www.linkedin.com/feed/update/${urn}/`,
+	};
+}
+
+async function callUgcPostsDocument(
+	account: ProviderAccount,
+	text: string,
+	assetUrn: string,
+	title: string,
+): Promise<Response> {
+	const authorUrn = `urn:li:person:${account.providerAccountId}`;
+	const body = {
+		author: authorUrn,
+		lifecycleState: "PUBLISHED",
+		specificContent: {
+			"com.linkedin.ugc.ShareContent": {
+				shareCommentary: { text },
+				shareMediaCategory: "DOCUMENT",
+				media: [
+					{
+						status: "READY",
+						media: assetUrn,
+						title: { attributes: [], text: title.slice(0, 400) || "Document" },
+					},
+				],
+			},
+		},
+		visibility: { "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC" },
+	};
+	return fetch("https://api.linkedin.com/v2/ugcPosts", {
+		method: "POST",
+		headers: {
+			Authorization: `Bearer ${account.accessToken}`,
+			"X-Restli-Protocol-Version": "2.0.0",
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+}
+
+// Publish a LinkedIn document post (a.k.a. document carousel / PDF
+// carousel). The caller uploads a PDF to the shared asset storage and
+// hands us its URL + mime type; we register a document asset, push the
+// bytes, then attach it to a UGC post with `shareMediaCategory: DOCUMENT`.
+export async function publishLinkedInDocument(args: {
+	workspaceId: string;
+	text: string;
+	title: string;
+	document: PostMedia;
+}): Promise<LinkedInPostResult> {
+	if (args.document.mimeType !== "application/pdf") {
+		throw new PublishError(
+			"invalid_content",
+			"LinkedIn document posts require a PDF.",
+		);
+	}
+	let account = await getFreshToken(args.workspaceId, "linkedin");
+
+	const upload = async () => {
+		const { asset, uploadUrl } = await registerUpload(
+			account,
+			"urn:li:digitalmediaRecipe:feedshare-document",
+		);
+		await uploadBinary(
+			account,
+			uploadUrl,
+			args.document.url,
+			args.document.mimeType,
+		);
+		return asset;
+	};
+
+	let assetUrn: string;
+	try {
+		assetUrn = await upload();
+	} catch (err) {
+		if (err instanceof PublishError && err.category === "needs_reauth") {
+			account = await forceRefresh(args.workspaceId, "linkedin");
+			assetUrn = await upload();
+		} else {
+			throw err;
+		}
+	}
+
+	let res = await callUgcPostsDocument(account, args.text, assetUrn, args.title);
+	if (res.status === 401) {
+		account = await forceRefresh(args.workspaceId, "linkedin");
+		res = await callUgcPostsDocument(account, args.text, assetUrn, args.title);
+	}
+	if (!res.ok) {
+		const detail = await res.text().catch(() => "");
+		throw new PublishError(
+			categorizeHttpStatus(res.status),
+			`LinkedIn document publish failed (${res.status}): ${detail.slice(0, 400)}`,
+		);
+	}
+
+	const urn = res.headers.get("x-restli-id") ?? res.headers.get("x-linkedin-id");
+	if (!urn) {
+		throw new PublishError(
+			"transient",
+			"LinkedIn document publish returned no post URN",
 		);
 	}
 	return {
