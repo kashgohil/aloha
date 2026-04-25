@@ -74,10 +74,14 @@ export async function publishToMedium(args: {
 	workspaceId: string;
 	text: string;
 	media?: PostMedia[];
+	// Explicit title — used when the caller has a dedicated title field
+	// (Studio Article form). Falls back to extracting from the first
+	// line when omitted (legacy multi-channel fanout flow).
+	title?: string;
 }): Promise<MediumPostResult> {
 	let account = await getFreshToken(args.workspaceId, "medium");
 
-	const title = extractTitle(args.text);
+	const title = args.title?.trim() || extractTitle(args.text);
 	const content = buildContent(args.text, args.media);
 
 	let mediumUserId: string;
