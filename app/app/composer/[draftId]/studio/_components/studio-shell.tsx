@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Download, Loader2, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -17,6 +17,7 @@ import {
 import { SchedulePopover } from "@/components/schedule-popover";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { getCapability } from "@/lib/channels/capabilities";
+import { downloadExportFiles } from "@/lib/studio/download";
 import type { StudioPayload } from "@/db/schema";
 import type { PostStatus } from "@/lib/posts/transitions";
 import { tzLocalInputToUtcDate, utcIsoToTzLocalInput } from "@/lib/tz";
@@ -122,6 +123,26 @@ export function StudioShell({
     });
   };
 
+  const exportFiles = form.exportPayload?.(payload) ?? [];
+  const canExport = exportFiles.length > 0;
+  const [isExporting, setIsExporting] = useState(false);
+  const handleExport = async () => {
+    if (!canExport) return;
+    setIsExporting(true);
+    try {
+      await downloadExportFiles(exportFiles);
+      toast.success(
+        exportFiles.length === 1
+          ? "Downloaded."
+          : `Downloaded ${exportFiles.length} files.`,
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't export.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleSchedule = () => {
     if (!scheduleInput) return;
     const toastId = toast.loading("Scheduling…");
@@ -193,6 +214,26 @@ export function StudioShell({
             ) : null}
             Save
           </button>
+          {form.exportPayload ? (
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={!canExport || isExporting}
+              title={
+                canExport
+                  ? "Download media / content for manual upload"
+                  : "Nothing to export yet"
+              }
+              className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-[12px] font-medium text-ink hover:bg-muted/60 transition-colors disabled:opacity-50"
+            >
+              {isExporting ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Export
+            </button>
+          ) : null}
           {status === "draft" || status === "scheduled" ? (
             <SchedulePopover
               scheduledAt={scheduleInput}
