@@ -33,6 +33,28 @@ export type { ChannelCapability, PostForm } from "./types";
 // Registration. New capabilities are added by importing them here and
 // calling `registerCapability`. Kept at the bottom so the exports above
 // are resolved before the registrations fire.
+import { bluesky } from "./bluesky";
+import { facebook } from "./facebook";
+import { instagram } from "./instagram";
+import { linkedin } from "./linkedin";
+import { mastodon } from "./mastodon";
+import { medium } from "./medium";
+import { pinterest } from "./pinterest";
+import { reddit } from "./reddit";
+import { threads } from "./threads";
+import { tiktok } from "./tiktok";
 import { twitter } from "./twitter";
+import { youtube } from "./youtube";
 
 registerCapability(twitter);
+registerCapability(bluesky);
+registerCapability(threads);
+registerCapability(mastodon);
+registerCapability(linkedin);
+registerCapability(facebook);
+registerCapability(medium);
+registerCapability(pinterest);
+registerCapability(instagram);
+registerCapability(tiktok);
+registerCapability(youtube);
+registerCapability(reddit);
