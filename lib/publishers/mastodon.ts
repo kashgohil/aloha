@@ -114,18 +114,22 @@ async function createStatus(
 	username: string,
 	text: string,
 	mediaIds: string[],
+	opts?: { spoilerText?: string; inReplyToId?: string },
 ): Promise<{ id: string; url: string }> {
+	const body: Record<string, unknown> = {
+		status: text,
+		media_ids: mediaIds,
+		visibility: "public",
+	};
+	if (opts?.spoilerText) body.spoiler_text = opts.spoilerText;
+	if (opts?.inReplyToId) body.in_reply_to_id = opts.inReplyToId;
 	const res = await fetch(`${instanceUrl}/api/v1/statuses`, {
 		method: "POST",
 		headers: {
 			Authorization: `Bearer ${accessToken}`,
 			"Content-Type": "application/json",
 		},
-		body: JSON.stringify({
-			status: text,
-			media_ids: mediaIds,
-			visibility: "public",
-		}),
+		body: JSON.stringify(body),
 	});
 
 	if (!res.ok) {
@@ -144,6 +148,7 @@ export async function publishToMastodon(args: {
 	workspaceId: string;
 	text: string;
 	media?: PostMedia[];
+	spoilerText?: string;
 }): Promise<MastodonPostResult> {
 	const credentials = await getMastodonCredentials(args.workspaceId);
 
@@ -161,10 +166,80 @@ export async function publishToMastodon(args: {
 		credentials.username,
 		args.text,
 		mediaIds,
+		{ spoilerText: args.spoilerText },
 	);
 
 	return {
 		remotePostId: id,
 		remoteUrl: url,
 	};
+}
+
+// Post a Mastodon thread by chaining replies via in_reply_to_id. Every
+// part inherits the thread-level spoiler text so the CW applies across
+// the whole chain (Mastodon clients treat per-status CWs independently).
+// On mid-thread failure, delete already-posted statuses (latest-first).
+export async function publishMastodonThread(args: {
+	workspaceId: string;
+	parts: { text: string; media?: PostMedia[] }[];
+	spoilerText?: string;
+}): Promise<MastodonPostResult> {
+	if (args.parts.length === 0) {
+		throw new PublishError("invalid_content", "Thread has no parts");
+	}
+	const credentials = await getMastodonCredentials(args.workspaceId);
+
+	let inReplyToId: string | undefined;
+	let headId: string | undefined;
+	let headUrl: string | undefined;
+	const posted: string[] = [];
+
+	for (let i = 0; i < args.parts.length; i++) {
+		const part = args.parts[i];
+		try {
+			const mediaIds: string[] = [];
+			for (const m of part.media ?? []) {
+				mediaIds.push(
+					await uploadMedia(
+						credentials.instanceUrl,
+						credentials.accessToken,
+						m,
+					),
+				);
+			}
+			const { id, url } = await createStatus(
+				credentials.instanceUrl,
+				credentials.accessToken,
+				credentials.username,
+				part.text,
+				mediaIds,
+				{ spoilerText: args.spoilerText, inReplyToId },
+			);
+			posted.push(id);
+			if (!headId) {
+				headId = id;
+				headUrl = url;
+			}
+			inReplyToId = id;
+		} catch (err) {
+			for (const id of posted.slice().reverse()) {
+				try {
+					await fetch(
+						`${credentials.instanceUrl}/api/v1/statuses/${id}`,
+						{
+							method: "DELETE",
+							headers: {
+								Authorization: `Bearer ${credentials.accessToken}`,
+							},
+						},
+					);
+				} catch {
+					// swallow — compensation is opportunistic
+				}
+			}
+			throw err;
+		}
+	}
+
+	return { remotePostId: headId!, remoteUrl: headUrl! };
 }
