@@ -1,14 +1,10 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import type { StudioPayload } from "@/db/schema";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
+import { readXPollPayload, type XPollPayload } from "./x-poll-payload";
 
-export type XPollPayload = {
-  text: string;
-  options: string[];
-  durationMinutes: number;
-};
+export { readXPollPayload, type XPollPayload } from "./x-poll-payload";
 
 const MAX_TEXT = 280;
 const MIN_OPTIONS = 2;
@@ -25,20 +21,6 @@ const DURATION_CHOICES: { label: string; minutes: number }[] = [
   { label: "3 days", minutes: 4320 },
   { label: "7 days", minutes: 10080 },
 ];
-
-export function readXPollPayload(payload: StudioPayload): XPollPayload {
-  const text = typeof payload.text === "string" ? payload.text : "";
-  const rawOptions = Array.isArray(payload.options)
-    ? payload.options.filter((o): o is string => typeof o === "string")
-    : [];
-  const options =
-    rawOptions.length >= MIN_OPTIONS
-      ? rawOptions
-      : [...rawOptions, ...Array(MIN_OPTIONS - rawOptions.length).fill("")];
-  const durationMinutes =
-    typeof payload.durationMinutes === "number" ? payload.durationMinutes : 1440;
-  return { text, options, durationMinutes };
-}
 
 export function XPollEditor({ payload, onChange, disabled }: FormEditorProps) {
   const { text, options, durationMinutes } = readXPollPayload(payload);
