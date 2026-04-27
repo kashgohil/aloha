@@ -1564,6 +1564,11 @@ export const postNotes = pgTable(
     createdAt: timestamp("createdAt").defaultNow().notNull(),
     updatedAt: timestamp("updatedAt").defaultNow().notNull(),
     editedAt: timestamp("editedAt"),
+    // Nullable parent for threading. Top-level notes have null parentNoteId.
+    // Self-reference lets replies attach to any note in the thread.
+    parentNoteId: uuid("parentNoteId").references((): AnyPgColumn => postNotes.id, {
+      onDelete: "cascade",
+    }),
   },
   (table) => [index("post_notes_post").on(table.postId, table.createdAt)],
 );

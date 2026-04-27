@@ -1,0 +1,1 @@
+ALTER TABLE "post_notes" ADD COLUMN "parent_note_id" uuid REFERENCES "post_notes"("id") ON DELETE CASCADE;

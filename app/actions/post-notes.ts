@@ -22,6 +22,8 @@ export type PostNote = {
   updatedAt: Date;
   editedAt: Date | null;
   isMine: boolean;
+  parentNoteId: string | null;
+  replies: PostNote[];
 };
 
 export type PostNoteMention = {
@@ -76,6 +78,7 @@ export async function listNotes(postId: string): Promise<PostNote[]> {
       createdAt: postNotes.createdAt,
       updatedAt: postNotes.updatedAt,
       editedAt: postNotes.editedAt,
+      parentNoteId: postNotes.parentNoteId,
     })
     .from(postNotes)
     .leftJoin(users, eq(users.id, postNotes.authorUserId))
@@ -99,19 +102,37 @@ export async function listNotes(postId: string): Promise<PostNote[]> {
     for (const m of mentionRows) mentionMap.set(m.userId, m);
   }
 
-  return rows.map((row) => ({
+  const byParent = new Map<string | null, typeof rows>();
+  for (const row of rows) {
+    const bucket = byParent.get(row.parentNoteId);
+    if (bucket) bucket.push(row);
+    else byParent.set(row.parentNoteId, [row]);
+  }
+
+  const build = (row: typeof rows[number]): PostNote => ({
     ...row,
     mentions: (row.mentions ?? [])
       .map((id) => mentionMap.get(id))
       .filter((m): m is PostNoteMention => Boolean(m)),
     isMine: row.authorUserId === ctx.user.id,
-  }));
+    parentNoteId: row.parentNoteId ?? null,
+    replies: (byParent.get(row.id) ?? [])
+      .slice()
+      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+      .map(build),
+  });
+
+  return (byParent.get(null) ?? [])
+    .slice()
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    .map(build);
 }
 
 export async function addNote(
   postId: string,
   body: string,
   mentionUserIds: string[] = [],
+  parentNoteId?: string | null,
 ) {
   const ctx = await requireContext();
 
@@ -122,6 +143,20 @@ export async function addNote(
   }
 
   await assertPostAccess(postId, ctx.workspace.id);
+
+  if (parentNoteId) {
+    const [parent] = await db
+      .select({ id: postNotes.id })
+      .from(postNotes)
+      .where(
+        and(
+          eq(postNotes.id, parentNoteId),
+          eq(postNotes.postId, postId),
+        ),
+      )
+      .limit(1);
+    if (!parent) throw new Error("Parent comment not found");
+  }
 
   // Validate mentions against the workspace membership list. Silently
   // drop any id that isn't a member — keeps clients from inflating the
@@ -149,6 +184,7 @@ export async function addNote(
       authorUserId: ctx.user.id,
       body: trimmed,
       mentions: validatedMentions,
+      parentNoteId: parentNoteId ?? null,
     })
     .returning();
 

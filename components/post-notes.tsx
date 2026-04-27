@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Loader2, MessageSquare, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import {
 	addNote,
 	deleteNote,
@@ -20,15 +20,9 @@ import { cn } from "@/lib/utils";
 type Props = {
 	postId: string;
 	initialNotes: PostNote[];
-	// Workspace members that can be @-mentioned. Empty array = feature off.
 	members?: PostNoteMention[];
 };
 
-// Parse `@Name` tokens out of the body and resolve them to member ids.
-// Matching: take the first word of each member's name (case-insensitive).
-// Skips duplicates and mentions that don't match any member. This is a
-// lightweight model — no typeahead needed for the common case of a
-// workspace with a handful of members.
 function extractMentions(
 	body: string,
 	members: PostNoteMention[],
@@ -50,8 +44,6 @@ function extractMentions(
 	return Array.from(matches);
 }
 
-// Renders the body with `@Name` tokens that matched a workspace member
-// turned into subtle chips. Unmatched `@whatever` stays plain text.
 function renderBody(body: string, mentions: PostNoteMention[]): React.ReactNode {
 	if (mentions.length === 0) return body;
 	const byFirstName = new Map<string, PostNoteMention>();
@@ -86,9 +78,27 @@ function renderBody(body: string, mentions: PostNoteMention[]): React.ReactNode 
 	return parts;
 }
 
+function insertReply(
+	notes: PostNote[],
+	parentId: string,
+	reply: PostNote,
+): PostNote[] {
+	return notes.map((note) => {
+		if (note.id === parentId) {
+			return { ...note, replies: [...note.replies, reply] };
+		}
+		if (note.replies.length > 0) {
+			return { ...note, replies: insertReply(note.replies, parentId, reply) };
+		}
+		return note;
+	});
+}
+
 export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 	const [notes, setNotes] = useState<PostNote[]>(initialNotes);
 	const [body, setBody] = useState("");
+	const [replyingToId, setReplyingToId] = useState<string | null>(null);
+	const [replyBody, setReplyBody] = useState("");
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const [draft, setDraft] = useState("");
 	const [isPending, startTransition] = useTransition();
@@ -104,24 +114,63 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 		startTransition(async () => {
 			try {
 				const row = await addNote(postId, trimmed, mentionIds);
-				setNotes((prev) => [
-					...prev,
-					{
-						id: row.id,
-						postId: row.postId,
-						authorUserId: row.authorUserId,
-						authorName: null,
-						authorImage: null,
-						body: row.body,
-						mentions: resolvedMentions,
-						createdAt: row.createdAt,
-						updatedAt: row.updatedAt,
-						editedAt: row.editedAt,
-						isMine: true,
-					},
-				]);
+				const newNote: PostNote = {
+					id: row.id,
+					postId: row.postId,
+					authorUserId: row.authorUserId,
+					authorName: null,
+					authorImage: null,
+					body: row.body,
+					mentions: resolvedMentions,
+					createdAt: row.createdAt,
+					updatedAt: row.updatedAt,
+					editedAt: row.editedAt,
+					isMine: true,
+					parentNoteId: row.parentNoteId ?? null,
+					replies: [],
+				};
+				setNotes((prev) => [...prev, newNote]);
 				setBody("");
 				toast.success("Comment posted.", { id: toastId });
+			} catch (err) {
+				toast.error(
+					err instanceof Error ? err.message : "Couldn't post.",
+					{ id: toastId },
+				);
+			}
+		});
+	};
+
+	const handleReply = (parentNote: PostNote) => {
+		const trimmed = replyBody.trim();
+		if (!trimmed || isPending) return;
+		const mentionIds = extractMentions(trimmed, members);
+		const resolvedMentions = members.filter((m) =>
+			mentionIds.includes(m.userId),
+		);
+		const toastId = toast.loading("Posting…");
+		startTransition(async () => {
+			try {
+				const row = await addNote(postId, trimmed, mentionIds, parentNote.id);
+				const newReply: PostNote = {
+					id: row.id,
+					postId: row.postId,
+					authorUserId: row.authorUserId,
+					authorName: null,
+					authorImage: null,
+					body: row.body,
+					mentions: resolvedMentions,
+					createdAt: row.createdAt,
+					updatedAt: row.updatedAt,
+					editedAt: row.editedAt,
+					isMine: true,
+					parentNoteId: row.parentNoteId ?? null,
+					replies: [],
+				};
+				setNotes((prev) => insertReply(prev, parentNote.id, newReply));
+				setReplyingToId(null);
+				setReplyBody("");
+				toast.success("Reply posted.", { id: toastId });
 			} catch (err) {
 				toast.error(
 					err instanceof Error ? err.message : "Couldn't post.",
@@ -184,6 +233,11 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 		});
 	};
 
+	const cancelReply = () => {
+		setReplyingToId(null);
+		setReplyBody("");
+	};
+
 	return (
 		<section className="space-y-4">
 			<p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/55">
@@ -197,64 +251,26 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 			) : (
 				<ul className="space-y-3">
 					{notes.map((note) => (
-						<li
+						<NoteItem
 							key={note.id}
-							className="rounded-xl border border-border bg-background px-4 py-3"
-						>
-							<div className="flex items-start justify-between gap-3">
-								<div className="flex items-center gap-2 min-w-0">
-									<Avatar name={note.authorName} image={note.authorImage} />
-									<div className="min-w-0">
-										<p className="text-[13px] font-medium text-ink truncate">
-											{note.authorName ?? "Someone"}
-										</p>
-										<p className="text-[11px] text-ink/55">
-											{relativeTime(note.createdAt)}
-											{note.editedAt ? " · edited" : ""}
-										</p>
-									</div>
-								</div>
-								{note.isMine ? (
-									<NoteMenu
-										onEdit={() => startEdit(note)}
-										onDelete={() => handleDelete(note.id)}
-									/>
-								) : null}
-							</div>
-
-							{editingId === note.id ? (
-								<div className="mt-3 space-y-2">
-									<textarea
-										value={draft}
-										onChange={(e) => setDraft(e.target.value)}
-										rows={3}
-										className="w-full rounded-lg border border-border bg-background-elev px-3 py-2 text-[13px] text-ink focus:outline-none focus:border-ink/40"
-									/>
-									<div className="flex items-center justify-end gap-2">
-										<button
-											type="button"
-											onClick={cancelEdit}
-											disabled={isPending}
-											className="h-8 px-3 rounded-full text-[12px] text-ink/65 hover:text-ink transition-colors"
-										>
-											Cancel
-										</button>
-										<button
-											type="button"
-											onClick={() => handleEdit(note.id)}
-											disabled={isPending || !draft.trim()}
-											className="h-8 px-3 rounded-full bg-ink text-background text-[12px] font-medium disabled:opacity-40 transition-colors"
-										>
-											Save
-										</button>
-									</div>
-								</div>
-							) : (
-								<p className="mt-2 text-[13px] text-ink whitespace-pre-wrap leading-relaxed">
-									{renderBody(note.body, note.mentions)}
-								</p>
-							)}
-						</li>
+							note={note}
+							isPending={isPending}
+							editingId={editingId}
+							draft={draft}
+							replyingToId={replyingToId}
+							replyBody={replyBody}
+							onBodyChange={setBody}
+							onReplyBodyChange={setReplyBody}
+							onReply={handleReply}
+							onStartReply={() => setReplyingToId(note.id)}
+							onCancelReply={cancelReply}
+							onStartEdit={startEdit}
+							onEdit={handleEdit}
+							onDelete={handleDelete}
+							onDraftChange={setDraft}
+							onCancelEdit={cancelEdit}
+							members={members}
+						/>
 					))}
 				</ul>
 			)}
@@ -285,6 +301,172 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 				</div>
 			</div>
 		</section>
+	);
+}
+
+function NoteItem({
+	note,
+	isPending,
+	editingId,
+	draft,
+	replyingToId,
+	replyBody,
+	onBodyChange,
+	onReplyBodyChange,
+	onReply,
+	onStartReply,
+	onCancelReply,
+	onStartEdit,
+	onEdit,
+	onDelete,
+	onDraftChange,
+	onCancelEdit,
+	members,
+}: {
+	note: PostNote;
+	isPending: boolean;
+	editingId: string | null;
+	draft: string;
+	replyingToId: string | null;
+	replyBody: string;
+	onBodyChange: (v: string) => void;
+	onReplyBodyChange: (v: string) => void;
+	onReply: (parent: PostNote) => void;
+	onStartReply: () => void;
+	onCancelReply: () => void;
+	onStartEdit: (n: PostNote) => void;
+	onEdit: (id: string) => void;
+	onDelete: (id: string) => void;
+	onDraftChange: (v: string) => void;
+	onCancelEdit: () => void;
+	members: PostNoteMention[];
+}) {
+	const isEditing = editingId === note.id;
+	const isReplying = replyingToId === note.id;
+
+	return (
+		<li className="rounded-xl border border-border bg-background px-4 py-3">
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex items-center gap-2 min-w-0">
+					<Avatar name={note.authorName} image={note.authorImage} />
+					<div className="min-w-0">
+						<p className="text-[13px] font-medium text-ink truncate">
+							{note.authorName ?? "Someone"}
+						</p>
+						<p className="text-[11px] text-ink/55">
+							{relativeTime(note.createdAt)}
+							{note.editedAt ? " · edited" : ""}
+						</p>
+					</div>
+				</div>
+				<div className="flex items-center gap-1">
+					<button
+						type="button"
+						onClick={onStartReply}
+						className="p-1.5 rounded-full text-ink/50 hover:text-ink hover:bg-background-elev transition-colors"
+						aria-label="Reply"
+					>
+						<MessageSquare className="w-4 h-4" />
+					</button>
+					{note.isMine ? (
+						<NoteMenu
+							onEdit={() => onStartEdit(note)}
+							onDelete={() => onDelete(note.id)}
+						/>
+					) : null}
+				</div>
+			</div>
+
+			{isEditing ? (
+				<div className="mt-3 space-y-2">
+					<textarea
+						value={draft}
+						onChange={(e) => onDraftChange(e.target.value)}
+						rows={3}
+						className="w-full rounded-lg border border-border bg-background-elev px-3 py-2 text-[13px] text-ink focus:outline-none focus:border-ink/40"
+					/>
+					<div className="flex items-center justify-end gap-2">
+						<button
+							type="button"
+							onClick={onCancelEdit}
+							disabled={isPending}
+							className="h-8 px-3 rounded-full text-[12px] text-ink/65 hover:text-ink transition-colors"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={() => onEdit(note.id)}
+							disabled={isPending || !draft.trim()}
+							className="h-8 px-3 rounded-full bg-ink text-background text-[12px] font-medium disabled:opacity-40 transition-colors"
+						>
+							Save
+						</button>
+					</div>
+				</div>
+			) : (
+				<p className="mt-2 text-[13px] text-ink whitespace-pre-wrap leading-relaxed">
+					{renderBody(note.body, note.mentions)}
+				</p>
+			)}
+
+			{isReplying && (
+				<div className="mt-3 space-y-2">
+					<textarea
+						value={replyBody}
+						onChange={(e) => onReplyBodyChange(e.target.value)}
+						placeholder={`Reply to ${note.authorName ?? "someone"}…`}
+						rows={2}
+						className="w-full rounded-lg border border-border bg-background-elev px-3 py-2 text-[13px] text-ink focus:outline-none focus:border-ink/40"
+					/>
+					<div className="flex items-center justify-end gap-2">
+						<button
+							type="button"
+							onClick={onCancelReply}
+							disabled={isPending}
+							className="h-8 px-3 rounded-full text-[12px] text-ink/65 hover:text-ink transition-colors"
+						>
+							Cancel
+						</button>
+						<button
+							type="button"
+							onClick={() => onReply(note)}
+							disabled={isPending || !replyBody.trim()}
+							className="h-8 px-3 rounded-full bg-ink text-background text-[12px] font-medium disabled:opacity-40 transition-colors"
+						>
+							Reply
+						</button>
+					</div>
+				</div>
+			)}
+
+			{note.replies.length > 0 && (
+				<ul className="mt-4 space-y-3 pl-5 border-l border-border">
+					{note.replies.map((reply) => (
+						<NoteItem
+							key={reply.id}
+							note={reply}
+							isPending={isPending}
+							editingId={editingId}
+							draft={draft}
+							replyingToId={replyingToId}
+							replyBody={replyBody}
+							onBodyChange={onBodyChange}
+							onReplyBodyChange={onReplyBodyChange}
+							onReply={onReply}
+							onStartReply={() => onStartReply()}
+							onCancelReply={onCancelReply}
+							onStartEdit={onStartEdit}
+							onEdit={onEdit}
+							onDelete={onDelete}
+							onDraftChange={onDraftChange}
+							onCancelEdit={onCancelEdit}
+							members={members}
+						/>
+					))}
+				</ul>
+			)}
+		</li>
 	);
 }
 
@@ -343,7 +525,6 @@ function Avatar({
 	image: string | null;
 }) {
 	if (image) {
-		// eslint-disable-next-line @next/next/no-img-element
 		return (
 			<img
 				src={image}
