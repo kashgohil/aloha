@@ -23,7 +23,7 @@ export function availableActions(
   status: PostStatus | null,
   role: WorkspaceRole | null | undefined = null,
 ): ComposerAction[] {
-  const raw = rawActionsForStatus(status);
+  const raw = rawActionsForStatus(status, role);
   // Role gates mirror the server. Drop anything the caller can't invoke.
   return raw.filter((a) => {
     switch (a) {
@@ -42,16 +42,31 @@ export function availableActions(
   });
 }
 
-function rawActionsForStatus(status: PostStatus | null): ComposerAction[] {
+function rawActionsForStatus(
+  status: PostStatus | null,
+  role: WorkspaceRole | null | undefined,
+): ComposerAction[] {
+  // Owner / admin can bypass review entirely and ship from a draft. The
+  // server enforces the same rule via `canTransition(_, _, role)`.
+  const canBypass = role === "owner" || role === "admin";
+
   // `null` = brand-new unsaved post. Only entry into the pipeline is a
   // draft; the user can save-as-draft and then advance from there.
-  if (status === null) return ["saveDraft", "submitForReview"];
+  if (status === null) {
+    return canBypass
+      ? ["saveDraft", "submitForReview", "schedule", "publish"]
+      : ["saveDraft", "submitForReview"];
+  }
 
   switch (status) {
     case "draft":
-      return ["saveContent", "submitForReview"];
+      return canBypass
+        ? ["saveContent", "submitForReview", "schedule", "publish"]
+        : ["saveContent", "submitForReview"];
     case "in_review":
-      return ["approve", "backToDraft"];
+      return canBypass
+        ? ["approve", "backToDraft", "schedule", "publish"]
+        : ["approve", "backToDraft"];
     case "approved":
       return ["schedule", "publish", "backToDraft"];
     case "scheduled":

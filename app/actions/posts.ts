@@ -127,7 +127,7 @@ export async function schedulePost(postId: string, scheduledAt: Date) {
   }
 
   const existing = await loadOwnedPost(postId, ctx.workspace.id);
-  assertTransition(existing.status as PostStatus, "scheduled");
+  assertTransition(existing.status as PostStatus, "scheduled", ctx.role);
 
   await db
     .update(posts)
@@ -169,7 +169,7 @@ export async function publishPostNow(postId: string) {
   const ctx = await assertRole(ROLES.EDITOR);
 
   const existing = await loadOwnedPost(postId, ctx.workspace.id);
-  assertTransition(existing.status as PostStatus, "published");
+  assertTransition(existing.status as PostStatus, "published", ctx.role);
 
   const now = new Date();
 

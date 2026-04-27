@@ -9,6 +9,12 @@
 // always drops to `draft` (simpler than preserving the prior stage, and
 // matches the product spec). `deleted` is a soft-delete side channel and
 // can be reached from any stage.
+//
+// Owners and admins are allowed to bypass the review workflow and jump
+// straight from `draft` (or `in_review`) to `scheduled` / `published`.
+// Editors and reviewers must walk the staircase.
+import type { WorkspaceRole } from "@/lib/current-context";
+
 export type PostStatus =
   | "draft"
   | "in_review"
@@ -28,7 +34,15 @@ const FORWARD: Record<PostStatus, PostStatus[]> = {
   deleted: [],
 };
 
-export function canTransition(from: PostStatus, to: PostStatus): boolean {
+function canBypassReview(role: WorkspaceRole | null | undefined): boolean {
+  return role === "owner" || role === "admin";
+}
+
+export function canTransition(
+  from: PostStatus,
+  to: PostStatus,
+  role?: WorkspaceRole | null,
+): boolean {
   if (to === "deleted") return from !== "deleted";
   if (to === "draft") {
     // Backward reset from any editable non-terminal stage. Scheduled posts
@@ -38,11 +52,25 @@ export function canTransition(from: PostStatus, to: PostStatus): boolean {
       from === "in_review" || from === "approved" || from === "scheduled"
     );
   }
-  return FORWARD[from]?.includes(to) ?? false;
+  if (FORWARD[from]?.includes(to)) return true;
+  // Owner / admin shortcut: skip review and approve, schedule or publish
+  // straight from a draft (or an in-flight review they're authoring).
+  if (
+    canBypassReview(role) &&
+    (to === "scheduled" || to === "published") &&
+    (from === "draft" || from === "in_review")
+  ) {
+    return true;
+  }
+  return false;
 }
 
-export function assertTransition(from: PostStatus, to: PostStatus): void {
-  if (!canTransition(from, to)) {
+export function assertTransition(
+  from: PostStatus,
+  to: PostStatus,
+  role?: WorkspaceRole | null,
+): void {
+  if (!canTransition(from, to, role)) {
     throw new Error(
       `Invalid post transition: ${from} → ${to}. Posts move draft → in_review → approved → scheduled → published in order.`,
     );
