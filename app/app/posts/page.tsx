@@ -436,7 +436,7 @@ export default async function PostsPage({
 				</div>
 			) : view === "board" ? (
 				<div className="flex-1 min-h-0">
-					<PostsBoard rows={rows} tz={tz} />
+					<PostsBoard rows={rows} tz={tz} workspaceRole={ctx.role} />
 				</div>
 			) : (
 				<PostsList

@@ -26,6 +26,7 @@ import {
 	canTransition,
 	type PostStatus,
 } from "@/lib/posts/transitions";
+import type { WorkspaceRole } from "@/lib/current-context";
 import { ImageIcon } from "lucide-react";
 import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
 import { previewContent } from "@/lib/post-preview";
@@ -57,7 +58,15 @@ const COLUMNS: {
 	{ key: "failed", label: "Failed", dot: "bg-destructive" },
 ];
 
-export function PostsBoard({ rows, tz }: { rows: Row[]; tz: string }) {
+export function PostsBoard({
+	rows,
+	tz,
+	workspaceRole,
+}: {
+	rows: Row[];
+	tz: string;
+	workspaceRole: WorkspaceRole;
+}) {
 	const router = useRouter();
 	const [optimistic, setOptimistic] = useState<Row[]>(rows);
 	const [, startTransition] = useTransition();
@@ -147,7 +156,7 @@ export function PostsBoard({ rows, tz }: { rows: Row[]; tz: string }) {
 		if (!row) return;
 		const target = String(over.id) as PostStatus;
 		if (row.status === target) return;
-		if (!canTransition(row.status as PostStatus, target)) {
+		if (!canTransition(row.status as PostStatus, target, workspaceRole)) {
 			toast.error(
 				`Can't move from ${row.status.replace("_", " ")} to ${target.replace(
 					"_",
@@ -176,6 +185,7 @@ export function PostsBoard({ rows, tz }: { rows: Row[]; tz: string }) {
 								column={col}
 								rows={grouped.get(col.key) ?? []}
 								tz={tz}
+								workspaceRole={workspaceRole}
 								draggingRowStatus={
 									draggingRow ? (draggingRow.status as PostStatus) : null
 								}
@@ -196,18 +206,20 @@ function BoardColumn({
 	column,
 	rows,
 	tz,
+	workspaceRole,
 	draggingRowStatus,
 }: {
 	column: (typeof COLUMNS)[number];
 	rows: Row[];
 	tz: string;
+	workspaceRole: WorkspaceRole;
 	draggingRowStatus: PostStatus | null;
 }) {
 	const { isOver, setNodeRef } = useDroppable({ id: column.key });
 	const isValidDropTarget =
 		draggingRowStatus !== null &&
 		draggingRowStatus !== column.key &&
-		canTransition(draggingRowStatus, column.key);
+		canTransition(draggingRowStatus, column.key, workspaceRole);
 
 	return (
 		<div

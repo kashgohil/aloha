@@ -828,15 +828,17 @@ export function Composer({
 	};
 
 	const handleSchedule = () => {
-		// Runs on a locked approved post — no content persist.
-		if (!scheduledAt || !editingPostId || !canAct("schedule")) return;
+		// Approved → scheduled needs no content persist; owner/admin shipping
+		// straight from a draft does — persistContent() handles either case.
+		if (!scheduledAt || !canAct("schedule")) return;
 		const toastId = toast.loading("Scheduling…");
 		startPublishing(async () => {
 			try {
+				const id = await persistContent();
 				const when = tzLocalInputToUtcDate(scheduledAt, author.timezone);
-				await schedulePost(editingPostId, when);
+				await schedulePost(id, when);
 				toast.success("Post scheduled.", { id: toastId });
-				router.push(`/app/posts/${editingPostId}`);
+				router.push(`/app/posts/${id}`);
 			} catch {
 				toast.error("Couldn't schedule. Check the time and try again.", {
 					id: toastId,
@@ -846,12 +848,14 @@ export function Composer({
 	};
 
 	const handlePublishNow = () => {
-		// Runs on a locked approved post — no content persist.
-		if (!editingPostId || !canAct("publish")) return;
+		// Approved → published needs no content persist; owner/admin shipping
+		// straight from a draft does — persistContent() handles either case.
+		if (!canAct("publish")) return;
 		const toastId = toast.loading("Publishing…");
 		startPublishing(async () => {
 			try {
-				const result = await publishPostNow(editingPostId);
+				const id = await persistContent();
+				const result = await publishPostNow(id);
 				const { summary } = result;
 				if (summary.allOk) {
 					toast.success("Published.", { id: toastId });
@@ -860,7 +864,7 @@ export function Composer({
 				} else {
 					toast.error("Couldn't publish. Please try again.", { id: toastId });
 				}
-				router.push(`/app/posts/${editingPostId}`);
+				router.push(`/app/posts/${id}`);
 			} catch {
 				toast.error("Couldn't publish. Please try again.", { id: toastId });
 			}
