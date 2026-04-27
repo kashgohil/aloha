@@ -26,8 +26,10 @@ import {
 	canTransition,
 	type PostStatus,
 } from "@/lib/posts/transitions";
+import { ImageIcon } from "lucide-react";
 import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
 import { previewContent } from "@/lib/post-preview";
+import type { PostMedia } from "@/db/schema";
 import { cn } from "@/lib/utils";
 
 type Row = {
@@ -35,6 +37,7 @@ type Row = {
 	content: string;
 	channelContent?: Record<string, { content?: string } | null> | null;
 	platforms: string[];
+	media?: PostMedia[] | null;
 	status: string;
 	scheduledAt: Date | null;
 	publishedAt: Date | null;
@@ -272,6 +275,12 @@ function CardPreview({
 	overlay?: boolean;
 }) {
 	const text = previewContent(row);
+	const visible = row.platforms.slice(0, 4);
+	const overflow = Math.max(0, row.platforms.length - visible.length);
+
+	const media = row.media ?? [];
+	const firstImage = media.find((m) => m.mimeType?.startsWith("image/"));
+
 	return (
 		<Link
 			href={`/app/posts/${row.id}`}
@@ -282,36 +291,69 @@ function CardPreview({
 				if (overlay) e.preventDefault();
 			}}
 			className={cn(
-				"block rounded-lg border border-border bg-background px-3 py-2.5 space-y-2",
+				"group block rounded-xl border border-border bg-background overflow-hidden transition-all",
 				overlay
-					? "shadow-[0_12px_30px_-12px_rgba(26,22,18,0.4)] rotate-[-1deg]"
-					: "hover:border-border-strong",
+					? "rotate-[-1.5deg] shadow-[0_18px_36px_-14px_rgba(26,22,18,0.45)]"
+					: "shadow-[0_1px_2px_rgba(26,22,18,0.04)] hover:border-border-strong hover:shadow-[0_8px_22px_-12px_rgba(26,22,18,0.18)] hover:-translate-y-0.5",
 			)}
 		>
-			<p className="text-[12.5px] text-ink leading-snug line-clamp-3 whitespace-pre-wrap">
-				{text || <span className="text-ink/40">(empty)</span>}
-			</p>
-			<div className="flex items-center justify-between gap-2">
-				<div className="flex items-center gap-1">
-					{row.platforms.slice(0, 4).map((p) => {
-						const Icon = CHANNEL_ICONS[p];
-						return Icon ? (
-							<Icon
-								key={p}
-								className="w-3 h-3 text-ink/60"
-								aria-label={CHANNEL_LABELS[p] ?? p}
-							/>
-						) : null;
-					})}
-					{row.platforms.length > 4 ? (
-						<span className="text-[10px] text-ink/50">
-							+{row.platforms.length - 4}
-						</span>
-					) : null}
+			<div className="px-3.5 pt-3 pb-3 space-y-2.5">
+				<div className="flex items-center justify-between gap-2">
+					{visible.length > 0 ? (
+						<div className="flex items-center -space-x-1.5">
+							{visible.map((p) => {
+								const Icon = CHANNEL_ICONS[p];
+								return (
+									<span
+										key={p}
+										aria-label={CHANNEL_LABELS[p] ?? p}
+										className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-background-elev border border-border ring-1 ring-background"
+									>
+										{Icon ? (
+											<Icon className="w-2.5 h-2.5 text-ink/70" />
+										) : null}
+									</span>
+								);
+							})}
+							{overflow > 0 ? (
+								<span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-muted border border-border ring-1 ring-background text-[9.5px] font-medium text-ink/65 tabular-nums">
+									+{overflow}
+								</span>
+							) : null}
+						</div>
+					) : (
+						<span className="text-[10.5px] text-ink/45">No channel</span>
+					)}
+					<span className="text-[10.5px] text-ink/55 tabular-nums">
+						{timestampLabel(row, tz)}
+					</span>
 				</div>
-				<span className="text-[10.5px] text-ink/50 tabular-nums">
-					{timestampLabel(row, tz)}
-				</span>
+
+				{text ? (
+					<p className="text-[13px] text-ink leading-[1.45] line-clamp-3 whitespace-pre-wrap break-words">
+						{text}
+					</p>
+				) : (
+					<p className="text-[12.5px] italic text-ink/40">Empty draft</p>
+				)}
+
+				{firstImage ? (
+					<div className="relative h-24 rounded-lg overflow-hidden border border-border bg-muted">
+						{/* eslint-disable-next-line @next/next/no-img-element */}
+						<img
+							src={firstImage.url}
+							alt={firstImage.alt ?? ""}
+							className="w-full h-full object-cover"
+							referrerPolicy="no-referrer"
+						/>
+						{media.length > 1 ? (
+							<span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-ink/75 text-background text-[10px] font-medium">
+								<ImageIcon className="w-2.5 h-2.5" />
+								+{media.length - 1}
+							</span>
+						) : null}
+					</div>
+				) : null}
 			</div>
 		</Link>
 	);
