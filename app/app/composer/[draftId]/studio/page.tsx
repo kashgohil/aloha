@@ -86,6 +86,7 @@ export default async function StudioPage({
         image: user.image,
       }}
       museAccess={museAccess}
+      workspaceRole={ctx.role}
     />
   );
 }

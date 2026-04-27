@@ -1,19 +1,36 @@
 "use client";
 
-import { Download, Loader2, LogOut, Save, Send } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Loader2,
+  LogOut,
+  RotateCcw,
+  Save,
+  Send,
+  Sparkles,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
+  approvePost,
+  backToDraft,
   publishPostNow,
   reschedulePost,
   schedulePost,
+  submitForReview,
 } from "@/app/actions/posts";
 import {
   exitStudio,
   saveStudioPayload,
   switchStudioForm,
 } from "@/app/actions/studio";
+import {
+  availableActions,
+  type ComposerAction,
+} from "@/lib/posts/actions-available";
+import type { WorkspaceRole } from "@/lib/current-context";
 import { CHANNEL_ICONS, channelLabel } from "@/components/channel-chip";
 import { CHANNEL_ACCENT } from "@/components/post-preview-card";
 import { SchedulePopover } from "@/components/schedule-popover";
@@ -47,6 +64,7 @@ export function StudioShell({
   profile,
   author,
   museAccess,
+  workspaceRole,
 }: {
   postId: string;
   channel: string;
@@ -59,6 +77,7 @@ export function StudioShell({
   profile: ProfileView;
   author: { name: string; image: string | null };
   museAccess: boolean;
+  workspaceRole: WorkspaceRole;
 }) {
   const router = useRouter();
   const [payload, setPayload] = useState<StudioPayload>(initialPayload);
@@ -117,6 +136,54 @@ export function StudioShell({
         }
       } catch {
         toast.error("Couldn't switch form.");
+      }
+    });
+  };
+
+  const allowedActions = new Set<ComposerAction>(
+    availableActions(status, workspaceRole),
+  );
+  const canAct = (action: ComposerAction) => allowedActions.has(action);
+
+  const handleSubmitForReview = () => {
+    if (!canAct("submitForReview")) return;
+    const toastId = toast.loading("Submitting for review…");
+    startSaving(async () => {
+      try {
+        await saveStudioPayload(postId, payload);
+        await submitForReview(postId);
+        toast.success("Submitted for review.", { id: toastId });
+        router.push(`/app/posts/${postId}`);
+      } catch {
+        toast.error("Couldn't submit for review.", { id: toastId });
+      }
+    });
+  };
+
+  const handleApprove = () => {
+    if (!canAct("approve")) return;
+    const toastId = toast.loading("Approving…");
+    startSaving(async () => {
+      try {
+        await approvePost(postId);
+        toast.success("Approved.", { id: toastId });
+        router.refresh();
+      } catch {
+        toast.error("Couldn't approve.", { id: toastId });
+      }
+    });
+  };
+
+  const handleBackToDraft = () => {
+    if (!canAct("backToDraft")) return;
+    const toastId = toast.loading("Moving back to draft…");
+    startSaving(async () => {
+      try {
+        await backToDraft(postId);
+        toast.success("Moved back to draft.", { id: toastId });
+        router.refresh();
+      } catch {
+        toast.error("Couldn't move back to draft.", { id: toastId });
       }
     });
   };
@@ -224,19 +291,21 @@ export function StudioShell({
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button
-            type="button"
-            onClick={persist}
-            disabled={isSaving || isReadOnly}
-            className={headerBtn}
-          >
-            {isSaving ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Save className="w-3.5 h-3.5" />
-            )}
-            Save
-          </button>
+          {canAct("saveContent") ? (
+            <button
+              type="button"
+              onClick={persist}
+              disabled={isSaving}
+              className={headerBtn}
+            >
+              {isSaving ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Save className="w-3.5 h-3.5" />
+              )}
+              Save
+            </button>
+          ) : null}
           {form.exportPayload ? (
             <button
               type="button"
@@ -257,7 +326,40 @@ export function StudioShell({
               Export
             </button>
           ) : null}
-          {status === "draft" || status === "scheduled" ? (
+          {canAct("backToDraft") ? (
+            <button
+              type="button"
+              onClick={handleBackToDraft}
+              disabled={isSaving || isPublishing}
+              className={headerBtn}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Back to draft
+            </button>
+          ) : null}
+          {canAct("submitForReview") ? (
+            <button
+              type="button"
+              onClick={handleSubmitForReview}
+              disabled={isSaving || isPublishing}
+              className={primaryBtn}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Submit for review
+            </button>
+          ) : null}
+          {canAct("approve") ? (
+            <button
+              type="button"
+              onClick={handleApprove}
+              disabled={isSaving || isPublishing}
+              className={primaryBtn}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              Approve
+            </button>
+          ) : null}
+          {canAct("schedule") || status === "scheduled" ? (
             <SchedulePopover
               scheduledAt={scheduleInput}
               setScheduledAt={setScheduleInput}
@@ -275,20 +377,27 @@ export function StudioShell({
               triggerIdleClassName="bg-white/15 hover:bg-white/25 text-white"
             />
           ) : null}
-          <button
-            type="button"
-            onClick={handlePublish}
-            disabled={isPublishing || isReadOnly}
-            className={primaryBtn}
-          >
-            <Send className="w-3.5 h-3.5" />
-            Publish
-          </button>
+          {canAct("publish") ? (
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={isPublishing}
+              className={primaryBtn}
+            >
+              <Send className="w-3.5 h-3.5" />
+              Publish
+            </button>
+          ) : null}
           <span className="h-6 w-px bg-white/20 mx-1" aria-hidden />
           <button
             type="button"
             onClick={() => setShowExit(true)}
-            disabled={isSaving || isPublishing}
+            disabled={isSaving || isPublishing || isReadOnly}
+            title={
+              isReadOnly
+                ? "Move back to draft to exit Studio"
+                : "Exit Studio and return to Compose"
+            }
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-red-500/90 hover:bg-red-500 text-white text-[12.5px] font-medium border border-white/15 transition-colors disabled:opacity-50"
           >
             <LogOut className="w-3.5 h-3.5" />
