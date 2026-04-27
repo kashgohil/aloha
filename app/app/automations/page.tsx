@@ -23,6 +23,7 @@ import {
 import { resolveSteps } from "./_lib/steps";
 import { getRecentRuns, getRunStats, type RunStats } from "@/lib/automations/runs";
 import { simulateRun, toggleAutomation } from "./actions";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +36,8 @@ export default async function AutomationsPage({
 }: {
 	searchParams: SearchParams;
 }) {
+	// Automations hidden in production; preserved for re-enable.
+	if (true as boolean) notFound();
 	const user = (await getCurrentUser())!;
 
 	const ctx = (await getCurrentContext())!;

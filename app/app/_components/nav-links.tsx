@@ -16,7 +16,7 @@ import {
   PenSquare,
   Rss,
   Users,
-  Workflow,
+  // Workflow, // re-import when Automations nav entry is restored
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -55,12 +55,14 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Inbox", href: "/app/inbox", icon: Inbox },
   { label: "Audience", href: "/app/audience", icon: Users },
   { label: "Broadcasts", href: "/app/broadcasts", icon: Mail },
-  {
-    label: "Automations",
-    href: "/app/automations",
-    icon: Workflow,
-    requires: ROLES.ADMIN,
-  },
+  // Automations hidden in production — feature is built but doesn't match
+  // the social-first positioning yet. Re-enable when the wedge is decided.
+  // {
+  //   label: "Automations",
+  //   href: "/app/automations",
+  //   icon: Workflow,
+  //   requires: ROLES.ADMIN,
+  // },
 ];
 
 type Variant = "horizontal" | "sidebar";

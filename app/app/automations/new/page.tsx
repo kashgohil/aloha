@@ -1,6 +1,6 @@
 import { Clock, Lock, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Builder, type BuilderStepValues } from "../_components/builder";
 import {
   TEMPLATES,
@@ -26,6 +26,8 @@ export default async function NewAutomationPage({
 }: {
   searchParams: SearchParams;
 }) {
+  // Automations hidden in production; preserved for re-enable.
+  if (true as boolean) notFound();
   const params = await searchParams;
   const kindParam = first(params.kind) as AutomationKind | undefined;
   const user = (await getCurrentUser())!;

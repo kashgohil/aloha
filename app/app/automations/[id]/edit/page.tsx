@@ -21,6 +21,8 @@ export default async function EditAutomationPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  // Automations hidden in production; preserved for re-enable.
+  if (true as boolean) notFound();
   const { id } = await params;
   const user = await getCurrentUser();
   if (!user) redirect("/auth/signin");
