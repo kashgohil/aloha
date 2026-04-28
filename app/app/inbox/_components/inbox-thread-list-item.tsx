@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { AvatarWithChannel } from "./avatar-with-channel";
 
 type Props = {
   selectedMessageId: string;
@@ -13,16 +14,6 @@ type Props = {
   isSelected: boolean;
   lastActivityAt: Date;
   tz: string;
-};
-
-const PLATFORM_LABELS: Record<string, string> = {
-  bluesky: "Bluesky",
-  twitter: "X",
-  mastodon: "Mastodon",
-  telegram: "Telegram",
-  instagram: "Instagram",
-  facebook: "Facebook",
-  threads: "Threads",
 };
 
 export function InboxThreadListItem({
@@ -51,19 +42,12 @@ export function InboxThreadListItem({
           isSelected ? "bg-peach-100/50" : "hover:bg-muted/40",
         )}
       >
-        <div className="relative shrink-0">
-          {counterpartyAvatarUrl ? (
-            <img
-              src={counterpartyAvatarUrl}
-              alt=""
-              className="w-10 h-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full bg-muted grid place-items-center text-[14px] font-medium text-ink/60">
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          )}
-        </div>
+        <AvatarWithChannel
+          avatarUrl={counterpartyAvatarUrl}
+          fallbackChar={displayName.charAt(0)}
+          platform={platform}
+          size="md"
+        />
 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -99,11 +83,6 @@ export function InboxThreadListItem({
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             ) : null}
-          </div>
-          <div className="mt-1.5">
-            <span className="inline-flex items-center h-5 px-2 rounded-full bg-peach-100 border border-border text-[10px] text-ink/70">
-              {PLATFORM_LABELS[platform] ?? platform}
-            </span>
           </div>
         </div>
       </Link>

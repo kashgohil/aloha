@@ -1,6 +1,6 @@
 import { FilterTabs } from "@/components/ui/filter-tabs";
 import { db } from "@/db";
-import { accounts, inboxMessages } from "@/db/schema";
+import { accounts, dmThreadProfiles, inboxMessages } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -158,29 +158,55 @@ export default async function InboxPage({
 		// We need the workspace's connected provider account IDs to identify
 		// "us" vs "them" inside each thread. Build a (platform -> ourAccountId)
 		// map so the counterparty pick is O(1) per message.
-		const accountRows = await db
-			.select({
-				provider: accounts.provider,
-				providerAccountId: accounts.providerAccountId,
-			})
-			.from(accounts)
-			.where(eq(accounts.workspaceId, workspace.id));
+		const [accountRows, threadProfileRows, dmRows] = await Promise.all([
+			db
+				.select({
+					provider: accounts.provider,
+					providerAccountId: accounts.providerAccountId,
+				})
+				.from(accounts)
+				.where(eq(accounts.workspaceId, workspace.id)),
+			db
+				.select({
+					platform: dmThreadProfiles.platform,
+					threadId: dmThreadProfiles.threadId,
+					counterpartyHandle: dmThreadProfiles.counterpartyHandle,
+					counterpartyDisplayName: dmThreadProfiles.counterpartyDisplayName,
+					counterpartyAvatarUrl: dmThreadProfiles.counterpartyAvatarUrl,
+				})
+				.from(dmThreadProfiles)
+				.where(eq(dmThreadProfiles.workspaceId, workspace.id)),
+			db
+				.select()
+				.from(inboxMessages)
+				.where(
+					and(
+						eq(inboxMessages.workspaceId, workspace.id),
+						eq(inboxMessages.reason, "dm"),
+					),
+				)
+				.orderBy(desc(inboxMessages.platformCreatedAt))
+				.limit(2000),
+		]);
 		const ourIdByPlatform = new Map<string, string>();
 		for (const row of accountRows) {
 			ourIdByPlatform.set(row.provider, row.providerAccountId);
 		}
-
-		const dmRows = await db
-			.select()
-			.from(inboxMessages)
-			.where(
-				and(
-					eq(inboxMessages.workspaceId, workspace.id),
-					eq(inboxMessages.reason, "dm"),
-				),
-			)
-			.orderBy(desc(inboxMessages.platformCreatedAt))
-			.limit(2000);
+		const profileByThread = new Map<
+			string,
+			{
+				handle: string;
+				displayName: string | null;
+				avatarUrl: string | null;
+			}
+		>();
+		for (const row of threadProfileRows) {
+			profileByThread.set(`${row.platform}:${row.threadId}`, {
+				handle: row.counterpartyHandle,
+				displayName: row.counterpartyDisplayName,
+				avatarUrl: row.counterpartyAvatarUrl,
+			});
+		}
 
 		const grouped = new Map<string, typeof dmRows>();
 		for (const row of dmRows) {
@@ -196,10 +222,12 @@ export default async function InboxPage({
 				// Rows arrive newest-first because of the outer query order.
 				const latest = rows[0];
 				const ourId = ourIdByPlatform.get(latest.platform) ?? null;
-				// Prefer the most recent inbound message for counterparty
-				// identity. Falls through to any row whose author isn't us,
-				// then to the latest row as a last-ditch fallback (rare:
-				// outbound-only thread before counterparty has replied).
+				const stored = profileByThread.get(
+					`${latest.platform}:${latest.threadId}`,
+				);
+				// Prefer the synced thread profile (handles outbound-only
+				// threads correctly). Fall back to any inbound author, then
+				// any non-self author, then the latest row.
 				const counterRow =
 					rows.find((r) => r.direction === "in") ??
 					(ourId ? rows.find((r) => r.authorDid !== ourId) : undefined) ??
@@ -209,9 +237,12 @@ export default async function InboxPage({
 					threadId: latest.threadId!,
 					platform: latest.platform,
 					selectedMessageId: latest.id,
-					counterpartyHandle: counterRow.authorHandle,
-					counterpartyDisplayName: counterRow.authorDisplayName,
-					counterpartyAvatarUrl: counterRow.authorAvatarUrl,
+					counterpartyHandle:
+						stored?.handle ?? counterRow.authorHandle,
+					counterpartyDisplayName:
+						stored?.displayName ?? counterRow.authorDisplayName,
+					counterpartyAvatarUrl:
+						stored?.avatarUrl ?? counterRow.authorAvatarUrl,
 					lastContent: latest.content,
 					lastDirection: latest.direction,
 					unreadCount,
@@ -225,19 +256,18 @@ export default async function InboxPage({
 		if (selectedThreadId && threadMessages.length > 0) {
 			const platform = threadMessages[0]!.platform;
 			const ourId = ourIdByPlatform.get(platform) ?? null;
+			const stored = profileByThread.get(`${platform}:${selectedThreadId}`);
 			const counterRow =
 				threadMessages.findLast((m) => m.direction === "in") ??
 				(ourId
 					? threadMessages.findLast((m) => m.authorDid !== ourId)
 					: undefined) ??
 				threadMessages[threadMessages.length - 1];
-			if (counterRow) {
-				counterparty = {
-					handle: counterRow.authorHandle,
-					displayName: counterRow.authorDisplayName,
-					avatarUrl: counterRow.authorAvatarUrl,
-				};
-			}
+			counterparty = {
+				handle: stored?.handle ?? counterRow.authorHandle,
+				displayName: stored?.displayName ?? counterRow.authorDisplayName,
+				avatarUrl: stored?.avatarUrl ?? counterRow.authorAvatarUrl,
+			};
 		}
 	} else {
 		mentionMessages = await db
