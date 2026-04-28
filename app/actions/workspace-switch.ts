@@ -8,6 +8,8 @@ import { db } from "@/db";
 import { users, workspaceMembers, workspaces } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
 import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
+import { newWorkspaceShortId } from "@/lib/workspaces/short-id";
+import { bootstrapDefaultAutomations } from "@/lib/automations/bootstrap";
 
 export type WorkspaceChoice = {
   id: string;
@@ -138,6 +140,7 @@ export async function createWorkspaceAction(formData: FormData) {
       ownerUserId: user.id,
       timezone,
       role,
+      shortId: newWorkspaceShortId(),
     })
     .returning({ id: workspaces.id });
 
@@ -145,6 +148,13 @@ export async function createWorkspaceAction(formData: FormData) {
     workspaceId: workspace.id,
     userId: user.id,
     role: "owner",
+  });
+
+  // Seed default automations (weekly Insights digest). Bootstrap swallows
+  // its own errors so a queue hiccup doesn't break workspace creation.
+  await bootstrapDefaultAutomations({
+    workspaceId: workspace.id,
+    ownerUserId: user.id,
   });
 
   // Flip the user's active workspace so they land in the new one
