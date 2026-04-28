@@ -1429,6 +1429,7 @@ export function Composer({
 									busy={isPublishing && scheduledAt !== ""}
 									timezone={author.timezone}
 									hint={scheduleHint}
+									iconOnly
 								/>
 							) : null}
 

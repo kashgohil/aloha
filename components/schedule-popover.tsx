@@ -13,6 +13,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { TimePicker } from "@/components/ui/time-picker";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   buildTzLocalInput,
@@ -35,6 +40,7 @@ export function SchedulePopover({
   triggerClassName,
   triggerActiveClassName,
   triggerIdleClassName,
+  iconOnly = false,
 }: {
   // `scheduledAt` is a "YYYY-MM-DDTHH:mm" wall-clock string in `timezone`.
   scheduledAt: string;
@@ -58,6 +64,11 @@ export function SchedulePopover({
   triggerClassName?: string;
   triggerActiveClassName?: string;
   triggerIdleClassName?: string;
+  // Render the trigger as a w-10 h-10 icon-only button matching the
+  // composer's other action buttons. The tooltip surfaces the selected
+  // date so users still see what's scheduled. Caller must provide a
+  // surrounding TooltipProvider.
+  iconOnly?: boolean;
 }) {
   const selectedDate = scheduledAt
     ? (() => {
@@ -116,27 +127,49 @@ export function SchedulePopover({
     return new Date(get("year"), get("month") - 1, get("day"));
   })();
 
+  const triggerButton = iconOnly ? (
+    <button
+      type="button"
+      aria-label={scheduledAt ? `Scheduled for ${preview}` : idleLabel}
+      className={cn(
+        "inline-flex items-center justify-center w-10 h-10 rounded-full border transition-colors",
+        scheduledAt
+          ? "bg-peach-100 border-ink/20 text-ink"
+          : "bg-background-elev border-border-strong text-ink hover:border-ink",
+      )}
+    >
+      <CalendarClock className="w-4 h-4" />
+    </button>
+  ) : (
+    <button
+      type="button"
+      className={cn(
+        triggerClassName ??
+          "inline-flex items-center gap-1.5 h-10 px-4 rounded-full border text-[13px] font-medium transition-colors",
+        scheduledAt
+          ? (triggerActiveClassName ??
+              "bg-peach-100 border-ink/20 text-ink")
+          : (triggerIdleClassName ??
+              "bg-background-elev border-border-strong text-ink hover:border-ink"),
+      )}
+    >
+      <CalendarClock className="w-4 h-4" />
+      {preview}
+    </button>
+  );
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger
-        render={
-          <button
-            type="button"
-            className={cn(
-              triggerClassName ??
-                "inline-flex items-center gap-1.5 h-10 px-4 rounded-full border text-[13px] font-medium transition-colors",
-              scheduledAt
-                ? (triggerActiveClassName ??
-                    "bg-peach-100 border-ink/20 text-ink")
-                : (triggerIdleClassName ??
-                    "bg-background-elev border-border-strong text-ink hover:border-ink"),
-            )}
-          >
-            <CalendarClock className="w-4 h-4" />
-            {preview}
-          </button>
-        }
-      />
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger render={<PopoverTrigger render={triggerButton} />} />
+          <TooltipContent>
+            {scheduledAt ? `Scheduled for ${preview}` : idleLabel}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        <PopoverTrigger render={triggerButton} />
+      )}
       <PopoverContent align="center" sideOffset={8} className="w-[360px] p-5">
         <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
           Schedule
