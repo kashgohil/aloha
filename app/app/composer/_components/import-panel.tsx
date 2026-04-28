@@ -1,10 +1,20 @@
 "use client";
 
-// URL import + fan-out panel. Paste a blog URL, we extract the article
-// server-side, show the preview, then stream native adaptations per
-// selected target channel. Accept per card like the other streaming panels.
+// Source-material → fan-out panel. Three input modes feed the same
+// streaming pipeline: paste a URL, paste long-form text (transcripts,
+// drafts, notes), or upload a .txt / .md / .pdf. The streaming UI is
+// identical across modes — only the request body differs.
 
-import { Check, FileText, Loader2, Wand2, X as XIcon } from "lucide-react";
+import {
+  Check,
+  FileText,
+  Globe,
+  Loader2,
+  Type,
+  Upload,
+  Wand2,
+  X as XIcon,
+} from "lucide-react";
 import { useCallback, useRef, useState } from "react";
 import type { VariantPlatform } from "./variants-panel";
 
@@ -39,25 +49,76 @@ type SseEvent =
   | { type: "all_done" }
   | { type: "fatal"; message: string };
 
+type Mode = "url" | "text" | "file";
+
+const TEXT_FILE_TYPES = "text/plain,text/markdown,application/pdf,.txt,.md,.pdf";
+// Mirrors the server cap in /api/ai/import (50K) — front-end soft cap so
+// the textarea doesn't accept obviously-too-much before round-trip.
+const TEXT_SOFT_CAP = 50_000;
+
 export function ImportPanel({
   targets,
   onAccept,
-  onClose,
+  onClose: _onClose,
 }: {
   targets: VariantPlatform[];
   onAccept: (platformId: string, text: string) => void;
   onClose: () => void;
 }) {
+  const [mode, setMode] = useState<Mode>("url");
   const [url, setUrl] = useState("");
+  const [pasteTitle, setPasteTitle] = useState("");
+  const [pasteContent, setPasteContent] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading">("idle");
   const [extracted, setExtracted] = useState<Extracted | null>(null);
   const [variants, setVariants] = useState<Record<string, Entry>>({});
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  const canRun =
+    targets.length > 0 &&
+    !running &&
+    ((mode === "url" && url.trim().length > 0) ||
+      (mode === "text" && pasteContent.trim().length > 0) ||
+      (mode === "file" && file !== null));
+
+  // Resolves the chosen input into the request body for /api/ai/import.
+  // For file mode we side-trip through /api/upload first to get an
+  // assetId; the import endpoint then re-fetches the blob server-side.
+  const buildBody = useCallback(async (): Promise<Record<string, unknown>> => {
+    const targetPlatforms = targets.map((t) => t.id);
+    if (mode === "url") {
+      return { kind: "url", url: url.trim(), targetPlatforms };
+    }
+    if (mode === "text") {
+      return {
+        kind: "text",
+        title: pasteTitle.trim() || null,
+        content: pasteContent,
+        targetPlatforms,
+      };
+    }
+    if (!file) throw new Error("Pick a file first.");
+    setUploadStatus("uploading");
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error ?? `Upload failed (${res.status})`);
+      }
+      const { id: assetId } = (await res.json()) as { id: string };
+      return { kind: "file", assetId, targetPlatforms };
+    } finally {
+      setUploadStatus("idle");
+    }
+  }, [file, mode, pasteContent, pasteTitle, targets, url]);
+
   const run = useCallback(async () => {
-    const u = url.trim();
-    if (!u || targets.length === 0 || running) return;
+    if (!canRun) return;
 
     setError(null);
     setExtracted(null);
@@ -72,10 +133,11 @@ export function ImportPanel({
     abortRef.current = controller;
 
     try {
+      const body = await buildBody();
       const res = await fetch("/api/ai/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: u, targetPlatforms: targets.map((t) => t.id) }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
@@ -115,17 +177,13 @@ export function ImportPanel({
     } catch (err) {
       if ((err as Error).name !== "AbortError") {
         const msg = err instanceof Error ? err.message : "";
-        setError(
-          msg.startsWith("AI usage cap reached")
-            ? msg
-            : "Import failed. Try again in a moment.",
-        );
+        setError(msg || "Import failed. Try again in a moment.");
       }
     } finally {
       setRunning(false);
       abortRef.current = null;
     }
-  }, [running, targets, url]);
+  }, [buildBody, canRun, targets]);
 
   const handleEvent = (ev: SseEvent) => {
     if (ev.type === "extracted") {
@@ -184,52 +242,154 @@ export function ImportPanel({
     setRunning(false);
   };
 
+  const inputHint =
+    mode === "url"
+      ? "Paste a URL and Muse drafts native versions for each selected channel."
+      : mode === "text"
+        ? "Paste a transcript, blog draft, or notes — Muse adapts it per channel."
+        : "Upload a .txt, .md, or .pdf — we'll extract the text and adapt it per channel.";
+
   return (
     <>
       <div className="flex items-center gap-2 px-5 pt-4 pb-3 text-[12px] text-ink/65">
         <FileText className="w-3.5 h-3.5 text-primary" />
-        <span>
-          Paste a URL and Muse drafts native versions for each selected
-          channel. Click a card to apply.
-        </span>
+        <span>{inputHint} Click a card to apply.</span>
       </div>
 
-      <div className="px-5 pb-4 border-b border-border flex items-center gap-2">
-        <input
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !running) {
-              e.preventDefault();
-              run();
-            }
-          }}
-          placeholder="https://…"
-          disabled={running}
-          type="url"
-          autoFocus
-          className="flex-1 h-10 px-3 rounded-full border border-border bg-background text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink disabled:opacity-60"
-        />
-        {running ? (
-          <button
-            type="button"
-            onClick={cancel}
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] font-medium text-ink hover:border-ink transition-colors"
-          >
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            Cancel
-          </button>
-        ) : (
-          <button
-            type="button"
-            onClick={run}
-            disabled={!url.trim() || targets.length === 0}
-            className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
-          >
-            <Wand2 className="w-3.5 h-3.5" />
-            {extracted ? "Re-import" : "Import & draft"}
-          </button>
-        )}
+      <div className="px-5 pb-3 border-b border-border space-y-3">
+        <div role="tablist" className="inline-flex rounded-full border border-border bg-background p-0.5 text-[12px]">
+          <ModeTab
+            active={mode === "url"}
+            onClick={() => setMode("url")}
+            disabled={running}
+            Icon={Globe}
+            label="From URL"
+          />
+          <ModeTab
+            active={mode === "text"}
+            onClick={() => setMode("text")}
+            disabled={running}
+            Icon={Type}
+            label="Paste text"
+          />
+          <ModeTab
+            active={mode === "file"}
+            onClick={() => setMode("file")}
+            disabled={running}
+            Icon={Upload}
+            label="Upload file"
+          />
+        </div>
+
+        {mode === "url" ? (
+          <div className="flex items-center gap-2">
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canRun) {
+                  e.preventDefault();
+                  run();
+                }
+              }}
+              placeholder="https://…"
+              disabled={running}
+              type="url"
+              autoFocus
+              className="flex-1 h-10 px-3 rounded-full border border-border bg-background text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink disabled:opacity-60"
+            />
+            <RunButton
+              running={running}
+              canRun={canRun}
+              onRun={run}
+              onCancel={cancel}
+              hasResult={Boolean(extracted)}
+            />
+          </div>
+        ) : null}
+
+        {mode === "text" ? (
+          <div className="space-y-2">
+            <input
+              value={pasteTitle}
+              onChange={(e) => setPasteTitle(e.target.value)}
+              placeholder="Title (optional)"
+              disabled={running}
+              maxLength={120}
+              className="w-full h-10 px-3 rounded-full border border-border bg-background text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink disabled:opacity-60"
+            />
+            <textarea
+              value={pasteContent}
+              onChange={(e) => setPasteContent(e.target.value.slice(0, TEXT_SOFT_CAP))}
+              placeholder="Paste your blog post, podcast transcript, or notes…"
+              disabled={running}
+              rows={8}
+              className="w-full px-3 py-2.5 rounded-2xl border border-border bg-background text-[13.5px] text-ink placeholder:text-ink/40 focus:outline-none focus:border-ink disabled:opacity-60 resize-y"
+            />
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-ink/45">
+                {pasteContent.length.toLocaleString()} / {TEXT_SOFT_CAP.toLocaleString()} chars
+              </span>
+              <RunButton
+                running={running}
+                canRun={canRun}
+                onRun={run}
+                onCancel={cancel}
+                hasResult={Boolean(extracted)}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {mode === "file" ? (
+          <div className="space-y-2">
+            <label
+              className={
+                "flex items-center gap-3 px-4 py-3 rounded-2xl border border-dashed border-border-strong bg-background hover:border-ink transition-colors cursor-pointer disabled:opacity-60"
+              }
+            >
+              <Upload className="w-4 h-4 text-ink/55 shrink-0" />
+              <span className="flex-1 text-[13px] text-ink/75 truncate">
+                {file
+                  ? file.name
+                  : "Choose a .txt, .md, or .pdf file"}
+              </span>
+              {file ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setFile(null);
+                  }}
+                  className="inline-flex items-center justify-center w-6 h-6 rounded-full hover:bg-peach-100/60"
+                  aria-label="Clear file"
+                >
+                  <XIcon className="w-3.5 h-3.5" />
+                </button>
+              ) : null}
+              <input
+                type="file"
+                accept={TEXT_FILE_TYPES}
+                disabled={running || uploadStatus === "uploading"}
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setFile(f);
+                }}
+                className="sr-only"
+              />
+            </label>
+            <div className="flex items-center justify-end">
+              <RunButton
+                running={running}
+                canRun={canRun}
+                onRun={run}
+                onCancel={cancel}
+                hasResult={Boolean(extracted)}
+                uploading={uploadStatus === "uploading"}
+              />
+            </div>
+          </div>
+        ) : null}
       </div>
 
       {extracted ? (
@@ -244,7 +404,7 @@ export function ImportPanel({
           ) : null}
           <div className="flex-1 min-w-0">
             <p className="text-[11px] uppercase tracking-[0.18em] text-ink/50">
-              Imported · {hostnameOf(extracted.url)}
+              {extracted.url ? `Imported · ${hostnameOf(extracted.url)}` : "Imported"}
             </p>
             <p className="mt-1 text-[13.5px] text-ink font-medium truncate">
               {extracted.title}
@@ -281,6 +441,80 @@ export function ImportPanel({
         </ul>
       )}
     </>
+  );
+}
+
+function ModeTab({
+  active,
+  onClick,
+  disabled,
+  Icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
+  Icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={[
+        "inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-[12px] font-medium transition-colors",
+        active
+          ? "bg-ink text-background"
+          : "text-ink/65 hover:text-ink",
+        disabled ? "opacity-50 cursor-not-allowed" : "",
+      ].join(" ")}
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {label}
+    </button>
+  );
+}
+
+function RunButton({
+  running,
+  canRun,
+  onRun,
+  onCancel,
+  hasResult,
+  uploading,
+}: {
+  running: boolean;
+  canRun: boolean;
+  onRun: () => void;
+  onCancel: () => void;
+  hasResult: boolean;
+  uploading?: boolean;
+}) {
+  if (running) {
+    return (
+      <button
+        type="button"
+        onClick={onCancel}
+        className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border-strong text-[13px] font-medium text-ink hover:border-ink transition-colors"
+      >
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+        {uploading ? "Uploading…" : "Cancel"}
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onRun}
+      disabled={!canRun}
+      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary disabled:opacity-40 disabled:hover:bg-ink transition-colors"
+    >
+      <Wand2 className="w-3.5 h-3.5" />
+      {hasResult ? "Re-run" : "Import & draft"}
+    </button>
   );
 }
 
