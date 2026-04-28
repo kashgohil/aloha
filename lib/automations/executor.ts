@@ -27,6 +27,7 @@ import "./handlers/send-alert";
 import "./handlers/send-broadcast";
 import "./handlers/send-digest-email";
 import "./handlers/send-email";
+import "./handlers/send-insights-digest";
 import "./handlers/stubs";
 
 const MAX_STEPS_PER_RUN = 25;
