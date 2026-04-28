@@ -14,17 +14,60 @@ const PLATFORM_LABELS: Record<string, string> = {
   threads: "Threads",
 };
 
+type Counterparty = {
+  handle: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
 export function InboxThread({
   messages,
   selectedId,
   tz,
+  counterparty,
 }: {
   messages: Message[];
   selectedId: string;
   tz: string;
+  counterparty?: Counterparty | null;
 }) {
+  const selected = messages.find((m) => m.id === selectedId);
+  const isDm = selected?.reason === "dm";
   return (
     <div className="flex flex-col h-full">
+      {isDm && counterparty ? (
+        <header className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background-elev">
+          {counterparty.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={counterparty.avatarUrl}
+              alt=""
+              className="w-9 h-9 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-muted grid place-items-center text-[13px] font-medium text-ink/60">
+              {(counterparty.displayName ?? counterparty.handle)
+                .charAt(0)
+                .toUpperCase()}
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-[14px] font-medium text-ink truncate">
+              {counterparty.displayName ?? counterparty.handle}
+            </p>
+            {counterparty.displayName ? (
+              <p className="text-[12px] text-ink/55 truncate">
+                @{counterparty.handle}
+              </p>
+            ) : null}
+          </div>
+          {selected ? (
+            <span className="inline-flex items-center h-5 px-2 rounded-full bg-peach-100 border border-border text-[10px] text-ink/70">
+              {PLATFORM_LABELS[selected.platform] ?? selected.platform}
+            </span>
+          ) : null}
+        </header>
+      ) : null}
       <div className="flex-1 overflow-y-auto space-y-3 p-4">
         {messages.map((m) => {
           const isOutbound = m.direction === "out";
@@ -115,16 +158,11 @@ export function InboxThread({
       </div>
 
       <div className="border-t border-border p-4">
-        {(() => {
-          const selected = messages.find((m) => m.id === selectedId);
-          return (
-            <InboxReplyForm
-              messageId={selectedId}
-              platform={selected?.platform ?? ""}
-              reason={(selected?.reason as "mention" | "dm") ?? "mention"}
-            />
-          );
-        })()}
+        <InboxReplyForm
+          messageId={selectedId}
+          platform={selected?.platform ?? ""}
+          reason={(selected?.reason as "mention" | "dm") ?? "mention"}
+        />
       </div>
     </div>
   );
