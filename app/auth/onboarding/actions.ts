@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/db";
 import { users, workspaceMembers, workspaces } from "@/db/schema";
+import { newWorkspaceShortId } from "@/lib/workspaces/short-id";
+import { bootstrapDefaultAutomations } from "@/lib/automations/bootstrap";
 
 const MAX_NAME_LEN = 60;
 const VALID_ROLES = [
@@ -59,6 +61,7 @@ export async function saveWorkspace(formData: FormData) {
     .limit(1);
 
   let workspaceId = owned?.id ?? null;
+  let workspaceIsNew = false;
   if (!workspaceId) {
     const [created] = await db
       .insert(workspaces)
@@ -66,9 +69,11 @@ export async function saveWorkspace(formData: FormData) {
         name,
         ownerUserId: userId,
         role,
+        shortId: newWorkspaceShortId(),
       })
       .returning({ id: workspaces.id });
     workspaceId = created.id;
+    workspaceIsNew = true;
   } else {
     // Keep workspace name / role in sync with what onboarding collected.
     await db
@@ -88,6 +93,16 @@ export async function saveWorkspace(formData: FormData) {
     .update(users)
     .set({ activeWorkspaceId: workspaceId })
     .where(eq(users.id, userId));
+
+  if (workspaceIsNew) {
+    // Seed the weekly Insights digest. Failures are swallowed inside the
+    // bootstrap helper; we don't want a transient QStash hiccup to break
+    // onboarding.
+    await bootstrapDefaultAutomations({
+      workspaceId,
+      ownerUserId: userId,
+    });
+  }
 
   await unstable_update({ user: {} });
   revalidatePath("/auth/onboarding", "layout");
