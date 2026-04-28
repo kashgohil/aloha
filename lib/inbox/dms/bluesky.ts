@@ -3,6 +3,7 @@ import {
   getBlueskyCredentials,
 } from "@/lib/publishers/bluesky";
 import type { NormalizedMessage, SyncResult } from "../types";
+import { upsertThreadProfiles, type ThreadProfile } from "./_thread-profiles";
 
 // Bluesky DMs live on a separate chat service reachable via an atproto
 // proxy. The regular agent session works as long as the app password was
@@ -52,6 +53,7 @@ export async function fetchBlueskyDms(
   }
 
   const messages: NormalizedMessage[] = [];
+  const threadProfiles: ThreadProfile[] = [];
 
   // listConvos is paginated by cursor. We page through convos once per
   // sync; for each one we fetch the latest window of messages. A fancier
@@ -89,6 +91,16 @@ export async function fetchBlueskyDms(
 
   for (const convo of convos) {
     const other = convo.members.find((m) => m.did !== selfDid);
+
+    if (other) {
+      threadProfiles.push({
+        threadId: convo.id,
+        counterpartyId: other.did,
+        counterpartyHandle: other.handle,
+        counterpartyDisplayName: other.displayName ?? null,
+        counterpartyAvatarUrl: other.avatar ?? null,
+      });
+    }
 
     const msgRes = await (
       chatAgent as unknown as {
@@ -137,6 +149,8 @@ export async function fetchBlueskyDms(
       });
     }
   }
+
+  await upsertThreadProfiles(workspaceId, "bluesky", threadProfiles);
 
   return { messages, comments: [], newCursor };
 }

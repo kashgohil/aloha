@@ -1,5 +1,6 @@
 import { getFreshToken, forceRefresh } from "@/lib/publishers/tokens";
 import type { NormalizedMessage, SyncResult } from "../types";
+import { upsertThreadProfiles, type ThreadProfile } from "./_thread-profiles";
 
 // Instagram Messaging flows through the Graph API under the linked
 // Facebook Page. We list conversations with platform=instagram, then
@@ -14,6 +15,14 @@ type FacebookPage = { id: string; access_token: string };
 type Conversation = {
   id: string;
   updated_time?: string;
+  participants?: {
+    data?: Array<{
+      id: string;
+      username?: string;
+      name?: string;
+      profile_pic?: string;
+    }>;
+  };
 };
 
 type ConversationsResponse = {
@@ -69,7 +78,8 @@ async function fetchConvosPage(
 ): Promise<ConversationsResponse> {
   const params = new URLSearchParams({
     platform: "instagram",
-    fields: "id,updated_time",
+    fields:
+      "id,updated_time,participants{id,username,name,profile_pic}",
     limit: String(MAX_CONVOS),
     access_token: pageAccessToken,
   });
@@ -142,6 +152,7 @@ export async function fetchInstagramDms(
   }
 
   const messages: NormalizedMessage[] = [];
+  const threadProfiles: ThreadProfile[] = [];
 
   const convosRes = await fetchConvosPage(
     pageAccessToken,
@@ -151,6 +162,18 @@ export async function fetchInstagramDms(
   const convos = convosRes.data ?? [];
 
   for (const convo of convos) {
+    const counterparty = convo.participants?.data?.find(
+      (p) => p.id !== igAccountId,
+    );
+    if (counterparty) {
+      threadProfiles.push({
+        threadId: convo.id,
+        counterpartyId: counterparty.id,
+        counterpartyHandle: counterparty.username ?? counterparty.id,
+        counterpartyDisplayName: counterparty.name ?? null,
+        counterpartyAvatarUrl: counterparty.profile_pic ?? null,
+      });
+    }
     const msgRes = await fetchMessagesPage(pageAccessToken, convo.id);
     for (const m of msgRes.data ?? []) {
       if (!m.from?.id) continue;
@@ -172,6 +195,8 @@ export async function fetchInstagramDms(
       });
     }
   }
+
+  await upsertThreadProfiles(workspaceId, "instagram", threadProfiles);
 
   return {
     messages,

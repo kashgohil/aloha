@@ -1,5 +1,6 @@
 import { getFreshToken, forceRefresh } from "@/lib/publishers/tokens";
 import type { NormalizedMessage, SyncResult } from "../types";
+import { upsertThreadProfiles, type ThreadProfile } from "./_thread-profiles";
 
 const PAGE_SIZE = 100;
 const MAX_PAGES = 2;
@@ -112,5 +113,78 @@ export async function fetchXDms(
     if (!token || (res.meta?.result_count ?? 0) < PAGE_SIZE) break;
   }
 
+  await syncCounterpartyProfiles(workspaceId, account.accessToken, account.providerAccountId, messages);
+
   return { messages, comments: [], newCursor: token ?? null };
+}
+
+// X 1:1 DM conversation ids are `<participantA>-<participantB>` with both
+// halves numeric. Anything else (group DMs, future formats) we skip — the
+// fallback to message-derived counterparty still works once they reply.
+function extractCounterpartyId(threadId: string, selfId: string): string | null {
+  const parts = threadId.split("-");
+  if (parts.length !== 2) return null;
+  if (!parts.every((p) => /^\d+$/.test(p))) return null;
+  const other = parts.find((p) => p !== selfId);
+  return other ?? null;
+}
+
+async function syncCounterpartyProfiles(
+  workspaceId: string,
+  accessToken: string,
+  selfId: string,
+  messages: NormalizedMessage[],
+): Promise<void> {
+  // Build (threadId -> counterpartyId) for every thread we touched. The
+  // ids endpoint takes up to 100 per call so this batches naturally.
+  const byThread = new Map<string, string>();
+  for (const m of messages) {
+    if (!m.threadId || byThread.has(m.threadId)) continue;
+    const other = extractCounterpartyId(m.threadId, selfId);
+    if (other) byThread.set(m.threadId, other);
+  }
+  if (byThread.size === 0) return;
+
+  const ids = Array.from(new Set(byThread.values()));
+  // Chunk to respect the /2/users?ids=... 100-id cap.
+  const profiles = new Map<string, { handle: string; name: string | null; avatar: string | null }>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    const params = new URLSearchParams({
+      ids: chunk.join(","),
+      "user.fields": "name,username,profile_image_url",
+    });
+    const res = await fetch(`https://api.x.com/2/users?${params}`, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!res.ok) {
+      // Don't fail the whole sync over profile enrichment — messages are
+      // already collected and the UI degrades to message-derived names.
+      return;
+    }
+    const json = (await res.json()) as {
+      data?: Array<{ id: string; name: string; username: string; profile_image_url?: string }>;
+    };
+    for (const u of json.data ?? []) {
+      profiles.set(u.id, {
+        handle: u.username,
+        name: u.name ?? null,
+        avatar: u.profile_image_url ?? null,
+      });
+    }
+  }
+
+  const rows: ThreadProfile[] = [];
+  for (const [threadId, counterpartyId] of byThread) {
+    const p = profiles.get(counterpartyId);
+    if (!p) continue;
+    rows.push({
+      threadId,
+      counterpartyId,
+      counterpartyHandle: p.handle,
+      counterpartyDisplayName: p.name,
+      counterpartyAvatarUrl: p.avatar,
+    });
+  }
+  await upsertThreadProfiles(workspaceId, "twitter", rows);
 }
