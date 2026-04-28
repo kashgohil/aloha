@@ -6,12 +6,100 @@ import {
   posts,
   users,
   workspaceMembers,
+  workspaces,
 } from "@/db/schema";
 import { createNotification } from "@/lib/notifications";
+import { sendEmail } from "@/lib/email/send";
+import {
+  postApprovedEmail,
+  postAssignedEmail,
+  postCommentEmail,
+  postMentionEmail,
+  postSubmittedEmail,
+  type ReviewEmailRender,
+} from "@/lib/email/templates/review-events";
+
+// Per-event email preference column on `users`. Listed here so the email
+// dispatcher can require an exact column name at the call site (cheap
+// way to keep us honest if columns ever rename).
+type EmailPref =
+  | "notifyReviewSubmittedByEmail"
+  | "notifyReviewApprovedByEmail"
+  | "notifyReviewAssignedByEmail"
+  | "notifyReviewCommentByEmail"
+  | "notifyReviewMentionByEmail";
+
+async function loadWorkspaceName(workspaceId: string): Promise<string> {
+  const [row] = await db
+    .select({ name: workspaces.name })
+    .from(workspaces)
+    .where(eq(workspaces.id, workspaceId))
+    .limit(1);
+  return row?.name ?? "your workspace";
+}
+
+// Dispatches a review email to a single user *if* they have notifications
+// enabled and the per-event toggle is on. Failures are swallowed (mirrors
+// `createNotification`) so a flaky email send never blocks a status
+// transition or notification fan-out.
+async function dispatchReviewEmail(
+  userId: string,
+  pref: EmailPref,
+  render: (email: string) => ReviewEmailRender | null,
+): Promise<void> {
+  try {
+    const [row] = await db
+      .select({
+        email: users.email,
+        notificationsEnabled: users.notificationsEnabled,
+        pref: users[pref],
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (!row || !row.email) return;
+    if (!row.notificationsEnabled) return;
+    if (!row.pref) return;
+    const rendered = render(row.email);
+    if (!rendered) return;
+    await sendEmail({
+      to: row.email,
+      subject: rendered.subject,
+      html: rendered.html,
+      text: rendered.text,
+    });
+  } catch (err) {
+    console.error("[review-email] dispatch failed", { userId, pref, err });
+  }
+}
 
 // Fan-out helpers for review-workflow notifications. Kept in one place
 // so the server actions that fire them stay terse, and so the recipient
 // logic has exactly one source of truth.
+
+// Author of a notification-triggering action. Internal actors are
+// workspace members (their name is read from `users.name`); external
+// actors come in through public share links and supply their name +
+// email directly. The discriminator keeps recipient filtering simple:
+// only internal actors get filtered out of their own fan-out.
+export type ReviewActor =
+  | { kind: "user"; userId: string }
+  | { kind: "external"; name: string; email: string };
+
+async function actorDisplay(
+  actor: ReviewActor,
+  fallback: string,
+): Promise<{ name: string; userId: string | null }> {
+  if (actor.kind === "external") {
+    return { name: actor.name || fallback, userId: null };
+  }
+  const [row] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, actor.userId))
+    .limit(1);
+  return { name: row?.name ?? fallback, userId: actor.userId };
+}
 
 const REVIEWER_ROLES = ["owner", "admin", "reviewer"] as const satisfies readonly (
   | "owner"
@@ -91,8 +179,9 @@ export async function notifyPostSubmitted(args: {
   }
   if (recipientIds.size === 0) return;
 
+  const ids = Array.from(recipientIds);
   await Promise.all(
-    Array.from(recipientIds).map((userId) =>
+    ids.map((userId) =>
       createNotification({
         userId,
         kind: "post_submitted",
@@ -101,6 +190,20 @@ export async function notifyPostSubmitted(args: {
         url: postUrl(post.id),
         metadata: { postId: post.id, submittedBy: args.submittedBy },
       }),
+    ),
+  );
+
+  const workspaceName = await loadWorkspaceName(post.workspaceId);
+  await Promise.all(
+    ids.map((userId) =>
+      dispatchReviewEmail(userId, "notifyReviewSubmittedByEmail", () =>
+        postSubmittedEmail({
+          submitterName,
+          postId: post.id,
+          postContent: post.content,
+          workspaceName,
+        }),
+      ),
     ),
   );
 }
@@ -134,6 +237,19 @@ export async function notifyPostAssigned(args: {
       assignedBy: args.assignedBy,
     },
   });
+
+  const workspaceName = await loadWorkspaceName(post.workspaceId);
+  await dispatchReviewEmail(
+    args.assigneeId,
+    "notifyReviewAssignedByEmail",
+    () =>
+      postAssignedEmail({
+        assignerName,
+        postId: post.id,
+        postContent: post.content,
+        workspaceName,
+      }),
+  );
 }
 
 // Fires when a post is approved. Notifies the submitter (if different
@@ -142,20 +258,19 @@ export async function notifyPostAssigned(args: {
 // back to the post creator.
 export async function notifyPostApproved(args: {
   postId: string;
-  approvedBy: string;
+  actor: ReviewActor;
 }) {
   const post = await loadPostSummary(args.postId);
   if (!post) return;
 
+  const { name: approverName, userId: actorUserId } = await actorDisplay(
+    args.actor,
+    "A reviewer",
+  );
   const recipient = post.submittedBy ?? post.createdByUserId;
-  if (!recipient || recipient === args.approvedBy) return;
-
-  const [approver] = await db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, args.approvedBy))
-    .limit(1);
-  const approverName = approver?.name ?? "A reviewer";
+  // Internal actors don't notify themselves; external actors aren't a
+  // workspace member, so the recipient is always notified.
+  if (!recipient || (actorUserId && recipient === actorUserId)) return;
 
   await createNotification({
     userId: recipient,
@@ -163,8 +278,24 @@ export async function notifyPostApproved(args: {
     title: `${approverName} approved your post`,
     body: preview(post.content),
     url: postUrl(post.id),
-    metadata: { postId: post.id, approvedBy: args.approvedBy },
+    metadata: {
+      postId: post.id,
+      approvedBy: actorUserId,
+      externalApproverEmail:
+        args.actor.kind === "external" ? args.actor.email : null,
+    },
   });
+
+  const workspaceName = await loadWorkspaceName(post.workspaceId);
+  await dispatchReviewEmail(recipient, "notifyReviewApprovedByEmail", () =>
+    postApprovedEmail({
+      approverName,
+      postId: post.id,
+      postContent: post.content,
+      workspaceName,
+      isExternal: args.actor.kind === "external",
+    }),
+  );
 }
 
 // Fires `post_mention` to each user tagged in a comment body. Skips
@@ -174,7 +305,7 @@ export async function notifyPostApproved(args: {
 // one — avoids double-notifying the same person.
 export async function notifyPostMentions(args: {
   postId: string;
-  authorUserId: string;
+  actor: ReviewActor;
   body: string;
   mentionedUserIds: string[];
 }): Promise<Set<string>> {
@@ -184,15 +315,14 @@ export async function notifyPostMentions(args: {
   const post = await loadPostSummary(args.postId);
   if (!post) return notified;
 
-  const [author] = await db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, args.authorUserId))
-    .limit(1);
-  const authorName = author?.name ?? "Someone";
+  const { name: authorName, userId: actorUserId } = await actorDisplay(
+    args.actor,
+    "Someone",
+  );
 
+  const workspaceName = await loadWorkspaceName(post.workspaceId);
   for (const userId of args.mentionedUserIds) {
-    if (userId === args.authorUserId) continue;
+    if (actorUserId && userId === actorUserId) continue;
     notified.add(userId);
     await createNotification({
       userId,
@@ -202,9 +332,19 @@ export async function notifyPostMentions(args: {
       url: postUrl(post.id),
       metadata: {
         postId: post.id,
-        authorUserId: args.authorUserId,
+        authorUserId: actorUserId,
+        externalAuthorEmail:
+          args.actor.kind === "external" ? args.actor.email : null,
       },
     });
+    await dispatchReviewEmail(userId, "notifyReviewMentionByEmail", () =>
+      postMentionEmail({
+        mentionerName: authorName,
+        body: args.body,
+        postId: post.id,
+        workspaceName,
+      }),
+    );
   }
   return notified;
 }
@@ -215,32 +355,39 @@ export async function notifyPostMentions(args: {
 // by userId.
 export async function notifyPostCommentAdded(args: {
   postId: string;
-  authorUserId: string;
+  actor: ReviewActor;
   body: string;
   excludeUserIds?: Set<string>;
 }) {
   const post = await loadPostSummary(args.postId);
   if (!post) return;
 
-  // Prior commenters on this post (excluding the new one). LIMIT is
-  // high but capped to stay safe if a thread balloons.
+  const { name: authorName, userId: actorUserId } = await actorDisplay(
+    args.actor,
+    "Someone",
+  );
+
+  // Prior commenters on this post (excluding the new one when internal).
+  // External actors have no userId so the filter degrades naturally.
   const earlier = await db
     .selectDistinct({ userId: postNotes.authorUserId })
     .from(postNotes)
     .where(
       and(
         eq(postNotes.postId, args.postId),
-        ne(postNotes.authorUserId, args.authorUserId),
+        actorUserId
+          ? ne(postNotes.authorUserId, actorUserId)
+          : isNotNull(postNotes.authorUserId),
       ),
     )
     .limit(50);
 
   const recipients = new Set<string>();
-  if (post.createdByUserId && post.createdByUserId !== args.authorUserId) {
+  if (post.createdByUserId && post.createdByUserId !== actorUserId) {
     recipients.add(post.createdByUserId);
   }
   for (const row of earlier) {
-    if (row.userId && row.userId !== args.authorUserId) {
+    if (row.userId && row.userId !== actorUserId) {
       recipients.add(row.userId);
     }
   }
@@ -251,15 +398,9 @@ export async function notifyPostCommentAdded(args: {
   }
   if (recipients.size === 0) return;
 
-  const [author] = await db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, args.authorUserId))
-    .limit(1);
-  const authorName = author?.name ?? "Someone";
-
+  const ids = Array.from(recipients);
   await Promise.all(
-    Array.from(recipients).map((userId) =>
+    ids.map((userId) =>
       createNotification({
         userId,
         kind: "post_comment",
@@ -268,12 +409,27 @@ export async function notifyPostCommentAdded(args: {
         url: postUrl(post.id),
         metadata: {
           postId: post.id,
-          authorUserId: args.authorUserId,
+          authorUserId: actorUserId,
+          externalAuthorEmail:
+            args.actor.kind === "external" ? args.actor.email : null,
         },
       }),
     ),
   );
 
-  // Silence "unused" on helpers we kept for future expansion (role maps etc).
-  void isNotNull;
+  const workspaceName = await loadWorkspaceName(post.workspaceId);
+  await Promise.all(
+    ids.map((userId) =>
+      dispatchReviewEmail(userId, "notifyReviewCommentByEmail", () =>
+        postCommentEmail({
+          commenterName: authorName,
+          isExternal: args.actor.kind === "external",
+          body: args.body,
+          postId: post.id,
+          postContent: post.content,
+          workspaceName,
+        }),
+      ),
+    ),
+  );
 }
