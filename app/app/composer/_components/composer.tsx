@@ -68,6 +68,7 @@ import {
 	CalendarClock,
 	Clock,
 	FileText,
+	FileType,
 	Gauge,
 	GitBranch,
 	Hash,
@@ -332,6 +333,7 @@ export function Composer({
 	>("1:1");
 	const [isImaging, startImaging] = useTransition();
 	const fileInputRef = useRef<HTMLInputElement>(null);
+	const pdfInputRef = useRef<HTMLInputElement>(null);
 
 	// If the active tab's platform gets deselected, fall back to "all".
 	useEffect(() => {
@@ -460,6 +462,54 @@ export function Composer({
 
 	const removeMedia = (url: string) =>
 		setBaseMedia((prev) => prev.filter((m) => m.url !== url));
+
+	// PDF upload is LinkedIn-only — used for document carousels via the
+	// LinkedIn ugc-posts DOCUMENT path. We only allow one PDF at a time
+	// (LinkedIn's document share takes a single asset) and replace any
+	// existing PDF rather than stacking. Images and a PDF can coexist
+	// in `baseMedia` because non-LinkedIn channels strip the PDF on
+	// dispatch, but most use cases will be PDF-only on LinkedIn.
+	const handlePdfSelected = async (files: FileList | null) => {
+		if (!files || files.length === 0) return;
+		const file = files[0];
+		if (file.type !== "application/pdf") {
+			toast.error("Only PDF files are supported here.");
+			return;
+		}
+		setIsUploading(true);
+		try {
+			const fd = new FormData();
+			fd.append("file", file);
+			const res = await fetch("/api/upload", { method: "POST", body: fd });
+			if (!res.ok) {
+				const body = (await res.json().catch(() => null)) as {
+					error?: string;
+				} | null;
+				throw new Error(body?.error ?? `Upload failed (${res.status})`);
+			}
+			const json = (await res.json()) as {
+				url: string;
+				mimeType: string;
+			};
+			setBaseMedia((prev) => {
+				// Replace any existing PDF; keep images intact.
+				const withoutPdf = prev.filter((m) => m.mimeType !== "application/pdf");
+				return [
+					...withoutPdf,
+					{
+						url: json.url,
+						mimeType: json.mimeType,
+						alt: file.name,
+					},
+				];
+			});
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Upload failed.");
+		} finally {
+			setIsUploading(false);
+			if (pdfInputRef.current) pdfInputRef.current.value = "";
+		}
+	};
 
 	const handleAttachFromLibrary = (picked: PostMedia[]) => {
 		setBaseMedia((prev) => {
@@ -1139,49 +1189,72 @@ export function Composer({
 							<div className="px-5 pb-4 grid grid-cols-2 sm:grid-cols-4 gap-2">
 								{baseMedia.map((m) => {
 									const loading = altTextLoading === m.url;
+									const isPdf = m.mimeType === "application/pdf";
 									return (
 										<div
 											key={m.url}
 											className="group relative aspect-square rounded-xl overflow-hidden border border-border bg-background"
 										>
-											{/* eslint-disable-next-line @next/next/no-img-element */}
-											<img
-												src={m.url}
-												alt={m.alt ?? ""}
-												className="w-full h-full object-cover"
-											/>
+											{isPdf ? (
+												<a
+													href={m.url}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-peach-100/40 text-ink hover:bg-peach-100/70 transition-colors"
+													title={m.alt ?? "PDF document"}
+												>
+													<FileType className="w-10 h-10 text-primary-deep" />
+													<span className="px-2 text-[11px] font-medium text-ink/80 truncate max-w-full">
+														{m.alt ?? "PDF document"}
+													</span>
+													<span className="text-[10px] uppercase tracking-[0.18em] text-ink/55">
+														LinkedIn carousel
+													</span>
+												</a>
+											) : (
+												/* eslint-disable-next-line @next/next/no-img-element */
+												<img
+													src={m.url}
+													alt={m.alt ?? ""}
+													className="w-full h-full object-cover"
+												/>
+											)}
 											{isReadOnly ? null : (
 												<button
 													type="button"
 													onClick={() => removeMedia(m.url)}
-													aria-label="Remove image"
+													aria-label={isPdf ? "Remove PDF" : "Remove image"}
 													className="absolute top-1.5 right-1.5 w-6 h-6 inline-flex items-center justify-center rounded-full bg-ink/80 text-background hover:bg-ink transition-colors"
 												>
 													<XIcon className="w-3 h-3" />
 												</button>
 											)}
-											<button
-												type="button"
-												onClick={() => handleGenerateAltText(m)}
-												disabled={loading || isReadOnly}
-												title={m.alt ? `Alt: ${m.alt}` : "Generate alt text"}
-												aria-label={
-													m.alt ? "Regenerate alt text" : "Generate alt text"
-												}
-												className={cn(
-													"absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10.5px] font-medium transition-colors",
-													m.alt
-														? "bg-ink/80 text-background"
-														: "bg-background/90 text-ink border border-border hover:bg-background",
-												)}
-											>
-												{loading ? (
-													<Loader2 className="w-3 h-3 animate-spin" />
-												) : (
-													<Type className="w-3 h-3" />
-												)}
-												{m.alt ? "Alt set" : "Alt text"}
-											</button>
+											{!isPdf ? (
+												<button
+													type="button"
+													onClick={() => handleGenerateAltText(m)}
+													disabled={loading || isReadOnly}
+													title={m.alt ? `Alt: ${m.alt}` : "Generate alt text"}
+													aria-label={
+														m.alt
+															? "Regenerate alt text"
+															: "Generate alt text"
+													}
+													className={cn(
+														"absolute bottom-1.5 left-1.5 inline-flex items-center gap-1 h-6 px-2 rounded-full text-[10.5px] font-medium transition-colors",
+														m.alt
+															? "bg-ink/80 text-background"
+															: "bg-background/90 text-ink border border-border hover:bg-background",
+													)}
+												>
+													{loading ? (
+														<Loader2 className="w-3 h-3 animate-spin" />
+													) : (
+														<Type className="w-3 h-3" />
+													)}
+													{m.alt ? "Alt set" : "Alt text"}
+												</button>
+											) : null}
 										</div>
 									);
 								})}
@@ -1391,6 +1464,33 @@ export function Composer({
 											<Loader2 className="w-4 h-4 animate-spin" />
 										) : (
 											<ImageUp className="w-4 h-4" />
+										)
+									}
+								/>
+								<input
+									ref={pdfInputRef}
+									type="file"
+									accept="application/pdf,.pdf"
+									hidden
+									onChange={(e) => handlePdfSelected(e.target.files)}
+								/>
+								<ToolButton
+									onClick={() => pdfInputRef.current?.click()}
+									disabled={
+										isUploading || !selected.includes("linkedin")
+									}
+									label={
+										!selected.includes("linkedin")
+											? "Select LinkedIn to attach a PDF carousel"
+											: baseMedia.some((m) => m.mimeType === "application/pdf")
+												? "Replace LinkedIn PDF carousel"
+												: "Attach PDF carousel (LinkedIn)"
+									}
+									icon={
+										isUploading ? (
+											<Loader2 className="w-4 h-4 animate-spin" />
+										) : (
+											<FileType className="w-4 h-4" />
 										)
 									}
 								/>
