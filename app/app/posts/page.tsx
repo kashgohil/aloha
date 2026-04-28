@@ -1,3 +1,5 @@
+import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
+import { FilterTabs } from "@/components/ui/filter-tabs";
 import { db } from "@/db";
 import {
 	accounts,
@@ -6,11 +8,10 @@ import {
 	posts,
 	telegramCredentials,
 } from "@/db/schema";
-import { getCurrentContext } from "@/lib/current-context";
-import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
+import { getCurrentContext } from "@/lib/current-context";
 import { cn } from "@/lib/utils";
-import { FilterTabs } from "@/components/ui/filter-tabs";
+import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { and, desc, eq, notInArray, sql } from "drizzle-orm";
 import {
 	AlertCircle,
@@ -26,9 +27,8 @@ import {
 	X,
 } from "lucide-react";
 import Link from "next/link";
-import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
-import { PostsList } from "./_components/posts-list";
 import { PostsBoard } from "./_components/posts-board";
+import { PostsList } from "./_components/posts-list";
 
 export const dynamic = "force-dynamic";
 
@@ -45,17 +45,6 @@ const STATUSES = [
 	"deleted",
 ] as const;
 type StatusFilter = (typeof STATUSES)[number];
-
-// Columns rendered in the Kanban board, in left-to-right order. `deleted`
-// stays out — deleted posts only show in the dedicated list tab.
-const BOARD_COLUMNS = [
-	"draft",
-	"in_review",
-	"approved",
-	"scheduled",
-	"published",
-	"failed",
-] as const;
 
 // Parse channels from URL param - can be single or multiple
 function parseChannels(value: string | string[] | undefined): string[] {
@@ -74,7 +63,10 @@ function arrayOverlaps(column: typeof posts.platforms, values: string[]) {
 		return sql`${column} @> ARRAY[${values[0]}]::text[]`;
 	}
 	// Multiple channels: overlap operator
-	return sql`${column} && ARRAY[${sql.join(values.map((v) => sql`${v}`), sql`, `)}]::text[]`;
+	return sql`${column} && ARRAY[${sql.join(
+		values.map((v) => sql`${v}`),
+		sql`, `,
+	)}]::text[]`;
 }
 
 const STATUS_META: Record<
@@ -147,11 +139,14 @@ export default async function PostsPage({
 	// Parse selected channels from URL
 	const selectedChannels = parseChannels(params.channels);
 
-	// Build query conditions. Board view ignores the status filter — it
-	// renders one column per status — but still hides deleted posts.
+	// Build query conditions: list view "All" omits deleted; board "All" loads
+	// every status (including deleted). A specific status tab filters to that status in both views.
 	const where = [eq(posts.workspaceId, workspace.id)];
-	if (view === "board" || filter === "all") {
-		where.push(sql`${posts.status} != 'deleted'`);
+
+	if (filter === "all") {
+		if (view !== "board") {
+			where.push(sql`${posts.status} != 'deleted'`);
+		}
 	} else {
 		where.push(eq(posts.status, filter));
 	}
@@ -176,55 +171,55 @@ export default async function PostsPage({
 	// credential tables for bluesky/mastodon/telegram.
 	const [oauthRows, blueskyRows, mastodonRows, telegramRows, rows, statusAgg] =
 		await Promise.all([
-		db
-			.select({ provider: accounts.provider })
-			.from(accounts)
-			.where(
-				and(
-					eq(accounts.workspaceId, workspace.id),
-					notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+			db
+				.select({ provider: accounts.provider })
+				.from(accounts)
+				.where(
+					and(
+						eq(accounts.workspaceId, workspace.id),
+						notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
+					),
 				),
-			),
-		db
-			.select({ id: blueskyCredentials.id })
-			.from(blueskyCredentials)
-			.where(eq(blueskyCredentials.workspaceId, workspace.id))
-			.limit(1),
-		db
-			.select({ id: mastodonCredentials.id })
-			.from(mastodonCredentials)
-			.where(eq(mastodonCredentials.workspaceId, workspace.id))
-			.limit(1),
-		db
-			.select({ id: telegramCredentials.id })
-			.from(telegramCredentials)
-			.where(eq(telegramCredentials.workspaceId, workspace.id))
-			.limit(1),
-		db
-			.select({
-				id: posts.id,
-				content: posts.content,
-				channelContent: posts.channelContent,
-				platforms: posts.platforms,
-				media: posts.media,
-				status: posts.status,
-				scheduledAt: posts.scheduledAt,
-				publishedAt: posts.publishedAt,
-				createdAt: posts.createdAt,
-			})
-			.from(posts)
-			.where(and(...where))
-			.orderBy(desc(posts.updatedAt))
-			.limit(view === "board" ? 300 : 100),
-		db
-			.select({
-				status: posts.status,
-				count: sql<number>`count(*)::int`,
-			})
-			.from(posts)
-			.where(and(...countWhere))
-			.groupBy(posts.status),
-	]);
+			db
+				.select({ id: blueskyCredentials.id })
+				.from(blueskyCredentials)
+				.where(eq(blueskyCredentials.workspaceId, workspace.id))
+				.limit(1),
+			db
+				.select({ id: mastodonCredentials.id })
+				.from(mastodonCredentials)
+				.where(eq(mastodonCredentials.workspaceId, workspace.id))
+				.limit(1),
+			db
+				.select({ id: telegramCredentials.id })
+				.from(telegramCredentials)
+				.where(eq(telegramCredentials.workspaceId, workspace.id))
+				.limit(1),
+			db
+				.select({
+					id: posts.id,
+					content: posts.content,
+					channelContent: posts.channelContent,
+					platforms: posts.platforms,
+					media: posts.media,
+					status: posts.status,
+					scheduledAt: posts.scheduledAt,
+					publishedAt: posts.publishedAt,
+					createdAt: posts.createdAt,
+				})
+				.from(posts)
+				.where(and(...where))
+				.orderBy(desc(posts.updatedAt))
+				.limit(view === "board" ? 300 : 100),
+			db
+				.select({
+					status: posts.status,
+					count: sql<number>`count(*)::int`,
+				})
+				.from(posts)
+				.where(and(...countWhere))
+				.groupBy(posts.status),
+		]);
 
 	const connectedChannels = Array.from(
 		new Set<string>([
@@ -280,8 +275,7 @@ export default async function PostsPage({
 		<div
 			className={cn(
 				"flex flex-col gap-6",
-				view === "board" &&
-					"h-[calc(100svh-80px)] lg:h-[calc(100svh-112px)]",
+				view === "board" && "h-[calc(100svh-80px)] lg:h-[calc(100svh-112px)]",
 			)}
 		>
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
@@ -293,8 +287,8 @@ export default async function PostsPage({
 						Posts<span className="text-primary font-light">.</span>
 					</h1>
 					<p className="mt-3 text-[14px] text-ink/65 max-w-xl leading-[1.55]">
-						Everything you&apos;ve drafted, scheduled, and shipped — filtered
-						by status or channel, ready to edit or repost.
+						Everything you&apos;ve drafted, scheduled, and shipped — filtered by
+						status or channel, ready to edit or repost.
 					</p>
 				</div>
 				<Link
@@ -383,7 +377,7 @@ export default async function PostsPage({
 			)}
 
 			{/* Deleted posts disclaimer */}
-			{filter === "deleted" && (
+			{filter === "deleted" && view === "list" && (
 				<div className="rounded-xl border border-border bg-amber-50/50 px-4 py-3">
 					<div className="flex items-start gap-3">
 						<Trash2 className="w-4 h-4 text-ink/50 mt-0.5 shrink-0" />
@@ -392,8 +386,9 @@ export default async function PostsPage({
 								Deleted posts are kept for 30 days
 							</p>
 							<p className="text-[12px] text-ink/60 leading-relaxed">
-								Posts marked as deleted will be automatically and permanently removed after 30 days.
-								You can also permanently delete them immediately using the actions menu.
+								Posts marked as deleted will be automatically and permanently
+								removed after 30 days. You can also permanently delete them
+								immediately using the actions menu.
 							</p>
 						</div>
 					</div>
@@ -408,7 +403,7 @@ export default async function PostsPage({
 							<Trash2 className="w-5 h-5 text-ink/50" />
 						) : (
 							<Sparkles className="w-5 h-5 text-ink" />
-							)}
+						)}
 					</span>
 					<p className="mt-5 font-display text-[24px] leading-[1.15] tracking-[-0.01em] text-ink">
 						{filter === "all"
@@ -439,12 +434,7 @@ export default async function PostsPage({
 					<PostsBoard rows={rows} tz={tz} workspaceRole={ctx.role} />
 				</div>
 			) : (
-				<PostsList
-				rows={rows}
-				tz={tz}
-				filter={filter}
-				canDelete={canDelete}
-			/>
+				<PostsList rows={rows} tz={tz} filter={filter} canDelete={canDelete} />
 			)}
 		</div>
 	);

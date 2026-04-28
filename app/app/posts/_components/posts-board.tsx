@@ -1,8 +1,5 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
 	DndContext,
 	type DragEndEvent,
@@ -14,24 +11,24 @@ import {
 	useSensor,
 	useSensors,
 } from "@dnd-kit/core";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useMemo, useState, useTransition } from "react";
 // (icons no longer needed in column headers — using a colored dot instead)
-import { toast } from "sonner";
 import {
 	approvePost,
 	backToDraft,
 	publishPostNow,
 	submitForReview,
 } from "@/app/actions/posts";
-import {
-	canTransition,
-	type PostStatus,
-} from "@/lib/posts/transitions";
-import type { WorkspaceRole } from "@/lib/current-context";
-import { ImageIcon } from "lucide-react";
-import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
-import { previewContent } from "@/lib/post-preview";
+import { ChannelIcons } from "@/components/channel-chip";
 import type { PostMedia } from "@/db/schema";
+import type { WorkspaceRole } from "@/lib/current-context";
+import { previewContent } from "@/lib/post-preview";
+import { canTransition, type PostStatus } from "@/lib/posts/transitions";
 import { cn } from "@/lib/utils";
+import { ImageIcon } from "lucide-react";
+import { toast } from "sonner";
 
 type Row = {
 	id: string;
@@ -56,6 +53,7 @@ const COLUMNS: {
 	{ key: "scheduled", label: "Scheduled", dot: "bg-peach-400" },
 	{ key: "published", label: "Published", dot: "bg-ink" },
 	{ key: "failed", label: "Failed", dot: "bg-destructive" },
+	{ key: "deleted", label: "Deleted", dot: "bg-ink/10 text-ink/60" },
 ];
 
 export function PostsBoard({
@@ -91,7 +89,7 @@ export function PostsBoard({
 	}, [optimistic]);
 
 	const draggingRow = draggingId
-		? optimistic.find((r) => r.id === draggingId) ?? null
+		? (optimistic.find((r) => r.id === draggingId) ?? null)
 		: null;
 
 	const applyTransition = async (
@@ -247,9 +245,7 @@ function BoardColumn({
 			</div>
 			<div className="flex-1 min-h-0 p-2 pt-0 space-y-2 overflow-y-auto">
 				{rows.length === 0 ? (
-					<p className="text-[11.5px] text-ink/40 text-center py-6">
-						Empty
-					</p>
+					<p className="text-[11.5px] text-ink/40 text-center py-6">Empty</p>
 				) : (
 					rows.map((row) => <DraggableCard key={row.id} row={row} tz={tz} />)
 				)}
@@ -259,16 +255,18 @@ function BoardColumn({
 }
 
 function DraggableCard({ row, tz }: { row: Row; tz: string }) {
+	const dragDisabled = row.status === "deleted";
 	const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
 		id: row.id,
+		disabled: dragDisabled,
 	});
 	return (
 		<div
 			ref={setNodeRef}
 			{...attributes}
-			{...listeners}
+			{...(dragDisabled ? {} : listeners)}
 			className={cn(
-				"cursor-grab active:cursor-grabbing",
+				dragDisabled ? "cursor-default" : "cursor-grab active:cursor-grabbing",
 				isDragging ? "opacity-30" : "",
 			)}
 		>
@@ -287,8 +285,6 @@ function CardPreview({
 	overlay?: boolean;
 }) {
 	const text = previewContent(row);
-	const visible = row.platforms.slice(0, 4);
-	const overflow = Math.max(0, row.platforms.length - visible.length);
 
 	const media = row.media ?? [];
 	const firstImage = media.find((m) => m.mimeType?.startsWith("image/"));
@@ -306,43 +302,19 @@ function CardPreview({
 				"group block rounded-xl border border-border bg-background overflow-hidden transition-all",
 				overlay
 					? "rotate-[-1.5deg] shadow-[0_18px_36px_-14px_rgba(26,22,18,0.45)]"
-					: "shadow-[0_1px_2px_rgba(26,22,18,0.04)] hover:border-border-strong hover:shadow-[0_8px_22px_-12px_rgba(26,22,18,0.18)] hover:-translate-y-0.5",
+					: "shadow-[0_1px_2px_rgba(26,22,18,0.04)] hover:border-border-strong hover:shadow-[0_8px_22px_-12px_rgba(26,22,18,0.18)]",
 			)}
 		>
 			<div className="px-3.5 pt-3 pb-3 space-y-2.5">
 				<div className="flex items-center justify-between gap-2">
-					{visible.length > 0 ? (
-						<div className="flex items-center -space-x-1.5">
-							{visible.map((p) => {
-								const Icon = CHANNEL_ICONS[p];
-								return (
-									<span
-										key={p}
-										aria-label={CHANNEL_LABELS[p] ?? p}
-										className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-background-elev border border-border ring-1 ring-background"
-									>
-										{Icon ? (
-											<Icon className="w-2.5 h-2.5 text-ink/70" />
-										) : null}
-									</span>
-								);
-							})}
-							{overflow > 0 ? (
-								<span className="inline-flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-muted border border-border ring-1 ring-background text-[9.5px] font-medium text-ink/65 tabular-nums">
-									+{overflow}
-								</span>
-							) : null}
-						</div>
-					) : (
-						<span className="text-[10.5px] text-ink/45">No channel</span>
-					)}
+					<ChannelIcons channels={row.platforms} size="sm" visible={4} />
 					<span className="text-[10.5px] text-ink/55 tabular-nums">
 						{timestampLabel(row, tz)}
 					</span>
 				</div>
 
 				{text ? (
-					<p className="text-[13px] text-ink leading-[1.45] line-clamp-3 whitespace-pre-wrap break-words">
+					<p className="text-[13px] text-ink leading-[1.45] line-clamp-3 whitespace-pre-wrap wrap-break-word">
 						{text}
 					</p>
 				) : (
@@ -360,8 +332,7 @@ function CardPreview({
 						/>
 						{media.length > 1 ? (
 							<span className="absolute bottom-1.5 right-1.5 inline-flex items-center gap-1 h-5 px-1.5 rounded-full bg-ink/75 text-background text-[10px] font-medium">
-								<ImageIcon className="w-2.5 h-2.5" />
-								+{media.length - 1}
+								<ImageIcon className="w-2.5 h-2.5" />+{media.length - 1}
 							</span>
 						) : null}
 					</div>
@@ -380,8 +351,9 @@ function timestampLabel(row: Row, tz: string): string {
 			minute: "2-digit",
 			timeZone: tz,
 		}).format(d);
-	if (row.status === "published" && row.publishedAt) return fmt(row.publishedAt);
-	if (row.status === "scheduled" && row.scheduledAt) return fmt(row.scheduledAt);
+	if (row.status === "published" && row.publishedAt)
+		return fmt(row.publishedAt);
+	if (row.status === "scheduled" && row.scheduledAt)
+		return fmt(row.scheduledAt);
 	return fmt(row.createdAt);
 }
-

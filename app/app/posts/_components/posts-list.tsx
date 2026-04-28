@@ -1,7 +1,13 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
-import Link from "next/link";
+import { bulkDeletePosts } from "@/app/actions/posts";
+import { ChannelIcons } from "@/components/channel-chip";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Label } from "@/components/ui/label";
+import { previewContent } from "@/lib/post-preview";
+import { cn } from "@/lib/utils";
 import {
 	AlertCircle,
 	CheckCircle2,
@@ -10,12 +16,9 @@ import {
 	Trash2,
 	X,
 } from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { bulkDeletePosts } from "@/app/actions/posts";
-import { CHANNEL_ICONS, CHANNEL_LABELS } from "@/components/channel-chip";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { previewContent } from "@/lib/post-preview";
-import { cn } from "@/lib/utils";
 import { PostRowActions } from "./post-row-actions";
 
 type Row = {
@@ -85,6 +88,8 @@ export function PostsList({
 	const [confirmOpen, setConfirmOpen] = useState(false);
 	const [isPending, startTransition] = useTransition();
 
+	console.log({ rows });
+
 	const mode: "local" | "permanent" =
 		filter === "deleted" ? "permanent" : "local";
 
@@ -99,10 +104,6 @@ export function PostsList({
 			else next.add(id);
 			return next;
 		});
-	};
-
-	const toggleAll = () => {
-		setSelected(allSelected ? new Set() : new Set(rowIds));
 	};
 
 	const onBulkDelete = () => {
@@ -137,15 +138,18 @@ export function PostsList({
 			{/* Select-all + bulk action bar. Reserves space so the list doesn't
 			    jump when selection starts. */}
 			<div className="flex items-center gap-3 px-1 h-8">
-				<label className="inline-flex items-center gap-2 text-[12px] text-ink/60 cursor-pointer select-none">
-					<input
-						type="checkbox"
+				<Label
+					htmlFor="posts-list-select-all"
+					className="inline-flex cursor-pointer gap-2 text-[12px] font-normal text-ink/60 select-none"
+				>
+					<Checkbox
+						id="posts-list-select-all"
 						checked={allSelected}
-						ref={(el) => {
-							if (el) el.indeterminate = someSelected;
-						}}
-						onChange={toggleAll}
-						className="size-4 rounded border-border-strong accent-ink cursor-pointer"
+						indeterminate={someSelected}
+						onCheckedChange={(checked) =>
+							setSelected(checked ? new Set(rowIds) : new Set())
+						}
+						className="border-border-strong"
 					/>
 					{selected.size > 0 ? (
 						<span className="text-ink font-medium">
@@ -154,26 +158,26 @@ export function PostsList({
 					) : (
 						<span>Select all</span>
 					)}
-				</label>
+				</Label>
 				{selected.size > 0 && (
 					<div className="flex items-center gap-2 ml-auto">
-						<button
+						<Button
 							type="button"
+							variant="ghost"
 							onClick={() => setSelected(new Set())}
-							className="inline-flex items-center gap-1 h-8 px-3 rounded-full text-[12px] text-ink/60 hover:text-ink transition-colors"
 						>
-							<X className="w-3.5 h-3.5" />
+							<X />
 							Clear
-						</button>
+						</Button>
 						{canDelete ? (
-							<button
+							<Button
 								type="button"
+								variant="destructive"
 								onClick={() => setConfirmOpen(true)}
-								className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full bg-destructive text-white text-[12px] font-medium hover:bg-destructive/90 transition-colors"
 							>
-								<Trash2 className="w-3.5 h-3.5" />
+								<Trash2 />
 								{mode === "permanent" ? "Delete permanently" : "Delete"}
-							</button>
+							</Button>
 						) : null}
 					</div>
 				)}
@@ -189,10 +193,7 @@ export function PostsList({
 					return (
 						<li
 							key={p.id}
-							className={cn(
-								"relative group",
-								isSelected && "bg-peach-100/40",
-							)}
+							className={cn("relative group", isSelected && "bg-peach-100/40")}
 						>
 							<Link
 								href={
@@ -218,46 +219,33 @@ export function PostsList({
 									</p>
 								</div>
 								<div className="flex-1 min-w-0">
-									<p className="text-[14.5px] text-ink leading-[1.5] line-clamp-2">
+									<p className="text-[14.5px] text-ink leading-normal line-clamp-2">
 										{previewContent(p)}
 									</p>
 									<div className="mt-2 flex flex-wrap items-center gap-1.5">
-										{p.platforms.map((pl) => {
-											const ChannelIcon = CHANNEL_ICONS[pl];
-											return (
-												<span
-													key={pl}
-													title={CHANNEL_LABELS[pl] ?? pl}
-													aria-label={CHANNEL_LABELS[pl] ?? pl}
-													className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-peach-100 border border-border text-ink/75"
-												>
-													{ChannelIcon ? (
-														<ChannelIcon className="w-3 h-3" />
-													) : (
-														<span className="text-[10px]">
-															{(CHANNEL_LABELS[pl] ?? pl).slice(0, 1)}
-														</span>
-													)}
-												</span>
-											);
-										})}
+										<ChannelIcons
+											channels={p.platforms}
+											size="md"
+											visible={4}
+										/>
 									</div>
 								</div>
 							</Link>
 
 							{/* Checkbox — sibling of Link so clicks don't navigate. */}
-							<label
-								className="absolute left-4 top-1/2 -translate-y-1/2 inline-flex items-center justify-center size-6 cursor-pointer"
+							<Label
+								htmlFor={`posts-list-row-${p.id}`}
+								className="absolute left-4 top-1/2 -translate-y-1/2 inline-flex size-6 cursor-pointer items-center justify-center gap-0 p-0 font-normal leading-none"
 								onClick={(e) => e.stopPropagation()}
 							>
-								<input
-									type="checkbox"
+								<Checkbox
+									id={`posts-list-row-${p.id}`}
 									checked={isSelected}
-									onChange={() => toggle(p.id)}
+									onCheckedChange={() => toggle(p.id)}
 									aria-label={`Select post ${p.content.slice(0, 40)}`}
-									className="size-4 rounded border-border-strong accent-ink cursor-pointer"
+									className="border-border-strong"
 								/>
-							</label>
+							</Label>
 
 							<div className="absolute inset-y-0 right-4 flex items-center">
 								<PostRowActions
