@@ -16,6 +16,7 @@ import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
 import { startTelegramAuth, completeTelegramAuth } from "@/lib/publishers/telegram";
 import { upsertChannelProfile, refreshChannelProfile } from "@/lib/channels/profiles";
+import { revokeX } from "@/lib/publishers/tokens";
 import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
 
@@ -175,6 +176,24 @@ export async function disconnectChannel(formData: FormData) {
   if (provider === "telegram") {
     await disconnectTelegram();
     return;
+  }
+
+  if (provider === "twitter") {
+    const [row] = await db
+      .select({
+        accessToken: accounts.access_token,
+        refreshToken: accounts.refresh_token,
+      })
+      .from(accounts)
+      .where(
+        and(eq(accounts.workspaceId, workspaceId), eq(accounts.provider, provider)),
+      )
+      .limit(1);
+    if (row?.refreshToken) {
+      await revokeX(row.refreshToken, "refresh_token");
+    } else if (row?.accessToken) {
+      await revokeX(row.accessToken, "access_token");
+    }
   }
 
   await db

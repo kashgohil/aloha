@@ -139,6 +139,30 @@ async function refreshX(workspaceId: string, refreshToken: string) {
 	return json.access_token;
 }
 
+// Best-effort revoke of an X (Twitter) OAuth 2.0 token. Per RFC 7009 / X docs,
+// revoking a refresh_token also invalidates derived access tokens. Failures
+// are swallowed — we still want the local disconnect to proceed even if X
+// rejects the call (token already invalid, network blip, etc).
+export async function revokeX(token: string, hint: "access_token" | "refresh_token" = "refresh_token") {
+	if (!env.AUTH_TWITTER_ID || !env.AUTH_TWITTER_SECRET || !token) return;
+	const basic = Buffer.from(
+		`${env.AUTH_TWITTER_ID}:${env.AUTH_TWITTER_SECRET}`,
+	).toString("base64");
+	const body = new URLSearchParams({ token, token_type_hint: hint });
+	try {
+		await fetch("https://api.x.com/2/oauth2/revoke", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/x-www-form-urlencoded",
+				Authorization: `Basic ${basic}`,
+			},
+			body,
+		});
+	} catch (err) {
+		console.error("[tokens] X revoke failed", err);
+	}
+}
+
 async function refreshMedium(workspaceId: string, refreshToken: string) {
 	if (!env.AUTH_MEDIUM_ID || !env.AUTH_MEDIUM_SECRET) {
 		throw new PublishError(
