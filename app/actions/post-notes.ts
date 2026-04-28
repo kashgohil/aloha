@@ -13,9 +13,13 @@ import {
 export type PostNote = {
   id: string;
   postId: string;
-  authorUserId: string;
+  authorUserId: string | null;
   authorName: string | null;
   authorImage: string | null;
+  // Set when the note came in through a public share link (`/r/[token]`)
+  // and the reviewer typed their name + email. Mutually exclusive with
+  // authorUserId being non-null.
+  externalAuthor: { name: string; email: string } | null;
   body: string;
   mentions: PostNoteMention[];
   createdAt: Date;
@@ -73,6 +77,7 @@ export async function listNotes(postId: string): Promise<PostNote[]> {
       authorUserId: postNotes.authorUserId,
       authorName: users.name,
       authorImage: users.image,
+      externalAuthor: postNotes.externalAuthor,
       body: postNotes.body,
       mentions: postNotes.mentions,
       createdAt: postNotes.createdAt,
@@ -114,7 +119,7 @@ export async function listNotes(postId: string): Promise<PostNote[]> {
     mentions: (row.mentions ?? [])
       .map((id) => mentionMap.get(id))
       .filter((m): m is PostNoteMention => Boolean(m)),
-    isMine: row.authorUserId === ctx.user.id,
+    isMine: row.authorUserId !== null && row.authorUserId === ctx.user.id,
     parentNoteId: row.parentNoteId ?? null,
     replies: (byParent.get(row.id) ?? [])
       .slice()
@@ -192,13 +197,13 @@ export async function addNote(
   // users (avoid double-ping).
   const mentionedNotified = await notifyPostMentions({
     postId,
-    authorUserId: ctx.user.id,
+    actor: { kind: "user", userId: ctx.user.id },
     body: trimmed,
     mentionedUserIds: validatedMentions,
   });
   await notifyPostCommentAdded({
     postId,
-    authorUserId: ctx.user.id,
+    actor: { kind: "user", userId: ctx.user.id },
     body: trimmed,
     excludeUserIds: mentionedNotified,
   });

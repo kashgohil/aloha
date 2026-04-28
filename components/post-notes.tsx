@@ -120,6 +120,7 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 					authorUserId: row.authorUserId,
 					authorName: null,
 					authorImage: null,
+					externalAuthor: null,
 					body: row.body,
 					mentions: resolvedMentions,
 					createdAt: row.createdAt,
@@ -158,6 +159,7 @@ export function PostNotes({ postId, initialNotes, members = [] }: Props) {
 					authorUserId: row.authorUserId,
 					authorName: null,
 					authorImage: null,
+					externalAuthor: null,
 					body: row.body,
 					mentions: resolvedMentions,
 					createdAt: row.createdAt,
@@ -348,11 +350,25 @@ function NoteItem({
 		<li className="rounded-xl border border-border bg-background px-4 py-3">
 			<div className="flex items-start justify-between gap-3">
 				<div className="flex items-center gap-2 min-w-0">
-					<Avatar name={note.authorName} image={note.authorImage} />
+					<Avatar
+						name={note.externalAuthor?.name ?? note.authorName}
+						image={note.authorImage}
+						external={Boolean(note.externalAuthor)}
+					/>
 					<div className="min-w-0">
-						<p className="text-[13px] font-medium text-ink truncate">
-							{note.authorName ?? "Someone"}
-						</p>
+						<div className="flex items-center gap-1.5 flex-wrap">
+							<p className="text-[13px] font-medium text-ink truncate">
+								{note.externalAuthor?.name ?? note.authorName ?? "Someone"}
+							</p>
+							{note.externalAuthor ? (
+								<span
+									className="inline-flex items-center h-4 px-1.5 rounded-full bg-peach-100 border border-peach-300 text-[9.5px] tracking-wide uppercase text-ink/65"
+									title={note.externalAuthor.email}
+								>
+									Client
+								</span>
+							) : null}
+						</div>
 						<p className="text-[11px] text-ink/55">
 							{relativeTime(note.createdAt)}
 							{note.editedAt ? " · edited" : ""}
@@ -415,7 +431,7 @@ function NoteItem({
 					<textarea
 						value={replyBody}
 						onChange={(e) => onReplyBodyChange(e.target.value)}
-						placeholder={`Reply to ${note.authorName ?? "someone"}…`}
+						placeholder={`Reply to ${note.externalAuthor?.name ?? note.authorName ?? "someone"}…`}
 						rows={2}
 						className="w-full rounded-lg border border-border bg-background-elev px-3 py-2 text-[13px] text-ink focus:outline-none focus:border-ink/40"
 					/>
@@ -520,11 +536,13 @@ function NoteMenu({
 function Avatar({
 	name,
 	image,
+	external,
 }: {
 	name: string | null;
 	image: string | null;
+	external?: boolean;
 }) {
-	if (image) {
+	if (!external && image) {
 		return (
 			<img
 				src={image}
@@ -535,7 +553,14 @@ function Avatar({
 	}
 	const initial = (name ?? "?").trim().charAt(0).toUpperCase();
 	return (
-		<div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[11px] font-medium text-ink/70">
+		<div
+			className={cn(
+				"w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-medium",
+				external
+					? "bg-peach-100 border border-peach-300 text-ink/80"
+					: "bg-muted text-ink/70",
+			)}
+		>
 			{initial}
 		</div>
 	);
