@@ -17,6 +17,7 @@ export function DisconnectChannelButton({
     <ConfirmDeleteForm
       action={disconnectChannel}
       id={provider}
+      idField="provider"
       title={`Disconnect ${name}?`}
       description={<DisconnectConsequences name={name} />}
       confirmText={`Disconnect ${name}`}

@@ -120,6 +120,9 @@ export type ConfirmDeleteFormProps = {
   action: (formData: FormData) => Promise<void> | void;
   feedId?: string;
   id?: string;
+  // FormData key used for `id`. Defaults to "id"; pass a custom name when the
+  // server action expects a different field (e.g. "provider").
+  idField?: string;
   title: string;
   description: React.ReactNode;
   confirmText?: string;
@@ -139,6 +142,7 @@ export function ConfirmDeleteForm({
   action,
   feedId,
   id,
+  idField = "id",
   title,
   description,
   confirmText = "Delete",
@@ -164,7 +168,7 @@ export function ConfirmDeleteForm({
     try {
       const formData = new FormData();
       if (feedId) formData.append("feedId", feedId);
-      if (id) formData.append("id", id);
+      if (id) formData.append(idField, id);
       await action(formData);
       if (toastMessages) {
         const { toast } = await import("sonner");
