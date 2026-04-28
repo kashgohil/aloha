@@ -245,6 +245,7 @@ export default async function InboxPage({
 						stored?.avatarUrl ?? counterRow.authorAvatarUrl,
 					lastContent: latest.content,
 					lastDirection: latest.direction,
+					lastHasAttachment: (latest.attachments ?? []).length > 0,
 					unreadCount,
 					lastActivityAt: latest.platformCreatedAt,
 				} satisfies DmThreadSummary;

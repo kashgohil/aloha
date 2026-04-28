@@ -9,6 +9,7 @@ export type DmThreadSummary = {
   counterpartyAvatarUrl: string | null;
   lastContent: string;
   lastDirection: "in" | "out" | null;
+  lastHasAttachment: boolean;
   unreadCount: number;
   lastActivityAt: Date;
 };
@@ -33,6 +34,7 @@ export function InboxThreadList({
           counterpartyAvatarUrl={t.counterpartyAvatarUrl}
           lastContent={t.lastContent}
           lastDirection={t.lastDirection}
+          lastHasAttachment={t.lastHasAttachment}
           platform={t.platform}
           unreadCount={t.unreadCount}
           isSelected={t.threadId === selectedThreadId}

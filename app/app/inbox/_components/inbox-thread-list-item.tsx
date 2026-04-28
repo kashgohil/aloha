@@ -9,6 +9,7 @@ type Props = {
   counterpartyAvatarUrl: string | null;
   lastContent: string;
   lastDirection: "in" | "out" | null;
+  lastHasAttachment: boolean;
   platform: string;
   unreadCount: number;
   isSelected: boolean;
@@ -23,6 +24,7 @@ export function InboxThreadListItem({
   counterpartyAvatarUrl,
   lastContent,
   lastDirection,
+  lastHasAttachment,
   platform,
   unreadCount,
   isSelected,
@@ -76,7 +78,9 @@ export function InboxThreadListItem({
               )}
             >
               {isOutboundPreview && <span className="text-ink/40">You: </span>}
-              {lastContent}
+              {lastContent.trim().length === 0 && lastHasAttachment
+                ? "📷 Photo"
+                : lastContent}
             </p>
             {hasUnread ? (
               <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-primary text-primary-foreground text-[10.5px] font-semibold">
