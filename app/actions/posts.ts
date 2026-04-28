@@ -27,6 +27,7 @@ import {
   notifyPostAssigned,
   notifyPostSubmitted,
 } from "@/lib/posts/review-notifications";
+import { markDeliveryAsManuallyPublished } from "@/lib/posts/manual-completion";
 
 const qstashClient = new Client({
   token: env.QSTASH_TOKEN,
@@ -763,4 +764,33 @@ export async function setEvergreen(postId: string, evergreen: boolean) {
 
   revalidatePostPaths(postId);
   return { success: true, evergreen };
+}
+
+// Mark a `manual_assist` delivery as published from the Aloha web UI.
+// Counterpart to the extension's submit-detection report. REVIEWER+
+// only — same gate as schedule/publish actions, since this is
+// effectively claiming the post shipped on a connected platform.
+export async function markDeliveryPosted(
+  postId: string,
+  platform: string,
+) {
+  const ctx = await assertRole(ROLES.REVIEWER);
+
+  const result = await markDeliveryAsManuallyPublished({
+    workspaceId: ctx.workspace.id,
+    postId,
+    platform,
+    source: "manual_web",
+  });
+
+  if (!result.ok) {
+    throw new Error(result.message);
+  }
+
+  revalidatePostPaths(postId);
+  return {
+    success: true,
+    alreadyPublished: result.alreadyPublished ?? false,
+    postStatusFlipped: result.postStatusFlipped ?? false,
+  };
 }

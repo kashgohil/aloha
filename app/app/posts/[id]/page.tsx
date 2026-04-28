@@ -21,6 +21,7 @@ import {
 import { CHANNEL_ICONS, CHANNEL_LABELS, channelLabel } from "@/components/channel-chip";
 import type { PostStatus } from "@/lib/posts/transitions";
 import { PostHeaderActions } from "./_components/post-header-actions";
+import { MarkPostedButton } from "./_components/mark-posted-button";
 import { cn } from "@/lib/utils";
 import { PostAnalytics } from "./_components/post-analytics";
 import { PostReplies } from "./_components/post-replies";
@@ -383,6 +384,28 @@ export default async function PostDetailPage({
                 )}
             </div>
           )}
+
+          {/*
+            Manual override for stuck `manual_assist` deliveries. Shown
+            when the channel is in reminder-only mode and the user
+            posted themselves but the extension didn't catch it (or
+            they posted from mobile / a different surface). REVIEWER+
+            only — same gate as schedule/publish.
+          */}
+          {selectedDelivery?.status === "manual_assist" &&
+          hasRole(ctx.role, ROLES.REVIEWER) ? (
+            <div className="rounded-xl border border-peach-300 bg-peach-100/40 px-4 py-3 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-[12.5px] text-ink leading-[1.5]">
+                Already posted on {channelLabel(selectedChannel)}? Mark
+                this delivery as done so analytics catch up.
+              </p>
+              <MarkPostedButton
+                postId={post.id}
+                platform={selectedChannel}
+                channelLabel={channelLabel(selectedChannel)}
+              />
+            </div>
+          ) : null}
 
           <PostAnalytics
             deliveryId={selectedDelivery?.id ?? null}
