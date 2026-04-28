@@ -1126,6 +1126,23 @@ export const inboxMessages = pgTable(
     authorDisplayName: text("authorDisplayName"),
     authorAvatarUrl: text("authorAvatarUrl"),
     content: text("content").notNull(),
+    // Inline media attached to the message (images, video, gifs, files).
+    // Normalized across platforms so the renderer doesn't have to branch.
+    attachments: jsonb("attachments")
+      .$type<
+        Array<{
+          type: "image" | "video" | "gif" | "audio" | "file";
+          url: string;
+          previewUrl?: string;
+          width?: number;
+          height?: number;
+          altText?: string;
+          durationSec?: number;
+          fileName?: string;
+        }>
+      >()
+      .default([])
+      .notNull(),
     isRead: boolean("isRead").default(false).notNull(),
     platformData: jsonb("platformData").$type<Record<string, unknown>>().default({}).notNull(),
     platformCreatedAt: timestamp("platformCreatedAt", { mode: "date" }).notNull(),
