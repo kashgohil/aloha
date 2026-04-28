@@ -41,7 +41,7 @@ const SECTIONS = [
   {
     icon: Webhook,
     h: "Webhooks",
-    p: "Subscribe to events — post.published, reply.received, matrix.completed.",
+    p: "Subscribe to events — post.published, post.failed, reply.received.",
     anchor: "#webhooks",
   },
   {
@@ -249,7 +249,7 @@ export default function ApiDocsPage() {
                     { m: "GET", p: "/v1/posts", d: "List posts with filters by channel, status, date." },
                     { m: "POST", p: "/v1/analytics/export", d: "Kick off an analytics export (CSV / JSON)." },
                     { m: "GET", p: "/v1/inbox/threads", d: "List unified inbox threads." },
-                    { m: "POST", p: "/v1/matrix/:id/run", d: "Trigger a matrix run manually." },
+                    // { m: "POST", p: "/v1/matrix/:id/run", d: "Trigger a matrix run manually." },  // hidden in production
                     { m: "POST", p: "/v1/voice/train", d: "Submit training set for the voice model." },
                   ].map((e) => (
                     <div
@@ -298,8 +298,7 @@ X-Aloha-Event: post.published
                   <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">post.scheduled</code>,{" "}
                   <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">post.published</code>,{" "}
                   <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">post.failed</code>,{" "}
-                  <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">reply.received</code>,{" "}
-                  <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">matrix.completed</code>.
+                  <code className="font-mono text-[14px] bg-muted px-1.5 py-0.5 rounded">reply.received</code>.
                 </p>
               </section>
 
