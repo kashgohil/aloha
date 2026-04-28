@@ -43,7 +43,8 @@ export function canTransition(
   to: PostStatus,
   role?: WorkspaceRole | null,
 ): boolean {
-  if (to === "deleted") return from !== "deleted";
+  // Soft-delete is handled via delete actions, not kanban drops onto this column.
+  if (to === "deleted") return false;
   if (to === "draft") {
     // Backward reset from any editable non-terminal stage. Scheduled posts
     // can be unscheduled back to draft (cancel) — this is the only way to
