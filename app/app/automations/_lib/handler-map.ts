@@ -8,6 +8,7 @@ export const HANDLERS_BY_TEMPLATE: Record<AutomationKind, string[]> = {
   welcome_email: ["subscriber_joined", "send_email"],
   post_announcement: ["post_published", "post_to_slack"],
   weekly_digest: ["schedule", "send_digest_email"],
+  weekly_insights: ["schedule", "send_insights_digest"],
   reply_auto: ["new_follower", "send_dm"],
   scheduled_repost: ["schedule", "repost_top"],
   tag_on_keyword: ["subscriber_joined", "keyword_match", "add_tag"],

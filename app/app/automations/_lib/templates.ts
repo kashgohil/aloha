@@ -26,6 +26,7 @@ export type AutomationKind =
   | "welcome_email"
   | "post_announcement"
   | "weekly_digest"
+  | "weekly_insights"
   | "reply_auto"
   | "scheduled_repost"
   | "tag_on_keyword"
@@ -180,6 +181,36 @@ export const TEMPLATES: Record<AutomationKind, AutomationTemplate> = {
             default: "neutral",
           },
         ],
+      },
+    ],
+  },
+  weekly_insights: {
+    kind: "weekly_insights",
+    name: "Weekly Insights to me",
+    summary:
+      "Monday-morning retro: top three posts and a couple of concrete suggestions for what to do more of next week.",
+    icon: Sparkles,
+    nodes: [
+      {
+        type: "trigger",
+        icon: Clock,
+        title: "Every Monday, 8am",
+        detail: "Uses your workspace timezone",
+        fields: [
+          {
+            key: "schedule",
+            type: "schedule",
+            label: "When to send",
+            default: { day: "mon", hour: 8 },
+          },
+        ],
+      },
+      {
+        type: "action",
+        icon: Mail,
+        title: "Send Insights digest",
+        detail:
+          "Emails workspace owners and admins. Skips the send when there's not enough data to say anything useful.",
       },
     ],
   },

@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   CheckCircle,
   Inbox,
+  LineChart,
   Mail,
   MessageSquare,
   Send,
@@ -33,6 +34,7 @@ export default async function NotificationsSettingsPage() {
       notifyReviewAssignedByEmail: users.notifyReviewAssignedByEmail,
       notifyReviewCommentByEmail: users.notifyReviewCommentByEmail,
       notifyReviewMentionByEmail: users.notifyReviewMentionByEmail,
+      notifyInsightsDigestByEmail: users.notifyInsightsDigestByEmail,
     })
     .from(users)
     .where(eq(users.id, session.user.id))
@@ -47,6 +49,7 @@ export default async function NotificationsSettingsPage() {
     notifyReviewAssignedByEmail: true,
     notifyReviewCommentByEmail: true,
     notifyReviewMentionByEmail: true,
+    notifyInsightsDigestByEmail: true,
   };
 
   return (
@@ -137,6 +140,20 @@ export default async function NotificationsSettingsPage() {
             hint="When a comment names you directly. Mentions always pre-empt the generic comment email — you'll get one or the other, never both."
             defaultChecked={prefs.notifyReviewMentionByEmail}
             Icon={AtSign}
+          />
+        </Section>
+
+        <Section
+          eyebrow="Weekly"
+          title="Insights digest"
+          body="A short Monday-morning email summarizing what worked last week, with a couple of concrete suggestions for what to do more of. Sent to workspace owners and admins."
+        >
+          <ToggleRow
+            name="notifyInsightsDigestByEmail"
+            label="Weekly Insights email"
+            hint="Three best posts, why they worked, and what to do more of next week. Skips the email when there's not enough data to say anything useful."
+            defaultChecked={prefs.notifyInsightsDigestByEmail}
+            Icon={LineChart}
           />
         </Section>
 

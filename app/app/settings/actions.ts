@@ -616,6 +616,8 @@ export async function updateNotificationPreferences(formData: FormData) {
         formData.get("notifyReviewCommentByEmail") === "on",
       notifyReviewMentionByEmail:
         formData.get("notifyReviewMentionByEmail") === "on",
+      notifyInsightsDigestByEmail:
+        formData.get("notifyInsightsDigestByEmail") === "on",
       updatedAt: new Date(),
     })
     .where(eq(users.id, userId));
