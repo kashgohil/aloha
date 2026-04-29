@@ -1,3 +1,4 @@
+import { ChannelChip, ChannelIcons } from "@/components/channel-chip";
 import { db } from "@/db";
 import {
 	accounts,
@@ -10,7 +11,6 @@ import {
 	inboxMessages,
 	mastodonCredentials,
 	notionCredentials,
-	platformInsights,
 	posts,
 	telegramCredentials,
 } from "@/db/schema";
@@ -18,17 +18,13 @@ import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getLogicalSubscription } from "@/lib/billing/service";
 import { PLATFORM_GATING } from "@/lib/channel-state";
-import { ChannelChip } from "@/components/channel-chip";
 import { getCurrentContext } from "@/lib/current-context";
+import type { CurrentUser } from "@/lib/current-user";
+import { getRecentActivity } from "@/lib/dashboard/recent-activity";
 import { previewContent } from "@/lib/post-preview";
 import { getReachLast7Days } from "@/lib/reach-cache";
 import { and, count, desc, eq, gte, notInArray, sql } from "drizzle-orm";
-import {
-	ArrowUpRight,
-	CalendarDays,
-	PenSquare,
-	Sparkles,
-} from "lucide-react";
+import { ArrowUpRight, CalendarDays, PenSquare, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import {
@@ -43,8 +39,6 @@ import {
 	ReachCard,
 	SectionHeader,
 } from "./_components";
-import { getRecentActivity } from "@/lib/dashboard/recent-activity";
-import type { CurrentUser } from "@/lib/current-user";
 
 export const dynamic = "force-dynamic";
 
@@ -129,7 +123,6 @@ async function DashboardContent({
 
 	// ── Real metrics ────────────────────────────────────────────────────
 	const now = new Date();
-	const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
 	// Fire every dashboard query concurrently. None of these depend on
 	// each other; postgres-js pipelines them over a single connection so
@@ -226,7 +219,9 @@ async function DashboardContent({
 				publishedAt: posts.publishedAt,
 			})
 			.from(posts)
-			.where(and(eq(posts.workspaceId, workspaceId), eq(posts.status, "published")))
+			.where(
+				and(eq(posts.workspaceId, workspaceId), eq(posts.status, "published")),
+			)
 			.orderBy(desc(posts.publishedAt))
 			.limit(3),
 
@@ -365,7 +360,10 @@ async function DashboardContent({
 			.select({ total: count() })
 			.from(brandCorpus)
 			.where(
-				and(eq(brandCorpus.workspaceId, workspaceId), eq(brandCorpus.source, "notion")),
+				and(
+					eq(brandCorpus.workspaceId, workspaceId),
+					eq(brandCorpus.source, "notion"),
+				),
 			),
 
 		// Subscribed feed sources — used by FeedDigestCard to show *what*
@@ -578,9 +576,7 @@ async function DashboardContent({
 												{previewContent(p)}
 											</p>
 											<div className="mt-2 flex flex-wrap items-center gap-1.5">
-												{p.platforms.map((pl) => (
-													<ChannelChip key={pl} channel={pl} />
-												))}
+												<ChannelIcons channels={p.platforms} size="sm" />
 											</div>
 										</div>
 									</li>
