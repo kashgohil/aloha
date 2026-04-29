@@ -497,6 +497,10 @@ export const postDeliveries = pgTable("post_deliveries", {
   attemptCount: integer("attemptCount").default(0).notNull(),
   publishedAt: timestamp("publishedAt", { mode: "date" }),
   deletedAt: timestamp("deletedAt", { mode: "date" }),
+  // Engagement snapshot scheduling. Set when a delivery succeeds and
+  // advanced by the engagement-snapshots cron after each call. NULL means
+  // the decay curve has played out and we're done snapshotting.
+  nextMetricSyncAt: timestamp("nextMetricSyncAt", { mode: "date" }),
   // Free-form metadata about how the delivery completed. Today this
   // carries `deliveredVia` ("auto" | "manual_assist_email" | "extension")
   // so we can attribute manual-assist completions back to the surface

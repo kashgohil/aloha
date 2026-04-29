@@ -1,0 +1,1 @@
+ALTER TABLE "post_deliveries" ADD COLUMN "nextMetricSyncAt" timestamp;
