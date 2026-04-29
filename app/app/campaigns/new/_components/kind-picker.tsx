@@ -34,7 +34,7 @@ const KIND_DETAIL: Record<
   },
   drip: {
     label: "Drip",
-    blurb: "Ongoing cadence — N posts/week, rotating beats, no urgency.",
+    blurb: "Ongoing cadence — N posts/week per channel, no urgency.",
   },
   evergreen: {
     label: "Evergreen",
@@ -107,9 +107,11 @@ export function CampaignKindPicker() {
           </label>
           <label className="block space-y-1.5">
             <span className="block text-[11.5px] uppercase tracking-[0.18em] text-ink/55 font-medium">
-              Posts / week
+              Posts / week per channel
             </span>
-            <span className="block text-[12px] text-ink/55">1–14</span>
+            <span className="block text-[12px] text-ink/55">
+              1–14. Applies to each selected channel independently.
+            </span>
             <input
               name="postsPerWeek"
               type="number"
