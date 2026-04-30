@@ -9,6 +9,11 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   createShareLink,
   listShareLinks,
   revokeShareLink,
@@ -16,9 +21,8 @@ import {
 } from "@/app/actions/post-share";
 import type { SharePermissions } from "@/lib/posts/share-tokens";
 
-const baseBtn =
-  "inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] font-medium transition-colors disabled:opacity-40";
-const ghostBtn = `${baseBtn} border border-border bg-background text-ink hover:border-ink/40`;
+const ghostIconBtn =
+  "inline-flex items-center justify-center w-10 h-10 rounded-full border border-border-strong bg-background-elev text-ink hover:border-ink transition-colors disabled:opacity-40 disabled:hover:border-border-strong";
 
 const TTL_OPTIONS = [
   { days: 1, label: "1 day" },
@@ -127,10 +131,20 @@ export function ShareLinkButton({ postId }: { postId: string }) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={ghostBtn} disabled={pending}>
-        <Link2 className="w-3.5 h-3.5" />
-        Share for review
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <PopoverTrigger
+              className={ghostIconBtn}
+              disabled={pending}
+              aria-label="Share for review"
+            >
+              <Link2 className="w-4 h-4" />
+            </PopoverTrigger>
+          }
+        />
+        <TooltipContent>Share for review</TooltipContent>
+      </Tooltip>
       <PopoverContent
         align="end"
         className="w-[360px] max-h-[480px] overflow-y-auto"

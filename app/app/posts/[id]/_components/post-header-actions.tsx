@@ -23,6 +23,12 @@ import {
 } from "@/app/actions/posts";
 import { SchedulePopover } from "@/components/schedule-popover";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   availableActions,
   type ComposerAction,
 } from "@/lib/posts/actions-available";
@@ -33,10 +39,10 @@ import { cn } from "@/lib/utils";
 import { tzLocalInputToUtcDate } from "@/lib/tz";
 import { ShareLinkButton } from "./share-link-button";
 
-const baseBtn =
-  "inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[13px] font-medium transition-colors disabled:opacity-40";
-const ghostBtn = `${baseBtn} border border-border bg-background text-ink hover:border-ink/40`;
-const primaryBtn = `${baseBtn} bg-ink text-background hover:bg-primary disabled:hover:bg-ink`;
+const iconBtn =
+  "inline-flex items-center justify-center w-10 h-10 rounded-full transition-colors disabled:opacity-40";
+const ghostIconBtn = `${iconBtn} border border-border-strong bg-background-elev text-ink hover:border-ink disabled:hover:border-border-strong`;
+const primaryIconBtn = `${iconBtn} bg-ink text-background hover:bg-primary disabled:hover:bg-ink`;
 
 export function PostHeaderActions({
   postId,
@@ -146,17 +152,11 @@ export function PostHeaderActions({
 
   const canEdit =
     status !== "published" && status !== "failed" && status !== "deleted";
-  // Sharing is a reviewer-tier capability — minting a link delegates the
-  // approval decision (or just visibility) to someone outside the workspace.
-  // Only meaningful for posts that haven't shipped yet.
   const canShare =
     hasRole(workspaceRole, ROLES.REVIEWER) &&
     status !== "published" &&
     status !== "failed" &&
     status !== "deleted";
-  // Evergreen marking is reviewer-tier and only meaningful for posts that
-  // already shipped — those are the ones with audience signal worth
-  // resurfacing.
   const canEvergreen =
     hasRole(workspaceRole, ROLES.REVIEWER) && status === "published";
   const isEvergreen = evergreenMarkedAt !== null;
@@ -169,125 +169,174 @@ export function PostHeaderActions({
     canEdit;
 
   return (
-    <div className="flex items-center gap-2 self-start">
-      {canAct("backToDraft") ? (
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={pending}
-          className={ghostBtn}
-        >
-          {pending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <RotateCcw className="w-3.5 h-3.5" />
-          )}
-          Back to draft
-        </button>
-      ) : null}
+    <TooltipProvider delay={250}>
+      <div className="flex items-center gap-2 self-start">
+        {canAct("backToDraft") ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onBack}
+                  disabled={pending}
+                  aria-label="Back to draft"
+                  className={ghostIconBtn}
+                >
+                  {pending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4" />
+                  )}
+                </button>
+              }
+            />
+            <TooltipContent>Back to draft</TooltipContent>
+          </Tooltip>
+        ) : null}
 
-      {canAct("submitForReview") ? (
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={pending}
-          className={primaryBtn}
-        >
-          {pending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <FileText className="w-3.5 h-3.5" />
-          )}
-          Submit for review
-        </button>
-      ) : null}
+        {canAct("submitForReview") ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onSubmit}
+                  disabled={pending}
+                  aria-label="Submit for review"
+                  className={primaryIconBtn}
+                >
+                  {pending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                </button>
+              }
+            />
+            <TooltipContent>Submit for review</TooltipContent>
+          </Tooltip>
+        ) : null}
 
-      {canAct("schedule") ? (
-        <SchedulePopover
-          scheduledAt={scheduleInput}
-          setScheduledAt={setScheduleInput}
-          open={showSchedule}
-          setOpen={setShowSchedule}
-          onConfirm={onSchedule}
-          disabled={pending}
-          busy={pending && scheduleInput !== ""}
-          timezone={timezone}
-        />
-      ) : null}
-
-      {canAct("publish") ? (
-        <button
-          type="button"
-          onClick={onPublish}
-          disabled={pending}
-          className={primaryBtn}
-        >
-          {pending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Send className="w-3.5 h-3.5" />
-          )}
-          Publish
-        </button>
-      ) : null}
-
-      {canEdit ? (
-        <Link
-          href={`/app/composer?post=${postId}`}
-          className={ghostBtn}
-        >
-          <Pencil className="w-3.5 h-3.5" />
-          {status === "draft" ? "Edit" : "Open"}
-        </Link>
-      ) : null}
-
-      {canShare ? <ShareLinkButton postId={postId} /> : null}
-
-      {canEvergreen ? (
-        <button
-          type="button"
-          onClick={onToggleEvergreen}
-          disabled={pending}
-          aria-pressed={isEvergreen}
-          title={
-            isEvergreen
-              ? "This post is queued to resurface on the recycle schedule. Click to stop."
-              : "Mark as evergreen — the recycle schedule will resurface a fresh draft from this post."
-          }
-          className={cn(
-            ghostBtn,
-            isEvergreen && "border-primary/50 bg-primary-soft/40 text-ink",
-          )}
-        >
-          {pending ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Leaf className="w-3.5 h-3.5" />
-          )}
-          {isEvergreen ? "Evergreen" : "Mark evergreen"}
-        </button>
-      ) : null}
-
-      {canAct("approve") ? (
-        <>
-          {hasLeftAction ? (
-            <span className="h-6 w-px bg-border mx-1" aria-hidden />
-          ) : null}
-          <button
-            type="button"
-            onClick={onApprove}
+        {canAct("schedule") ? (
+          <SchedulePopover
+            scheduledAt={scheduleInput}
+            setScheduledAt={setScheduleInput}
+            open={showSchedule}
+            setOpen={setShowSchedule}
+            onConfirm={onSchedule}
             disabled={pending}
-            className={cn(primaryBtn, "bg-emerald-600 hover:bg-emerald-600/90")}
-          >
-            {pending ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            )}
-            Approve
-          </button>
-        </>
-      ) : null}
-    </div>
+            busy={pending && scheduleInput !== ""}
+            timezone={timezone}
+            iconOnly
+          />
+        ) : null}
+
+        {canAct("publish") ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onPublish}
+                  disabled={pending}
+                  aria-label="Publish"
+                  className={primaryIconBtn}
+                >
+                  {pending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              }
+            />
+            <TooltipContent>Publish</TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        {canEdit ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Link
+                  href={`/app/composer?post=${postId}`}
+                  aria-label={status === "draft" ? "Edit" : "Open"}
+                  className={ghostIconBtn}
+                >
+                  <Pencil className="w-4 h-4" />
+                </Link>
+              }
+            />
+            <TooltipContent>
+              {status === "draft" ? "Edit" : "Open"}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        {canShare ? <ShareLinkButton postId={postId} /> : null}
+
+        {canEvergreen ? (
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <button
+                  type="button"
+                  onClick={onToggleEvergreen}
+                  disabled={pending}
+                  aria-pressed={isEvergreen}
+                  aria-label={isEvergreen ? "Evergreen" : "Mark evergreen"}
+                  className={cn(
+                    ghostIconBtn,
+                    isEvergreen && "border-primary/50 bg-primary-soft/40 text-ink",
+                  )}
+                >
+                  {pending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Leaf className="w-4 h-4" />
+                  )}
+                </button>
+              }
+            />
+            <TooltipContent>
+              {isEvergreen
+                ? "Queued to resurface on the recycle schedule. Click to stop."
+                : "Mark as evergreen — recycle schedule will resurface a fresh draft."}
+            </TooltipContent>
+          </Tooltip>
+        ) : null}
+
+        {canAct("approve") ? (
+          <>
+            {hasLeftAction ? (
+              <span className="h-6 w-px bg-border mx-1" aria-hidden />
+            ) : null}
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    onClick={onApprove}
+                    disabled={pending}
+                    aria-label="Approve"
+                    className={cn(
+                      primaryIconBtn,
+                      "bg-emerald-600 hover:bg-emerald-600/90 disabled:hover:bg-emerald-600",
+                    )}
+                  >
+                    {pending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-4 h-4" />
+                    )}
+                  </button>
+                }
+              />
+              <TooltipContent>Approve</TooltipContent>
+            </Tooltip>
+          </>
+        ) : null}
+      </div>
+    </TooltipProvider>
   );
 }

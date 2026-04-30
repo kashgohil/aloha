@@ -5,6 +5,12 @@ import { RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function RefreshRepliesButton({ postId }: { postId: string }) {
   const router = useRouter();
@@ -45,14 +51,23 @@ export function RefreshRepliesButton({ postId }: { postId: string }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={pending}
-      className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-border bg-background text-[13px] font-medium text-ink hover:border-ink/40 transition-colors disabled:opacity-60"
-    >
-      <RefreshCw className={pending ? "w-3.5 h-3.5 animate-spin" : "w-3.5 h-3.5"} />
-      Refresh
-    </button>
+    <TooltipProvider delay={250}>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              onClick={onClick}
+              disabled={pending}
+              aria-label="Refresh"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-border-strong bg-background-elev text-ink hover:border-ink transition-colors disabled:opacity-40 disabled:hover:border-border-strong"
+            >
+              <RefreshCw className={pending ? "w-4 h-4 animate-spin" : "w-4 h-4"} />
+            </button>
+          }
+        />
+        <TooltipContent>Refresh replies & metrics</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
