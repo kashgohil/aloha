@@ -1,6 +1,5 @@
 import { db } from "@/db";
 import { campaigns, posts } from "@/db/schema";
-import { getEffectiveStatesForUser } from "@/lib/channel-state";
 import { getCurrentContext } from "@/lib/current-context";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { and, eq, gte, lt } from "drizzle-orm";
@@ -46,7 +45,7 @@ export default async function CalendarPage({
 	const fetchTo = new Date(rangeTo);
 	fetchTo.setUTCDate(fetchTo.getUTCDate() + 2);
 
-	const [rows, channelStates, userCampaigns] = await Promise.all([
+	const [rows, userCampaigns] = await Promise.all([
 		db
 			.select({
 				id: posts.id,
@@ -66,7 +65,6 @@ export default async function CalendarPage({
 					lt(posts.scheduledAt, fetchTo),
 				),
 			) as Promise<CalendarPostRow[]>,
-		getEffectiveStatesForUser(user.id),
 		db
 			.select({
 				id: campaigns.id,
@@ -118,7 +116,6 @@ export default async function CalendarPage({
 			nextAnchor={nextAnchor}
 			buckets={buckets}
 			todayKey={todayKey}
-			channelStates={channelStates}
 			campaignIndex={campaignIndex}
 			museAccess={museAccess}
 		/>

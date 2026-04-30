@@ -2,8 +2,7 @@
 // the DB fetch + date math; this file just paints the grid. Reused by the
 // screenshot route with hardcoded fixtures.
 
-import type { EffectiveState } from "@/lib/channel-state-format";
-import { stateOr, stateStyles } from "@/lib/channel-state-format";
+import { ChannelIcons } from "@/components/channel-chip";
 import { previewContent } from "@/lib/post-preview";
 import { cn } from "@/lib/utils";
 import {
@@ -57,7 +56,6 @@ export type CalendarViewProps = {
 	nextAnchor: Date;
 	buckets: Map<string, CalendarPostRow[]>;
 	todayKey: string;
-	channelStates: Record<string, EffectiveState>;
 	campaignIndex: CalendarCampaignIndex;
 	museAccess?: boolean;
 };
@@ -77,7 +75,6 @@ export function CalendarView({
 	nextAnchor,
 	buckets,
 	todayKey,
-	channelStates,
 	campaignIndex,
 	museAccess = false,
 }: CalendarViewProps) {
@@ -157,7 +154,6 @@ export function CalendarView({
 					tz={tz}
 					buckets={buckets}
 					todayKey={todayKey}
-					channelStates={channelStates}
 					campaignIndex={campaignIndex}
 				/>
 			) : (
@@ -169,7 +165,6 @@ export function CalendarView({
 					buckets={buckets}
 					todayKey={todayKey}
 					compact={view === "week"}
-					channelStates={channelStates}
 					campaignIndex={campaignIndex}
 				/>
 			)}
@@ -195,12 +190,10 @@ function MonthView({
 	tz,
 	buckets,
 	todayKey,
-	channelStates,
 	campaignIndex,
 }: {
 	anchor: Date;
 	tz: string;
-	channelStates: Record<string, EffectiveState>;
 	campaignIndex: CalendarCampaignIndex;
 	buckets: Map<string, CalendarPostRow[]>;
 	todayKey: string;
@@ -294,10 +287,13 @@ function MonthView({
 												campaignId={p.campaignId}
 												campaignIndex={campaignIndex}
 											/>
-											<PlatformBadges
-												platforms={p.platforms}
-												channelStates={channelStates}
-											/>
+											<div className="mt-1">
+												<ChannelIcons
+													channels={p.platforms}
+													size="sm"
+													visible={5}
+												/>
+											</div>
 										</Link>
 									</li>
 								))}
@@ -325,11 +321,9 @@ function TimeGridView({
 	buckets,
 	todayKey,
 	compact,
-	channelStates,
 	campaignIndex,
 }: {
 	days: GridDay[];
-	channelStates: Record<string, EffectiveState>;
 	campaignIndex: CalendarCampaignIndex;
 	tz: string;
 	buckets: Map<string, CalendarPostRow[]>;
@@ -489,10 +483,13 @@ function TimeGridView({
 											campaignId={p.campaignId}
 											campaignIndex={campaignIndex}
 										/>
-										<PlatformBadges
-											platforms={p.platforms}
-											channelStates={channelStates}
-										/>
+										<div className="mt-1">
+											<ChannelIcons
+												channels={p.platforms}
+												size={compact ? "sm" : "md"}
+												visible={6}
+											/>
+										</div>
 									</Link>
 								</div>
 							);
@@ -571,59 +568,6 @@ function LegendSwatch({
 			<span className={cn("w-3.5 h-3.5 rounded-md border", swatch)} />
 			{label}
 		</span>
-	);
-}
-
-const PROVIDER_LABELS: Record<string, string> = {
-	twitter: "X",
-	linkedin: "LinkedIn",
-	facebook: "Facebook",
-	instagram: "IG",
-	tiktok: "TikTok",
-	threads: "Threads",
-	bluesky: "Bluesky",
-	medium: "Medium",
-	reddit: "Reddit",
-	youtube: "YouTube",
-	pinterest: "Pinterest",
-	mastodon: "Mastodon",
-};
-
-function PlatformBadges({
-	platforms,
-	channelStates,
-}: {
-	platforms: string[];
-	channelStates: Record<string, EffectiveState>;
-}) {
-	if (platforms.length === 0) return null;
-	return (
-		<ul className="mt-1 flex items-center flex-wrap gap-1">
-			{platforms.map((p) => {
-				const state = stateOr(channelStates, p);
-				const style = stateStyles(state);
-				const label = PROVIDER_LABELS[p] ?? p;
-				return (
-					<li
-						key={p}
-						title={`${label} · ${style.label}`}
-						className={cn(
-							"inline-flex items-center h-4 px-1.5 rounded-full text-[9.5px] font-medium leading-none tracking-wide gap-1",
-							style.chipClass,
-						)}
-					>
-						<span
-							aria-hidden
-							className={cn(
-								"inline-block w-1.5 h-1.5 rounded-full",
-								style.dotClass,
-							)}
-						/>
-						{label}
-					</li>
-				);
-			})}
-		</ul>
 	);
 }
 
