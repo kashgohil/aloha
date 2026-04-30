@@ -6,9 +6,12 @@ import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { db } from "@/db";
 import {
   accounts,
+  blueskyCredentials,
   channelProfiles,
   ideas,
+  mastodonCredentials,
   posts,
+  telegramCredentials,
   type ChannelOverride,
   type DraftMeta,
   type PostMedia,
@@ -41,7 +44,11 @@ export default async function ComposerPage({
 
   const timezone = workspace.timezone ?? user.timezone ?? "UTC";
 
-  const [connected, bestWindows, channelStates, museAccess, profileRows] = await Promise.all([
+  // Connected channels live across several tables: OAuth accounts plus
+  // per-channel credential tables for bluesky/mastodon/telegram. Mirror
+  // the union pattern used in posts/dashboard/analytics so the composer
+  // doesn't show "no channels" when only a non-OAuth channel is wired up.
+  const [oauthRows, blueskyRows, mastodonRows, telegramRows, bestWindows, channelStates, museAccess, profileRows] = await Promise.all([
     db
       .selectDistinct({ provider: accounts.provider })
       .from(accounts)
@@ -51,6 +58,21 @@ export default async function ComposerPage({
           notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
         ),
       ),
+    db
+      .select({ id: blueskyCredentials.id })
+      .from(blueskyCredentials)
+      .where(eq(blueskyCredentials.workspaceId, workspace.id))
+      .limit(1),
+    db
+      .select({ id: mastodonCredentials.id })
+      .from(mastodonCredentials)
+      .where(eq(mastodonCredentials.workspaceId, workspace.id))
+      .limit(1),
+    db
+      .select({ id: telegramCredentials.id })
+      .from(telegramCredentials)
+      .where(eq(telegramCredentials.workspaceId, workspace.id))
+      .limit(1),
     getBestWindowsForUser(user.id, timezone),
     getEffectiveStatesForUser(user.id),
     hasMuseInviteEntitlement(user.id),
@@ -156,7 +178,14 @@ export default async function ComposerPage({
     }
   }
 
-  const connectedProviders = connected.map((c) => c.provider);
+  const connectedProviders = Array.from(
+    new Set<string>([
+      ...oauthRows.map((c) => c.provider),
+      ...(blueskyRows.length > 0 ? ["bluesky"] : []),
+      ...(mastodonRows.length > 0 ? ["mastodon"] : []),
+      ...(telegramRows.length > 0 ? ["telegram"] : []),
+    ]),
+  );
 
   return (
     <Composer
