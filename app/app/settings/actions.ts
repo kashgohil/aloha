@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auth, signIn, unstable_update } from "@/auth";
@@ -9,8 +9,8 @@ import { accounts, users, blueskyCredentials, mastodonCredentials, telegramCrede
 import { sendEmail } from "@/lib/email/send";
 import { channelNotificationEmail } from "@/lib/email/templates/channel-notification";
 import { channelLabel } from "@/components/channel-chip";
-import { AUTH_ONLY_PROVIDERS } from "@/lib/auth-providers";
 import { canConnectAnotherChannel, getEntitlements } from "@/lib/billing/entitlements";
+import { getConnectedChannels } from "@/lib/channels/connected";
 import { syncChannelQuantity } from "@/lib/billing/service";
 import { setChannelPublishMode, type PublishMode } from "@/lib/channel-state";
 import { AtpAgent } from "@atproto/api";
@@ -244,38 +244,7 @@ async function currentChannelCount(userId: string): Promise<number> {
     .limit(1);
   const workspaceId = userRow?.workspaceId ?? null;
   if (!workspaceId) return 0;
-  const [oauthRows, blueskyRow, mastodonRow, telegramRow] = await Promise.all([
-    db
-      .select({ provider: accounts.provider })
-      .from(accounts)
-      .where(
-        and(
-          eq(accounts.workspaceId, workspaceId),
-          notInArray(accounts.provider, AUTH_ONLY_PROVIDERS),
-        ),
-      ),
-    db
-      .select({ id: blueskyCredentials.id })
-      .from(blueskyCredentials)
-      .where(eq(blueskyCredentials.workspaceId, workspaceId))
-      .limit(1),
-    db
-      .select({ id: mastodonCredentials.id })
-      .from(mastodonCredentials)
-      .where(eq(mastodonCredentials.workspaceId, workspaceId))
-      .limit(1),
-    db
-      .select({ id: telegramCredentials.id })
-      .from(telegramCredentials)
-      .where(eq(telegramCredentials.workspaceId, workspaceId))
-      .limit(1),
-  ]);
-  return (
-    oauthRows.length +
-    blueskyRow.length +
-    mastodonRow.length +
-    telegramRow.length
-  );
+  return (await getConnectedChannels(workspaceId)).perAccountCount;
 }
 
 export async function connectBluesky(
