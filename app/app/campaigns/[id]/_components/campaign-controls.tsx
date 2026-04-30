@@ -1,12 +1,13 @@
 "use client";
 
 import {
+  approveCampaignAction,
   deleteCampaignAction,
   pauseCampaignAction,
   resumeCampaignAction,
 } from "@/app/actions/campaigns";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { Loader2, Pause, Play, Trash2 } from "lucide-react";
+import { CalendarCheck, Loader2, Pause, Play, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -20,19 +21,24 @@ function isRedirectError(err: unknown): boolean {
   );
 }
 
-type DialogKind = "pause" | "delete" | null;
+type DialogKind = "pause" | "delete" | "approve" | null;
 
 export function CampaignControls({
   campaignId,
   status,
   canManage,
+  hasAcceptedBeats,
 }: {
   campaignId: string;
   status: string;
   canManage: boolean;
+  hasAcceptedBeats: boolean;
 }) {
   const paused = status === "paused";
-  const pauseable = status === "running" || status === "ready";
+  const pauseable =
+    status === "running" || status === "scheduled" || status === "ready";
+  const approvable =
+    (status === "draft" || status === "ready") && hasAcceptedBeats;
 
   if (!canManage) return null;
 
@@ -67,6 +73,18 @@ export function CampaignControls({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
+      {approvable ? (
+        <button
+          type="button"
+          onClick={() => setDialog("approve")}
+          disabled={isPending}
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-ink text-background text-[12.5px] font-medium hover:bg-primary disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
+        >
+          <CalendarCheck className="w-3.5 h-3.5" />
+          Approve & schedule
+        </button>
+      ) : null}
+
       {paused ? (
         <button
           type="button"
@@ -107,6 +125,33 @@ export function CampaignControls({
         <Trash2 className="w-3.5 h-3.5" />
         Delete
       </button>
+
+      <ConfirmDialog
+        isOpen={dialog === "approve"}
+        onClose={() => setDialog(null)}
+        onConfirm={() =>
+          runAction(approveCampaignAction, {
+            loading: "Scheduling campaign…",
+            success: "Campaign approved.",
+          })
+        }
+        title="Approve & schedule this campaign?"
+        description={
+          <span className="block space-y-2">
+            <span className="block">
+              Every drafted beat with a future time will be queued to publish
+              at its planned moment.
+            </span>
+            <span className="block text-ink/55">
+              You can still pause the campaign or move individual posts back
+              to draft afterwards.
+            </span>
+          </span>
+        }
+        confirmText="Approve & schedule"
+        cancelText="Not yet"
+        variant="default"
+      />
 
       <ConfirmDialog
         isOpen={dialog === "pause"}

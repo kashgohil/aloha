@@ -22,6 +22,7 @@ const KIND_LABELS: Record<string, string> = {
 const STATUS_STYLES: Record<string, string> = {
 	draft: "bg-background border-border text-ink/55",
 	ready: "bg-peach-100 border-peach-300 text-ink",
+	scheduled: "bg-peach-100 border-peach-300 text-ink",
 	running: "bg-primary-soft border-primary/40 text-primary-deep",
 	paused: "bg-background border-dashed border-primary/50 text-primary-deep",
 	complete: "bg-ink border-ink text-background",

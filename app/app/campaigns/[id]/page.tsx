@@ -46,6 +46,30 @@ const PHASE_LABELS: Record<string, string> = {
   follow_up: "Follow-up",
 };
 
+const STATUS_CHIPS: Record<string, { label: string; className: string }> = {
+  scheduled: {
+    label: "Scheduled",
+    className: "border-peach-300 bg-peach-100 text-ink",
+  },
+  running: {
+    label: "Running",
+    className: "border-primary/40 bg-primary-soft text-primary-deep",
+  },
+  paused: {
+    label: "Paused",
+    className:
+      "border-dashed border-primary/50 bg-background text-primary-deep",
+  },
+  complete: {
+    label: "Complete",
+    className: "border-ink bg-ink text-background",
+  },
+  archived: {
+    label: "Archived",
+    className: "border-dashed border-border-strong bg-background text-ink/45",
+  },
+};
+
 const PHASE_STYLES: Record<string, string> = {
   teaser: "bg-peach-100 text-ink border-peach-300",
   announce: "bg-ink text-background border-ink",
@@ -120,9 +144,14 @@ export default async function CampaignDetailPage({
             <span className="inline-flex items-center h-6 px-2.5 rounded-full border border-border text-[11px] uppercase tracking-[0.18em] text-ink/60">
               {KIND_LABELS[campaign.kind] ?? campaign.kind}
             </span>
-            {campaign.status === "paused" ? (
-              <span className="inline-flex items-center h-6 px-2.5 rounded-full border border-primary/40 bg-primary-soft/50 text-[11px] uppercase tracking-[0.18em] text-primary-deep">
-                Paused
+            {STATUS_CHIPS[campaign.status] ? (
+              <span
+                className={cn(
+                  "inline-flex items-center h-6 px-2.5 rounded-full border text-[11px] uppercase tracking-[0.18em]",
+                  STATUS_CHIPS[campaign.status].className,
+                )}
+              >
+                {STATUS_CHIPS[campaign.status].label}
               </span>
             ) : null}
             <div className="flex items-center gap-1.5 flex-wrap">
@@ -135,6 +164,7 @@ export default async function CampaignDetailPage({
             campaignId={campaign.id}
             status={campaign.status}
             canManage={canManage}
+            hasAcceptedBeats={accepted > 0}
           />
         </div>
         <h1 className="mt-3 font-display text-[40px] leading-[1.05] tracking-[-0.02em] text-ink">
