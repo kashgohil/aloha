@@ -6,8 +6,6 @@ import {
 	ANNUAL_DISCOUNT,
 	BANDS,
 	MEMBER_ADDON_MONTHLY_USD,
-	WORKSPACE_ADDON_CHANNELS_INCLUDED,
-	WORKSPACE_ADDON_MEMBERS_INCLUDED,
 	WORKSPACE_ADDON_MONTHLY_USD,
 	bandFor,
 	calcMonthly,
@@ -201,21 +199,26 @@ export function PricingCalculator({
 
 				{/* extras — workspaces + members, stackable add-ons for agencies */}
 				<div className="pt-6 border-t border-border">
-					<p className="text-[10.5px] font-mono uppercase tracking-[0.22em] text-ink/55 mb-4">
-						Team & tenants (optional)
-					</p>
+					<div className="flex items-baseline justify-between gap-4 mb-4">
+						<p className="text-[10.5px] font-mono uppercase tracking-[0.22em] text-ink/55">
+							Team & tenants (optional)
+						</p>
+						<p className="text-[11px] text-ink/50 font-mono">
+							Channels per workspace · seats shared across the account.
+						</p>
+					</div>
 					<div className="grid md:grid-cols-2 gap-3">
 						<Stepper
 							icon={<Building2 className="w-3.5 h-3.5" />}
 							label="Extra workspaces"
-							sub={`+$${WORKSPACE_ADDON_MONTHLY_USD}/mo each · includes ${WORKSPACE_ADDON_CHANNELS_INCLUDED} channels & ${WORKSPACE_ADDON_MEMBERS_INCLUDED} members`}
+							sub={`+$${WORKSPACE_ADDON_MONTHLY_USD}/mo each · empty tenant, channels bought separately`}
 							value={extraWorkspaces}
 							onChange={(v) => setExtraWorkspaces(Math.max(0, v))}
 						/>
 						<Stepper
 							icon={<Users className="w-3.5 h-3.5" />}
-							label="Extra members"
-							sub={`+$${MEMBER_ADDON_MONTHLY_USD}/mo each · beyond the 5 included`}
+							label="Extra seats"
+							sub={`+$${MEMBER_ADDON_MONTHLY_USD}/mo each · one human, assignable to any workspace`}
 							value={extraMembers}
 							onChange={(v) => setExtraMembers(Math.max(0, v))}
 						/>
@@ -278,7 +281,7 @@ export function PricingCalculator({
 					{extraMembers > 0 ? (
 						<div>
 							<p className="text-[10.5px] font-mono uppercase tracking-[0.18em] text-ink/55 mb-1 inline-flex items-center gap-1.5">
-								<Users className="w-3 h-3" /> Extra members
+								<Users className="w-3 h-3" /> Extra seats
 							</p>
 							<p className="font-display text-[28px] tracking-[-0.01em]">
 								$
