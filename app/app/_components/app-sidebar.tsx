@@ -7,11 +7,14 @@ import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { AdminLink } from "./admin-link";
 import { AvatarMenu } from "./avatar-menu";
+import { CreditsPill } from "./credits-pill";
 import { NavLinks } from "./nav-links";
 import { NotificationsBell } from "./notifications-bell";
 import { ThemeToggle } from "./theme-toggle";
 import { WorkspaceSwitcher } from "./workspace-switcher";
+import { hasRole, ROLES } from "@/lib/workspaces/roles";
 
 const STORAGE_KEY = "aloha:sidebar:expanded";
 
@@ -20,11 +23,13 @@ export function AppSidebar({
 	workspaces,
 	role,
 	canCreateWorkspace,
+	credits,
 }: {
 	user: CurrentUser;
 	workspaces: WorkspaceChoice[];
 	role: import("@/lib/current-context").WorkspaceRole | null;
 	canCreateWorkspace: boolean;
+	credits: { balance: number; monthlyGrant: number } | null;
 }) {
 	const [expanded, setExpanded] = useState(false);
 
@@ -108,6 +113,16 @@ export function AppSidebar({
 
 				<div className="py-3 px-3 border-t border-border">
 					<div className="flex flex-col gap-1 items-stretch">
+						{credits ? (
+							<CreditsPill
+								balance={credits.balance}
+								monthlyGrant={credits.monthlyGrant}
+								collapsed={collapsed}
+							/>
+						) : null}
+						{hasRole(role, ROLES.OWNER) ? (
+							<AdminLink collapsed={collapsed} />
+						) : null}
 						<ThemeToggle expandedLabel={!collapsed} />
 						<NotificationsBell expandedLabel={!collapsed} />
 						<AvatarMenu

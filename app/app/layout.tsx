@@ -1,6 +1,8 @@
 import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { listMyWorkspaces } from "@/app/actions/workspace-switch";
+import { getCreditsSnapshot } from "@/lib/billing/credits";
+import { getTrialState } from "@/lib/billing/trial";
 import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
 import { routes } from "@/lib/routes";
 import { redirect } from "next/navigation";
@@ -11,6 +13,7 @@ import { AppTopBar } from "./_components/app-top-bar";
 import { FrozenBanner } from "./_components/frozen-banner";
 import { NavProgress } from "./_components/nav-progress";
 import { ThemeProvider } from "./_components/theme-provider";
+import { TrialBanner } from "./_components/trial-banner";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
 	const user = await getCurrentUser();
@@ -27,6 +30,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 		getWorkspaceCreationEntitlement(user.id),
 	]);
 	const role = ctx?.role ?? null;
+	const trial = ctx
+		? await getTrialState(ctx.workspace.id, ctx.workspace.ownerUserId)
+		: null;
+	const credits = ctx
+		? await getCreditsSnapshot(ctx.workspace.ownerUserId)
+		: null;
+	const isOwner = !!ctx && ctx.user.id === ctx.workspace.ownerUserId;
 
 	return (
 		<ThemeProvider>
@@ -39,11 +49,26 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 					workspaces={workspaces}
 					role={role}
 					canCreateWorkspace={creationEntitlement.allowed}
+					credits={
+						credits
+							? {
+									balance: credits.balance,
+									monthlyGrant: credits.monthlyGrant,
+								}
+							: null
+					}
 				/>
 				<div className="flex-1 min-w-0 flex flex-col">
 					<AppTopBar user={user} role={role} />
 					{ctx?.workspace.frozenAt ? (
-						<FrozenBanner isOwner={ctx.user.id === ctx.workspace.ownerUserId} />
+						<FrozenBanner isOwner={isOwner} />
+					) : null}
+					{trial && (trial.expired || (trial.active && trial.daysRemaining <= 7)) ? (
+						<TrialBanner
+							expired={trial.expired}
+							daysRemaining={trial.daysRemaining}
+							isOwner={isOwner}
+						/>
 					) : null}
 					<main className="relative flex-1">
 						<div className="max-w-[1320px] mx-auto px-6 lg:px-10 py-10 lg:py-14">
