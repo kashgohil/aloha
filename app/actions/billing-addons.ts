@@ -6,8 +6,11 @@ import { assertRole } from "@/lib/workspaces/assert-role";
 import {
 	addMemberAddonSeats,
 	addWorkspaceAddonSeats,
+	purchaseCreditTopUp,
 	removeMemberAddonSeats,
 	removeWorkspaceAddonSeats,
+	startCreditBoost,
+	stopCreditBoost,
 	type AddonPurchaseResult,
 } from "@/lib/billing/addons";
 
@@ -39,39 +42,56 @@ export async function releaseWorkspaceSeats(
 	return result;
 }
 
-export async function buyMemberSeats(
-	workspaceId: string,
-	count: number,
-): Promise<AddonPurchaseResult> {
+export async function buyMemberSeats(count: number): Promise<AddonPurchaseResult> {
 	const ctx = await assertRole(ROLES.ADMIN);
-	// Member seats are per-workspace and can only be bought for the
-	// active workspace — avoids cross-tenant misuse where an admin in
-	// workspace A tries to spend on workspace B.
-	if (workspaceId !== ctx.workspace.id) {
-		throw new Error("Can only buy seats for the active workspace.");
-	}
 	if (!Number.isInteger(count) || count < 1) {
 		throw new Error("Count must be a positive integer.");
 	}
-	const result = await addMemberAddonSeats(ctx.user.id, workspaceId, count);
+	// Seats are account-pooled — always purchased against the owner's
+	// billing workspace, regardless of the active tenant.
+	const result = await addMemberAddonSeats(ctx.workspace.ownerUserId, count);
 	revalidatePath("/app/settings/billing");
 	revalidatePath("/app/settings/members");
 	return result;
 }
 
 export async function releaseMemberSeats(
-	workspaceId: string,
 	count: number,
 ): Promise<{ seats: number; canceledAtPeriodEnd: boolean }> {
 	const ctx = await assertRole(ROLES.ADMIN);
-	if (workspaceId !== ctx.workspace.id) {
-		throw new Error("Can only release seats for the active workspace.");
-	}
 	if (!Number.isInteger(count) || count < 1) {
 		throw new Error("Count must be a positive integer.");
 	}
-	const result = await removeMemberAddonSeats(ctx.user.id, workspaceId, count);
+	const result = await removeMemberAddonSeats(ctx.workspace.ownerUserId, count);
 	revalidatePath("/app/settings/billing");
 	revalidatePath("/app/settings/members");
 	return result;
+}
+
+// ---------- Credit boost (recurring monthly) ------------------------------
+
+export async function startCreditBoostAction(): Promise<AddonPurchaseResult> {
+	const ctx = await assertRole(ROLES.ADMIN);
+	const result = await startCreditBoost(ctx.workspace.ownerUserId);
+	revalidatePath("/app/settings/billing");
+	revalidatePath("/app", "layout");
+	return result;
+}
+
+export async function stopCreditBoostAction(): Promise<
+	| { canceledAtPeriodEnd: true }
+	| { canceledAtPeriodEnd: false; reason: string }
+> {
+	const ctx = await assertRole(ROLES.ADMIN);
+	const result = await stopCreditBoost(ctx.workspace.ownerUserId);
+	revalidatePath("/app/settings/billing");
+	revalidatePath("/app", "layout");
+	return result;
+}
+
+// ---------- Credit top-up (one-off) --------------------------------------
+
+export async function purchaseCreditTopUpAction(): Promise<{ url: string }> {
+	const ctx = await assertRole(ROLES.ADMIN);
+	return purchaseCreditTopUp(ctx.workspace.ownerUserId);
 }

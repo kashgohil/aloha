@@ -7,6 +7,7 @@ import { unstable_update } from "@/auth";
 import { db } from "@/db";
 import { users, workspaceMembers, workspaces } from "@/db/schema";
 import { getCurrentUser } from "@/lib/current-user";
+import { TRIAL_DAYS } from "@/lib/billing/pricing";
 import { getWorkspaceCreationEntitlement } from "@/lib/billing/workspace-limits";
 import { newWorkspaceShortId } from "@/lib/workspaces/short-id";
 import { bootstrapDefaultAutomations } from "@/lib/automations/bootstrap";
@@ -133,6 +134,7 @@ export async function createWorkspaceAction(formData: FormData) {
     ? tzInput
     : (user.timezone ?? "UTC");
 
+  const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
   const [workspace] = await db
     .insert(workspaces)
     .values({
@@ -141,6 +143,7 @@ export async function createWorkspaceAction(formData: FormData) {
       timezone,
       role,
       shortId: newWorkspaceShortId(),
+      trialEndsAt,
     })
     .returning({ id: workspaces.id });
 

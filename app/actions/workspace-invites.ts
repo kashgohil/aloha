@@ -16,7 +16,7 @@ import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import { assertActive } from "@/lib/workspaces/assert-active";
 import type { WorkspaceRole } from "@/lib/current-context";
-import { getWorkspaceMemberEntitlement } from "@/lib/billing/workspace-limits";
+import { getAccountSeatEntitlement } from "@/lib/billing/workspace-limits";
 
 // 7-day expiry is the sweet spot: long enough to survive a weekend
 // inbox, short enough that forgotten invites don't hang around forever.
@@ -102,12 +102,15 @@ export async function sendWorkspaceInvite(formData: FormData) {
     throw new Error("That email already belongs to a workspace member.");
   }
 
-  // Free-tier member cap: existing members + pending invites. Checked
-  // here so sending an invite that couldn't be accepted is blocked up
-  // front; acceptance re-checks as a race guard.
-  const entitlement = await getWorkspaceMemberEntitlement(ctx.workspace.id);
+  // Account-pool seat cap: existing members + pending invites across all
+  // workspaces the owner controls. Checked here so sending an invite that
+  // couldn't be accepted is blocked up front; acceptance re-checks as a
+  // race guard. Seat budget is the owner's, not the inviter's.
+  const entitlement = await getAccountSeatEntitlement(
+    ctx.workspace.ownerUserId,
+  );
   if (!entitlement.allowed) {
-    throw new Error(entitlement.reason ?? "Member limit reached.");
+    throw new Error(entitlement.reason ?? "Seat limit reached.");
   }
 
   const token = generateToken();

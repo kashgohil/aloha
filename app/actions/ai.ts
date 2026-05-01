@@ -2,6 +2,7 @@
 
 import { getCurrentUser } from "@/lib/current-user";
 import { requireMuseAccess } from "@/lib/billing/muse";
+import { chargeAi } from "@/lib/billing/credits";
 import { generate } from "@/lib/ai/router";
 import { PROMPTS, registerPrompts } from "@/lib/ai/prompts";
 import { loadChannelVoice, loadCurrentVoice } from "@/lib/ai/voice";
@@ -16,6 +17,7 @@ export async function refineContent(
 ) {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.refine");
 
   await registerPrompts();
 
@@ -39,6 +41,7 @@ export async function refineContent(
 export async function generateDraft(topic: string, platform: string = "general") {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.draft");
   await requireMuseAccess(user.id);
   if (!topic.trim()) throw new Error("Topic is required");
 
@@ -92,6 +95,7 @@ export async function generateRichDraft(
 ): Promise<RichDraft> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.richDraft");
   await requireMuseAccess(user.id);
   if (!topic.trim()) throw new Error("Topic is required");
 
@@ -194,6 +198,7 @@ export async function suggestHashtags(
 ): Promise<string[]> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.hashtags");
   if (!content.trim()) return [];
 
   await registerPrompts();
@@ -241,6 +246,7 @@ export async function generateAltText(
 ): Promise<string> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.altText");
   await requireMuseAccess(user.id);
   if (!imageUrl) throw new Error("Image URL is required");
 
@@ -283,6 +289,7 @@ export async function generateImageAction(
 ): Promise<GeneratedImagePayload> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.image");
   await requireMuseAccess(user.id);
   if (!prompt.trim()) throw new Error("Prompt is required");
 
@@ -321,6 +328,7 @@ export async function scorePost(
 ): Promise<PostScore> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.scorePost");
   await requireMuseAccess(user.id);
   if (!content.trim()) throw new Error("Nothing to score yet.");
 
@@ -387,6 +395,7 @@ export async function improveWithBrief(
 ): Promise<string> {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
+  await chargeAi("ai.improve");
   await requireMuseAccess(user.id);
   if (!content.trim()) throw new Error("Nothing to improve yet.");
   if (!improvementBrief.trim()) {

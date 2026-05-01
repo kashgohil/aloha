@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { auth, unstable_update } from "@/auth";
 import { db } from "@/db";
 import { users, workspaceMembers, workspaces } from "@/db/schema";
+import { TRIAL_DAYS } from "@/lib/billing/pricing";
 import { newWorkspaceShortId } from "@/lib/workspaces/short-id";
 import { bootstrapDefaultAutomations } from "@/lib/automations/bootstrap";
 
@@ -63,6 +64,7 @@ export async function saveWorkspace(formData: FormData) {
   let workspaceId = owned?.id ?? null;
   let workspaceIsNew = false;
   if (!workspaceId) {
+    const trialEndsAt = new Date(Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000);
     const [created] = await db
       .insert(workspaces)
       .values({
@@ -70,6 +72,7 @@ export async function saveWorkspace(formData: FormData) {
         ownerUserId: userId,
         role,
         shortId: newWorkspaceShortId(),
+        trialEndsAt,
       })
       .returning({ id: workspaces.id });
     workspaceId = created.id;

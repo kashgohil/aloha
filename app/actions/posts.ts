@@ -16,6 +16,7 @@ import {
 import { revalidatePath } from "next/cache";
 import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
+import { canPublish } from "@/lib/billing/trial";
 import { requireContext } from "@/lib/current-context";
 import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
@@ -122,6 +123,11 @@ export async function saveDraft(payload: ComposerPayload) {
 // messages from rescheduling no-op safely.
 export async function schedulePost(postId: string, scheduledAt: Date) {
   const ctx = await assertRole(ROLES.EDITOR);
+  if (!(await canPublish(ctx.workspace.id, ctx.workspace.ownerUserId))) {
+    throw new Error(
+      "Trial ended — upgrade to schedule or publish posts.",
+    );
+  }
 
   if (scheduledAt.getTime() <= Date.now()) {
     throw new Error("Pick a future time to schedule for.");
@@ -168,6 +174,11 @@ export async function schedulePost(postId: string, scheduledAt: Date) {
 // forward with the `scheduled → published` step collapsed into one call.
 export async function publishPostNow(postId: string) {
   const ctx = await assertRole(ROLES.EDITOR);
+  if (!(await canPublish(ctx.workspace.id, ctx.workspace.ownerUserId))) {
+    throw new Error(
+      "Trial ended — upgrade to schedule or publish posts.",
+    );
+  }
 
   const existing = await loadOwnedPost(postId, ctx.workspace.id);
   assertTransition(existing.status as PostStatus, "published", ctx.role);
@@ -253,6 +264,11 @@ export async function updatePost(postId: string, payload: ComposerPayload) {
 // re-checks status + scheduledAt.
 export async function reschedulePost(postId: string, scheduledAt: Date) {
   const ctx = await assertRole(ROLES.EDITOR);
+  if (!(await canPublish(ctx.workspace.id, ctx.workspace.ownerUserId))) {
+    throw new Error(
+      "Trial ended — upgrade to reschedule posts.",
+    );
+  }
 
   const [existing] = await db
     .select({
