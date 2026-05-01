@@ -8,6 +8,7 @@ import {
   Users,
   MailCheck,
   CreditCard,
+  Globe,
   Sparkles,
   ScrollText,
   BellRing,
@@ -28,6 +29,7 @@ type NavItem = {
 
 export const ADMIN_NAV_ITEMS: NavItem[] = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
+  { label: "Clients", href: "/admin/clients", icon: Globe },
   { label: "Workspaces", href: "/admin/workspaces", icon: Building2 },
   { label: "Users", href: "/admin/users", icon: Users },
   { label: "Requests", href: "/admin/requests", icon: MailCheck },

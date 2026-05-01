@@ -1,11 +1,15 @@
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { getCurrentAdmin } from "@/lib/admin/session";
+import { env } from "@/lib/env";
 import { AdminSidebar } from "../_components/admin-sidebar";
 import { AdminTopBar } from "../_components/admin-top-bar";
 
-// Hard guard: anything under the gated group 404s without a valid admin
-// session, making the surface invisible to anyone who isn't signed in.
+// Hard guard. Two layers:
+//   1. Must hold a valid admin session (password + TOTP).
+//   2. Email must equal env.GOD_VIEW_EMAIL — the cross-tenant view is a
+//      single-operator surface, not a staff dashboard. Even other rows in
+//      `internalUsers` 404 here.
 export default async function GatedAdminLayout({
   children,
 }: {
@@ -13,6 +17,9 @@ export default async function GatedAdminLayout({
 }) {
   const admin = await getCurrentAdmin();
   if (!admin) notFound();
+  if (admin.email.toLowerCase() !== env.GOD_VIEW_EMAIL.toLowerCase()) {
+    notFound();
+  }
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">

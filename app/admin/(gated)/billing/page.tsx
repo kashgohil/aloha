@@ -9,26 +9,26 @@ import {
 } from "../../_components/page-header";
 import {
   ANNUAL_DISCOUNT,
+  CREDIT_BOOST_MONTHLY_USD,
   MEMBER_ADDON_MONTHLY_USD,
   WORKSPACE_ADDON_MONTHLY_USD,
   effectivePrice,
 } from "@/lib/billing/pricing";
+import type { SubscriptionProductKey } from "@/lib/billing/products";
 
-const PRODUCT_LABEL: Record<
-  "basic" | "bundle" | "workspace_addon" | "member_addon",
-  string
-> = {
+const PRODUCT_LABEL: Record<SubscriptionProductKey, string> = {
   basic: "Basic",
   bundle: "Bundle",
   workspace_addon: "Workspace",
   member_addon: "Member seat",
+  credits_boost: "Credit boost",
 };
 
 // Monthly-equivalent value of a single subscription row. Annual plans are
 // divided by 12 so MRR is apples-to-apples across both intervals and
 // across base plans and add-ons.
 function monthlyValue(row: {
-  productKey: "basic" | "bundle" | "workspace_addon" | "member_addon";
+  productKey: SubscriptionProductKey;
   interval: "month" | "year";
   seats: number;
 }) {
@@ -39,12 +39,14 @@ function monthlyValue(row: {
     });
     return effectivePerMonth;
   }
-  // Flat-priced add-ons: base monthly rate × seats, with the yearly
-  // discount amortized back across months when the row is annual.
+  // Flat-priced add-ons + credit boost: monthly rate × seats, with the
+  // yearly discount amortized back across months when the row is annual.
   const monthlyPerSeat =
     row.productKey === "workspace_addon"
       ? WORKSPACE_ADDON_MONTHLY_USD
-      : MEMBER_ADDON_MONTHLY_USD;
+      : row.productKey === "member_addon"
+        ? MEMBER_ADDON_MONTHLY_USD
+        : CREDIT_BOOST_MONTHLY_USD;
   const discount = row.interval === "year" ? 1 - ANNUAL_DISCOUNT : 1;
   return monthlyPerSeat * row.seats * discount;
 }
