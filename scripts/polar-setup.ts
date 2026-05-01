@@ -14,12 +14,22 @@
 //   5. Prints the env vars to paste into .env.local.
 //
 // Re-running is safe: existing products + webhooks are detected and reused.
+//
+// PRICE CHANGES: this script does NOT update prices on existing Polar
+// products. If you change a constant in lib/billing/pricing.ts (e.g. the
+// $25 → $10 workspace_addon move), the existing Polar SKU keeps its old
+// price until you either (a) archive it in the Polar dashboard and
+// re-run this script, or (b) edit the price directly in Polar. The
+// script logs a "STALE PRICE" warning when it detects a mismatch.
 
 import "dotenv/config";
 import { Polar } from "@polar-sh/sdk";
 import {
 	ANNUAL_DISCOUNT,
 	BANDS,
+	CREDIT_BOOST_MONTHLY_USD,
+	CREDIT_BOOST_YEARLY_USD,
+	CREDIT_TOPUP_USD,
 	MEMBER_ADDON_MONTHLY_USD,
 	MEMBER_ADDON_YEARLY_USD,
 	WORKSPACE_ADDON_MONTHLY_USD,
@@ -48,21 +58,30 @@ type Slot =
 	| "workspace_addon_month"
 	| "workspace_addon_year"
 	| "member_addon_month"
-	| "member_addon_year";
+	| "member_addon_year"
+	| "credits_boost_month"
+	| "credits_boost_year"
+	| "credits_topup";
 
 type ProductPlan =
 	| "basic"
 	| "bundle"
 	| "workspace_addon"
-	| "member_addon";
+	| "member_addon"
+	| "credits_boost"
+	| "credits_topup";
 
-const PRODUCT_DEFS: Array<{
+// One-off products have no recurringInterval — the field is null at the
+// type level so a top-up def can't accidentally be created as recurring.
+type ProductDef = {
 	slot: Slot;
 	name: string;
 	description: string;
 	plan: ProductPlan;
-	interval: "month" | "year";
-}> = [
+	interval: "month" | "year" | null;
+};
+
+const PRODUCT_DEFS: Array<ProductDef> = [
 	{
 		slot: "basic_month",
 		name: "Aloha Basic — Monthly",
@@ -121,6 +140,30 @@ const PRODUCT_DEFS: Array<{
 		plan: "member_addon",
 		interval: "year",
 	},
+	{
+		slot: "credits_boost_month",
+		name: "Aloha Credit Boost — Monthly",
+		description:
+			"Recurring extra Aloha credits each month, on top of the plan's normal monthly grant.",
+		plan: "credits_boost",
+		interval: "month",
+	},
+	{
+		slot: "credits_boost_year",
+		name: "Aloha Credit Boost — Yearly",
+		description:
+			"Recurring extra Aloha credits each month, on top of the plan's normal monthly grant.",
+		plan: "credits_boost",
+		interval: "year",
+	},
+	{
+		slot: "credits_topup",
+		name: "Aloha Credit Top-up",
+		description:
+			"One-off pack of Aloha credits. Consumed alongside the current period's grant; does not roll over.",
+		plan: "credits_topup",
+		interval: null,
+	},
 ];
 
 // Base-plan graduated tiers match the BANDS in lib/billing/pricing.ts.
@@ -137,18 +180,34 @@ function baseTiers(plan: "basic" | "bundle", interval: "month" | "year") {
 	});
 }
 
-// Add-on tiers: single tier with unlimited ceiling so seat quantity
-// scales without re-provisioning. Polar still requires the graduated
-// tier shape even when there's only one band.
-function addonTiers(plan: "workspace_addon" | "member_addon", interval: "month" | "year") {
-	const dollars =
-		plan === "workspace_addon"
-			? interval === "year"
-				? WORKSPACE_ADDON_YEARLY_USD
-				: WORKSPACE_ADDON_MONTHLY_USD
-			: interval === "year"
-				? MEMBER_ADDON_YEARLY_USD
-				: MEMBER_ADDON_MONTHLY_USD;
+// Add-on / boost tiers: single tier with unlimited ceiling so seat
+// quantity scales without re-provisioning. Polar still requires the
+// graduated tier shape even when there's only one band.
+function addonTiers(
+	plan: "workspace_addon" | "member_addon" | "credits_boost",
+	interval: "month" | "year",
+) {
+	let dollars: number;
+	switch (plan) {
+		case "workspace_addon":
+			dollars =
+				interval === "year"
+					? WORKSPACE_ADDON_YEARLY_USD
+					: WORKSPACE_ADDON_MONTHLY_USD;
+			break;
+		case "member_addon":
+			dollars =
+				interval === "year"
+					? MEMBER_ADDON_YEARLY_USD
+					: MEMBER_ADDON_MONTHLY_USD;
+			break;
+		case "credits_boost":
+			dollars =
+				interval === "year"
+					? CREDIT_BOOST_YEARLY_USD
+					: CREDIT_BOOST_MONTHLY_USD;
+			break;
+	}
 	return [
 		{
 			minSeats: 1,
@@ -156,6 +215,23 @@ function addonTiers(plan: "workspace_addon" | "member_addon", interval: "month" 
 			pricePerSeat: Math.round(dollars * 100), // cents
 		},
 	];
+}
+
+// Best-effort extraction of the per-seat price (cents) from an existing
+// add-on product. Polar's product shape has the price under a couple of
+// possible paths depending on SDK version; we probe both. Returns null
+// if we can't read it — the warning is informational only, so missing
+// data just suppresses the warning.
+function readSeatPrice(product: unknown): number | null {
+	const prices = (product as { prices?: unknown }).prices;
+	if (!Array.isArray(prices)) return null;
+	for (const p of prices) {
+		const tiers = (p as { seatTiers?: { tiers?: Array<{ pricePerSeat?: number }> } })
+			.seatTiers?.tiers;
+		const first = tiers?.[0]?.pricePerSeat;
+		if (typeof first === "number") return first;
+	}
+	return null;
 }
 
 async function findProductByName(name: string) {
@@ -172,22 +248,67 @@ async function findProductByName(name: string) {
 	return null;
 }
 
-async function ensureProduct(def: (typeof PRODUCT_DEFS)[number]) {
+async function ensureProduct(def: ProductDef) {
 	const existing = await findProductByName(def.name);
-	if (existing) {
-		console.log(`✓ ${def.slot} already exists (${existing.id})`);
-		return existing.id;
+
+	// One-off top-up: fixed-price, no recurringInterval, no seat tiers.
+	if (def.plan === "credits_topup") {
+		if (existing) {
+			console.log(`✓ ${def.slot} already exists (${existing.id})`);
+			return existing.id;
+		}
+		const created = await polar.products.create({
+			name: def.name,
+			description: def.description,
+			recurringInterval: null,
+			organizationId,
+			prices: [
+				{
+					amountType: "fixed",
+					priceCurrency: "usd",
+					priceAmount: Math.round(CREDIT_TOPUP_USD * 100),
+				},
+			],
+		});
+		console.log(`+ created ${def.slot} → ${created.id}`);
+		return created.id;
+	}
+
+	// Recurring path. From here on, def.interval is guaranteed non-null.
+	const interval = def.interval;
+	if (!interval) {
+		throw new Error(`Recurring product ${def.slot} is missing an interval`);
 	}
 
 	const tiers =
 		def.plan === "basic" || def.plan === "bundle"
-			? baseTiers(def.plan, def.interval)
-			: addonTiers(def.plan, def.interval);
+			? baseTiers(def.plan, interval)
+			: addonTiers(def.plan, interval);
+
+	if (existing) {
+		// Detect stale prices on flat per-seat SKUs (single-tier graduated).
+		// Base plans have multi-tier shape — skipping the deep diff there.
+		if (
+			def.plan === "workspace_addon" ||
+			def.plan === "member_addon" ||
+			def.plan === "credits_boost"
+		) {
+			const expected = tiers[0]?.pricePerSeat;
+			const live = readSeatPrice(existing);
+			if (expected != null && live != null && expected !== live) {
+				console.warn(
+					`⚠ STALE PRICE on ${def.slot} (${existing.id}): live=${live}¢ expected=${expected}¢. Archive it in Polar and re-run to apply.`,
+				);
+			}
+		}
+		console.log(`✓ ${def.slot} already exists (${existing.id})`);
+		return existing.id;
+	}
 
 	const created = await polar.products.create({
 		name: def.name,
 		description: def.description,
-		recurringInterval: def.interval,
+		recurringInterval: interval,
 		organizationId,
 		prices: [
 			{
@@ -267,6 +388,12 @@ function printEnvBlock(ids: Partial<Record<Slot, string>>) {
 		console.log(`POLAR_PRODUCT_MEMBER_ADDON_MONTH=${ids.member_addon_month}`);
 	if (ids.member_addon_year)
 		console.log(`POLAR_PRODUCT_MEMBER_ADDON_YEAR=${ids.member_addon_year}`);
+	if (ids.credits_boost_month)
+		console.log(`POLAR_PRODUCT_CREDITS_BOOST_MONTH=${ids.credits_boost_month}`);
+	if (ids.credits_boost_year)
+		console.log(`POLAR_PRODUCT_CREDITS_BOOST_YEAR=${ids.credits_boost_year}`);
+	if (ids.credits_topup)
+		console.log(`POLAR_PRODUCT_CREDITS_TOPUP=${ids.credits_topup}`);
 }
 
 async function main() {

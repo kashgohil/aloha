@@ -83,6 +83,10 @@ const envSchema = z.object({
   POLAR_PRODUCT_WORKSPACE_ADDON_YEAR: z.string().optional(),
   POLAR_PRODUCT_MEMBER_ADDON_MONTH: z.string().optional(),
   POLAR_PRODUCT_MEMBER_ADDON_YEAR: z.string().optional(),
+  POLAR_PRODUCT_CREDITS_BOOST_MONTH: z.string().optional(),
+  POLAR_PRODUCT_CREDITS_BOOST_YEAR: z.string().optional(),
+  // One-off top-up — no recurring interval, single product ID.
+  POLAR_PRODUCT_CREDITS_TOPUP: z.string().optional(),
 
   // Vercel Blob — keep dev and prod on separate stores. Create one "development"
   // Blob store and one "production" Blob store on Vercel, then set this token
@@ -114,6 +118,12 @@ const envSchema = z.object({
   LANGFUSE_PUBLIC_KEY: z.string().optional(),
   LANGFUSE_SECRET_KEY: z.string().optional(),
   LANGFUSE_BASE_URL: z.string().url().default("https://us.cloud.langfuse.com"),
+
+  // God-view (cross-tenant /admin) is locked to a single human. Set this
+  // to the email of the one operator who should see every workspace's
+  // data. Defaults to the founder email so a fresh dev DB still gates
+  // access correctly.
+  GOD_VIEW_EMAIL: z.string().email().default("kashyapgohil476@gmail.com"),
 });
 
 // Validate process.env
