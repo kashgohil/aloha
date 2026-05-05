@@ -223,10 +223,11 @@ export function BeatInspector({
 
       {accepted && beat.acceptedPostId ? (
         <Link
-          href={`/app/posts/${beat.acceptedPostId}`}
-          className="inline-flex items-center gap-1 text-[12.5px] text-ink/70 hover:text-ink transition-colors"
+          href={`/app/composer?post=${beat.acceptedPostId}`}
+          prefetch={false}
+          className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
         >
-          Open draft in composer →
+          Open in composer →
         </Link>
       ) : null}
     </aside>

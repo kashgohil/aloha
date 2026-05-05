@@ -210,11 +210,12 @@ function BeatChip({
       style={{ position: "absolute", height: "24px", ...style }}
       className={cn(
         "rounded-md px-1.5 flex items-center gap-1 text-[10.5px] font-medium leading-none transition-colors overflow-hidden",
+        accepted
+          ? "bg-primary-soft text-primary-deep border border-primary/40"
+          : "bg-background border border-border text-ink/75 hover:border-ink",
         selected
-          ? "bg-ink text-background ring-2 ring-ink/30"
-          : accepted
-            ? "bg-primary-soft text-primary-deep border border-primary/40"
-            : "bg-background border border-border text-ink/75 hover:border-ink",
+          ? "ring-2 ring-ink ring-offset-1 ring-offset-background"
+          : null,
       )}
     >
       <span

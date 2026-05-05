@@ -165,11 +165,14 @@ function BeatChip({
       title={`${beat.channel} · ${beat.format} — ${beat.title}`}
       className={cn(
         "flex items-center gap-1 px-1.5 h-5 rounded-md text-[10.5px] font-medium leading-none transition-colors",
+        accepted
+          ? "bg-primary-soft text-primary-deep border border-primary/40"
+          : "bg-background border border-border text-ink/75 hover:border-ink",
+        // Ring rather than swap-bg keeps the accepted/pending state legible
+        // while still calling out which chip is currently in the inspector.
         selected
-          ? "bg-ink text-background"
-          : accepted
-            ? "bg-primary-soft text-primary-deep border border-primary/40"
-            : "bg-background border border-border text-ink/75 hover:border-ink",
+          ? "ring-2 ring-ink ring-offset-1 ring-offset-background"
+          : null,
       )}
     >
       <span
