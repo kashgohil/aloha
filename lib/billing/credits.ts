@@ -12,6 +12,8 @@
 // Period anchor = that grant row's createdAt; "next reset" = anchor + 30d.
 
 import "server-only";
+import { cache } from "react";
+import { revalidatePath } from "next/cache";
 import { and, desc, eq, gte, inArray, sum } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -163,7 +165,14 @@ async function resolveBoostState(ownerUserId: string): Promise<BoostState> {
 	};
 }
 
-export async function getCreditsSnapshot(
+// Per-request memoized: layout + sidebar + billing page may all ask for
+// the snapshot in one render. consumeCredits / chargeAi run in server
+// actions (not RSC render), so the action path always sees fresh state.
+// After a charge, revalidatePath("/app", "layout") (see actions/ai.ts)
+// busts the layout render so the sidebar repaints with the new balance.
+export const getCreditsSnapshot = cache(_getCreditsSnapshot);
+
+async function _getCreditsSnapshot(
 	ownerUserId: string,
 ): Promise<CreditsSnapshot> {
 	await ensurePeriodGrant(ownerUserId);
@@ -244,10 +253,15 @@ export async function consumeCredits(
 // Ergonomic wrapper for AI server actions: resolves ctx and routes the
 // charge to the workspace owner's pool. Use at the top of any server
 // action that calls a paid AI feature.
+//
+// Also busts the layout render cache so the sidebar credit pill repaints
+// with the new balance on the next navigation. Done here (not at every
+// callsite) so new AI actions inherit the behavior automatically.
 export async function chargeAi(feature: CreditFeature): Promise<void> {
 	const ctx = await getCurrentContext();
 	if (!ctx) throw new Error("Unauthorized");
 	await consumeCredits(ctx.workspace.ownerUserId, feature, ctx.workspace.id);
+	revalidatePath("/app", "layout");
 }
 
 // Idempotent grant. Called from Polar webhooks (order.paid for top-ups,

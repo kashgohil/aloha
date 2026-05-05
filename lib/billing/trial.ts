@@ -3,6 +3,7 @@
 // an active paid subscription. Callers gate publish + AI generation
 // through `canPublish` rather than re-deriving the date math.
 
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { workspaces } from "@/db/schema";
@@ -19,7 +20,12 @@ export type TrialState = {
 	daysRemaining: number;
 };
 
-export async function getTrialState(
+// Per-request memoized — layout banner + canPublish gates may both read
+// it. Trial expiry is time-driven, not action-driven, so cross-request
+// caching isn't useful and per-request dedupe is always safe.
+export const getTrialState = cache(_getTrialState);
+
+async function _getTrialState(
 	workspaceId: string,
 	ownerUserId: string,
 ): Promise<TrialState> {

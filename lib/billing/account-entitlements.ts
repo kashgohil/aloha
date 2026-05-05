@@ -17,6 +17,7 @@
 //     later phase); each seat adds one member slot to that workspace's
 //     allowance.
 
+import { cache } from "react";
 import { and, eq, gt, inArray, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
 import {
@@ -121,7 +122,13 @@ type SubRow = {
 	seats: number;
 };
 
-export async function getAccountEntitlements(
+// Per-request memoized: settings/billing, app/layout (via workspace-
+// limits), and admin/_data all read this. Subscription rows mutate via
+// Polar webhooks (separate request) so cross-request caching isn't
+// useful; per-request dedup is always safe.
+export const getAccountEntitlements = cache(_getAccountEntitlements);
+
+async function _getAccountEntitlements(
 	userId: string,
 ): Promise<AccountEntitlements> {
 	const { workspaceIds, rows } = await loadOwnedSubscriptions(userId);

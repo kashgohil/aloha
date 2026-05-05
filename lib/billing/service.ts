@@ -2,6 +2,7 @@
 // or "bundle" (Basic+Muse) product. Toggling Muse is a product migration
 // via polar.subscriptions.update — no second checkout.
 
+import { cache } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { subscriptions, users, workspaces } from "@/db/schema";
@@ -19,21 +20,28 @@ import { env } from "@/lib/env";
 // user's active workspace — `polarCustomerId` moved from `users` to
 // `workspaces` in Slice 2.7, so every call that previously hit
 // `users.polarCustomerId` now goes through here.
-async function loadBillingWorkspace(userId: string): Promise<{
-	workspaceId: string;
-	polarCustomerId: string | null;
-} | null> {
-	const [row] = await db
-		.select({
-			workspaceId: workspaces.id,
-			polarCustomerId: workspaces.polarCustomerId,
-		})
-		.from(users)
-		.innerJoin(workspaces, eq(workspaces.id, users.activeWorkspaceId))
-		.where(eq(users.id, userId))
-		.limit(1);
-	return row ?? null;
-}
+// Per-request memoized — getLogicalSubscription, listInvoices,
+// createCustomerPortalUrl, and createCheckout each call this. One render
+// can fan out to several of them (settings/billing) so dedup matters.
+const loadBillingWorkspace = cache(
+	async (
+		userId: string,
+	): Promise<{
+		workspaceId: string;
+		polarCustomerId: string | null;
+	} | null> => {
+		const [row] = await db
+			.select({
+				workspaceId: workspaces.id,
+				polarCustomerId: workspaces.polarCustomerId,
+			})
+			.from(users)
+			.innerJoin(workspaces, eq(workspaces.id, users.activeWorkspaceId))
+			.where(eq(users.id, userId))
+			.limit(1);
+		return row ?? null;
+	},
+);
 
 export type LogicalSubscription = {
 	plan: "free" | "basic" | "basic_muse";
@@ -48,7 +56,16 @@ export type LogicalSubscription = {
 	pastDue: boolean;
 };
 
-export async function getLogicalSubscription(userId: string): Promise<LogicalSubscription> {
+// Per-request memoized: 22 indirect callsites (trial, credits, account-
+// entitlements, syncChannelQuantity, setMuseEnabled, setBillingInterval,
+// cancelSubscription, resumeSubscription). Plan changes go through
+// upsertSubscriptionFromPolar in a webhook (separate request), so cross-
+// request invalidation isn't needed; the next page load sees fresh state.
+export const getLogicalSubscription = cache(_getLogicalSubscription);
+
+async function _getLogicalSubscription(
+	userId: string,
+): Promise<LogicalSubscription> {
 	const ws = await loadBillingWorkspace(userId);
 	const rows = ws
 		? await db
