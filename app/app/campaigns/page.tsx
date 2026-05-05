@@ -1,6 +1,5 @@
 import { listCampaigns } from "@/lib/ai/campaign";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
-import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { ChannelIcons } from "@/components/channel-chip";
@@ -48,13 +47,15 @@ const startOfDay = (d: Date) => {
 };
 
 export default async function CampaignsPage() {
-	const user = (await getCurrentUser())!;
 	const ctx = (await getCurrentContext())!;
 	if (!hasRole(ctx.role, ROLES.ADMIN)) {
 		redirect("/app/dashboard");
 	}
-	const museAccess = await hasMuseInviteEntitlement(user.id);
-	const campaigns = museAccess ? await listCampaigns(user.id) : [];
+	const userId = ctx.user.id;
+	const [museAccess, campaigns] = await Promise.all([
+		hasMuseInviteEntitlement(userId),
+		listCampaigns(userId),
+	]);
 
 	const today = startOfDay(new Date());
 	const active: CampaignRow[] = [];

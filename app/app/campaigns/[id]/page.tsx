@@ -28,7 +28,6 @@ import {
 import { acceptCampaignBeatsAction } from "@/app/actions/campaigns";
 import { loadCampaign, type CampaignBeat } from "@/lib/ai/campaign";
 import { formatLabelFor } from "@/lib/campaigns/channel-formats";
-import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { cn } from "@/lib/utils";
@@ -103,21 +102,23 @@ export default async function CampaignDetailPage({
   params: Params;
   searchParams: SearchParams;
 }) {
-  const user = (await getCurrentUser())!;
-  const ctx = (await getCurrentContext())!;
-  if (!hasRole(ctx.role, ROLES.ADMIN)) {
+  const [ctx, { id }, q] = await Promise.all([
+    getCurrentContext(),
+    params,
+    searchParams,
+  ]);
+  const ctxOrThrow = ctx!;
+  if (!hasRole(ctxOrThrow.role, ROLES.ADMIN)) {
     redirect("/app/dashboard");
   }
-  const canManage = hasRole(ctx.role, ROLES.ADMIN);
-  const { id } = await params;
-  const q = await searchParams;
+  const canManage = hasRole(ctxOrThrow.role, ROLES.ADMIN);
   const acceptedFlash = first(q.accepted) === "1";
   const selectedBeatId = first(q.beat) ?? null;
   const viewParam = first(q.view) ?? "list";
   const view: CanvasView = isCanvasView(viewParam) ? viewParam : "list";
   const filters = parseFilters(q);
 
-  const campaign = await loadCampaign(user.id, id);
+  const campaign = await loadCampaign(ctxOrThrow.user.id, id);
   if (!campaign) notFound();
 
   const phaseOrder: Record<string, number> = {
