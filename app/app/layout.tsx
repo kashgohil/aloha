@@ -30,12 +30,12 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 		getWorkspaceCreationEntitlement(user.id),
 	]);
 	const role = ctx?.role ?? null;
-	const trial = ctx
-		? await getTrialState(ctx.workspace.id, ctx.workspace.ownerUserId)
-		: null;
-	const credits = ctx
-		? await getCreditsSnapshot(ctx.workspace.ownerUserId)
-		: null;
+	const [trial, credits] = ctx
+		? await Promise.all([
+				getTrialState(ctx.workspace.id, ctx.workspace.ownerUserId),
+				getCreditsSnapshot(ctx.workspace.ownerUserId),
+			])
+		: [null, null];
 	const isOwner = !!ctx && ctx.user.id === ctx.workspace.ownerUserId;
 
 	return (
