@@ -34,6 +34,9 @@ export function CampaignControls({
   canManage: boolean;
   hasAcceptedBeats: boolean;
 }) {
+  const [dialog, setDialog] = useState<DialogKind>(null);
+  const [isPending, startTransition] = useTransition();
+
   const paused = status === "paused";
   const pauseable =
     status === "running" || status === "scheduled" || status === "ready";
@@ -41,9 +44,6 @@ export function CampaignControls({
     (status === "draft" || status === "ready") && hasAcceptedBeats;
 
   if (!canManage) return null;
-
-  const [dialog, setDialog] = useState<DialogKind>(null);
-  const [isPending, startTransition] = useTransition();
 
   const runAction = (
     action: (fd: FormData) => Promise<void> | void,

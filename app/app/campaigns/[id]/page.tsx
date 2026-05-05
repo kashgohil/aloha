@@ -3,17 +3,31 @@ import {
   ArrowLeft,
   Calendar as CalendarIcon,
   Check,
-  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import { ChannelChip } from "@/components/channel-chip";
+import { CalendarCanvas } from "./_components/calendar-canvas";
+import { DragSurface } from "./_components/canvas-drag";
+import {
+  applyFilters,
+  CanvasFilterBar,
+  parseFilters,
+} from "./_components/canvas-filters";
+import { TimelineCanvas } from "./_components/timeline-canvas";
 import { CampaignControls } from "./_components/campaign-controls";
 import { CreateDraftsSubmit } from "./_components/create-drafts-submit";
 import {
-  acceptCampaignBeatsAction,
-  regenerateCampaignBeatAction,
-} from "@/app/actions/campaigns";
+  BeatInspector,
+  CampaignOverview,
+} from "./_components/inspector";
+import {
+  isCanvasView,
+  ViewToggle,
+  type CanvasView,
+} from "./_components/view-toggle";
+import { acceptCampaignBeatsAction } from "@/app/actions/campaigns";
 import { loadCampaign, type CampaignBeat } from "@/lib/ai/campaign";
+import { formatLabelFor } from "@/lib/campaigns/channel-formats";
 import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
@@ -32,6 +46,7 @@ const KIND_LABELS: Record<string, string> = {
   sale: "Sale",
   drip: "Drip",
   evergreen: "Evergreen",
+  reach: "Reach",
   custom: "Custom",
 };
 
@@ -97,11 +112,14 @@ export default async function CampaignDetailPage({
   const { id } = await params;
   const q = await searchParams;
   const acceptedFlash = first(q.accepted) === "1";
+  const selectedBeatId = first(q.beat) ?? null;
+  const viewParam = first(q.view) ?? "list";
+  const view: CanvasView = isCanvasView(viewParam) ? viewParam : "list";
+  const filters = parseFilters(q);
 
   const campaign = await loadCampaign(user.id, id);
   if (!campaign) notFound();
 
-  // Group by date + order phases within each day in arc order.
   const phaseOrder: Record<string, number> = {
     teaser: 0,
     announce: 1,
@@ -112,8 +130,12 @@ export default async function CampaignDetailPage({
     recap: 6,
     follow_up: 7,
   };
+  const visibleBeats = applyFilters(campaign.beats, filters);
+  const phasesPresent = Array.from(
+    new Set(campaign.beats.map((b) => b.phase)),
+  );
   const byDate = new Map<string, CampaignBeat[]>();
-  for (const beat of campaign.beats) {
+  for (const beat of visibleBeats) {
     const list = byDate.get(beat.date) ?? [];
     list.push(beat);
     byDate.set(beat.date, list);
@@ -128,6 +150,12 @@ export default async function CampaignDetailPage({
 
   const accepted = campaign.beats.filter((b) => b.accepted).length;
   const pending = campaign.beats.length - accepted;
+  const total = campaign.beats.length;
+  const pct = total === 0 ? 0 : Math.round((accepted / total) * 100);
+
+  const selectedBeat = selectedBeatId
+    ? campaign.beats.find((b) => b.id === selectedBeatId) ?? null
+    : null;
 
   return (
     <div className="space-y-8">
@@ -173,21 +201,27 @@ export default async function CampaignDetailPage({
         <p className="mt-2 text-[14px] text-ink/70 leading-[1.5]">
           {campaign.goal}
         </p>
-        <p className="mt-3 text-[13.5px] text-ink/60">
-          {campaign.beats.length} beat{campaign.beats.length === 1 ? "" : "s"} over{" "}
-          {new Intl.DateTimeFormat("en-US", {
-            month: "short",
-            day: "numeric",
-          }).format(campaign.rangeStart)}{" "}
-          →{" "}
-          {new Intl.DateTimeFormat("en-US", {
-            month: "short",
-            day: "numeric",
-          }).format(campaign.rangeEnd)}
-          {" · "}
-          {accepted > 0 ? `${accepted} drafted · ` : ""}
-          {pending} pending
-        </p>
+        <div className="mt-3 flex items-center gap-4 flex-wrap text-[12.5px] text-ink/55">
+          <span className="tabular-nums">
+            {campaign.beats.length} beat{campaign.beats.length === 1 ? "" : "s"}
+          </span>
+          <span aria-hidden>·</span>
+          <span>
+            {new Intl.DateTimeFormat("en-US", {
+              month: "short",
+              day: "numeric",
+            }).format(campaign.rangeStart)}{" "}
+            →{" "}
+            {new Intl.DateTimeFormat("en-US", {
+              month: "short",
+              day: "numeric",
+            }).format(campaign.rangeEnd)}
+          </span>
+          <span aria-hidden>·</span>
+          <span className="tabular-nums">
+            {accepted} drafted · {pending} pending · {pct}%
+          </span>
+        </div>
       </div>
 
       {acceptedFlash && accepted > 0 ? (
@@ -209,68 +243,150 @@ export default async function CampaignDetailPage({
         <input type="hidden" name="campaignId" value={campaign.id} />
       </form>
 
-      <div className="space-y-6">
-        {dates.map((date) => (
-          <section key={date} className="space-y-2">
-            <header className="flex items-center gap-2 text-[11.5px] uppercase tracking-[0.18em] text-ink/55">
-              <CalendarIcon className="w-3 h-3" />
-              {new Intl.DateTimeFormat("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              }).format(new Date(`${date}T12:00:00Z`))}
-            </header>
-            <ul className="space-y-2">
-              {(byDate.get(date) ?? []).map((beat) => (
-                <BeatRow
-                  key={beat.id}
-                  beat={beat}
-                  campaignId={campaign.id}
-                />
-              ))}
-            </ul>
-          </section>
-        ))}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <ViewToggle current={view} beat={selectedBeatId} />
+          <span className="text-[11.5px] text-ink/55 tabular-nums">
+            {visibleBeats.length} of {campaign.beats.length} beats shown
+          </span>
+        </div>
+        <CanvasFilterBar
+          channels={campaign.channels}
+          phases={phasesPresent}
+          view={view}
+          beat={selectedBeatId}
+          filters={filters}
+        />
+      </div>
 
-        <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
-          <p className="text-[12.5px] text-ink/55">
-            Tick the beats you want. Each becomes a draft post scheduled
-            for noon on its day — tune in composer.
-          </p>
-          <CreateDraftsSubmit formId="campaign-accept-form" />
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-6 items-start">
+        <div className="space-y-6 min-w-0">
+          {view === "calendar" ? (
+            visibleBeats.length === 0 ? (
+              <EmptyCanvas message={emptyCanvasMessage(campaign.beats.length)} />
+            ) : (
+              <DragSurface campaignId={campaign.id}>
+                <CalendarCanvas
+                  beats={visibleBeats}
+                  rangeStart={campaign.rangeStart}
+                  rangeEnd={campaign.rangeEnd}
+                  selectedBeatId={selectedBeatId}
+                />
+              </DragSurface>
+            )
+          ) : view === "timeline" ? (
+            visibleBeats.length === 0 ? (
+              <EmptyCanvas message={emptyCanvasMessage(campaign.beats.length)} />
+            ) : (
+              <TimelineCanvas
+                beats={visibleBeats}
+                channels={
+                  filters.channels.size > 0
+                    ? campaign.channels.filter((c) => filters.channels.has(c))
+                    : campaign.channels
+                }
+                rangeStart={campaign.rangeStart}
+                rangeEnd={campaign.rangeEnd}
+                selectedBeatId={selectedBeatId}
+              />
+            )
+          ) : dates.length === 0 ? (
+            <EmptyCanvas message={emptyCanvasMessage(campaign.beats.length)} />
+          ) : (
+            dates.map((date) => (
+              <section key={date} className="space-y-2">
+                <header className="flex items-center gap-2 text-[11.5px] uppercase tracking-[0.18em] text-ink/55">
+                  <CalendarIcon className="w-3 h-3" />
+                  {new Intl.DateTimeFormat("en-US", {
+                    weekday: "short",
+                    month: "short",
+                    day: "numeric",
+                  }).format(new Date(`${date}T12:00:00Z`))}
+                </header>
+                <ul className="space-y-2">
+                  {(byDate.get(date) ?? []).map((beat) => (
+                    <BeatRow
+                      key={beat.id}
+                      beat={beat}
+                      isSelected={selectedBeatId === beat.id}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ))
+          )}
+
+          <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
+            <p className="text-[12.5px] text-ink/55">
+              Tick the beats you want. Each becomes a draft post scheduled
+              for noon on its day — tune in composer.
+            </p>
+            <CreateDraftsSubmit formId="campaign-accept-form" />
+          </div>
+        </div>
+
+        <div className="lg:sticky lg:top-6">
+          {selectedBeat ? (
+            <BeatInspector campaignId={campaign.id} beat={selectedBeat} />
+          ) : (
+            <CampaignOverview beats={campaign.beats} />
+          )}
         </div>
       </div>
     </div>
   );
 }
 
+function EmptyCanvas({ message }: { message: string }) {
+  return (
+    <div className="rounded-3xl border border-dashed border-border-strong bg-background-elev px-6 py-12 text-center text-[13px] text-ink/55">
+      {message}
+    </div>
+  );
+}
+
+function emptyCanvasMessage(totalBeats: number): string {
+  return totalBeats === 0
+    ? "No beats yet."
+    : "No beats match the current filters.";
+}
+
 function BeatRow({
   beat,
-  campaignId,
+  isSelected,
 }: {
   beat: CampaignBeat;
-  campaignId: string;
+  isSelected: boolean;
 }) {
   const accepted = Boolean(beat.accepted);
   return (
     <li
       className={cn(
-        "rounded-2xl border p-4 flex items-start gap-3",
+        "rounded-2xl border transition-colors flex items-stretch gap-3",
         accepted
           ? "border-primary/40 bg-primary-soft/30"
-          : "border-border-strong bg-background-elev",
+          : isSelected
+            ? "border-ink bg-background-elev"
+            : "border-border-strong bg-background-elev hover:border-ink/50",
       )}
     >
-      <input
-        type="checkbox"
-        name="beatIds"
-        value={beat.id}
-        form="campaign-accept-form"
-        disabled={accepted}
-        defaultChecked={!accepted}
-        className="mt-1 accent-ink"
-      />
-      <div className="flex-1 min-w-0">
+      <label className="flex items-start pl-4 pt-4 cursor-pointer">
+        <input
+          type="checkbox"
+          name="beatIds"
+          value={beat.id}
+          form="campaign-accept-form"
+          disabled={accepted}
+          defaultChecked={!accepted}
+          className="accent-ink"
+        />
+      </label>
+      <Link
+        href={`?beat=${beat.id}`}
+        scroll={false}
+        prefetch={false}
+        className="flex-1 min-w-0 p-4 pl-2"
+      >
         <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-[0.16em] text-ink/55">
           <span
             className={cn(
@@ -282,90 +398,25 @@ function BeatRow({
           </span>
           <ChannelChip channel={beat.channel} />
           <span aria-hidden>·</span>
-          <span>{beat.format}</span>
+          <span className="text-ink/65">
+            {formatLabelFor(beat.channel, beat.format)}
+          </span>
           {accepted ? (
-            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-ink text-background tracking-wide">
+            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-ink text-background tracking-wide ml-auto">
               <Check className="w-3 h-3" />
               Drafted
             </span>
-          ) : (
-            <form
-              action={regenerateCampaignBeatAction}
-              className="ml-auto"
-            >
-              <input type="hidden" name="campaignId" value={campaignId} />
-              <input type="hidden" name="beatId" value={beat.id} />
-              <button
-                type="submit"
-                title="Regenerate this beat"
-                className="inline-flex items-center gap-1.5 h-6 px-2 rounded-full border border-border-strong text-[10.5px] font-medium text-ink/65 hover:text-ink hover:border-ink transition-colors tracking-wide"
-              >
-                <RefreshCw className="w-3 h-3" />
-                Regenerate
-              </button>
-            </form>
-          )}
+          ) : null}
         </div>
         <p className="mt-1.5 text-[14.5px] text-ink font-medium leading-[1.3]">
           {beat.title}
         </p>
         {beat.angle ? (
-          <p className="mt-1 text-[13px] text-ink/70 leading-[1.55]">
+          <p className="mt-1 text-[13px] text-ink/65 leading-[1.55] line-clamp-2">
             {beat.angle}
           </p>
         ) : null}
-        {beat.hook ? (
-          <p className="mt-3 rounded-xl bg-muted/40 border border-border px-3 py-2 text-[13px] text-ink leading-[1.5]">
-            <span className="block text-[10.5px] uppercase tracking-[0.18em] text-ink/50 mb-1">
-              Hook
-            </span>
-            {beat.hook}
-          </p>
-        ) : null}
-        {beat.keyPoints && beat.keyPoints.length > 0 ? (
-          <div className="mt-2">
-            <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink/50 mb-1">
-              Beats
-            </p>
-            <ol className="space-y-1 list-decimal pl-5 text-[13px] text-ink/80 leading-[1.5]">
-              {beat.keyPoints.map((pt, i) => (
-                <li key={i}>{pt}</li>
-              ))}
-            </ol>
-          </div>
-        ) : null}
-        {beat.cta ? (
-          <p className="mt-2 text-[13px] text-ink/80">
-            <span className="text-[10.5px] uppercase tracking-[0.18em] text-ink/50 mr-1.5">
-              CTA
-            </span>
-            {beat.cta}
-          </p>
-        ) : null}
-        {beat.hashtags && beat.hashtags.length > 0 ? (
-          <p className="mt-2 text-[12.5px] text-ink/60 break-words">
-            {beat.hashtags.join(" ")}
-          </p>
-        ) : null}
-        {beat.mediaSuggestion ? (
-          <p className="mt-2 text-[12px] text-ink/55 italic leading-[1.5]">
-            Media: {beat.mediaSuggestion}
-          </p>
-        ) : null}
-        {beat.rationale ? (
-          <p className="mt-2 text-[12px] text-ink/55 leading-[1.5]">
-            {beat.rationale}
-          </p>
-        ) : null}
-        {accepted && beat.acceptedPostId ? (
-          <Link
-            href={`/app/posts/${beat.acceptedPostId}`}
-            className="mt-2 inline-flex items-center gap-1 text-[12px] text-ink/60 hover:text-ink transition-colors"
-          >
-            Open draft
-          </Link>
-        ) : null}
-      </div>
+      </Link>
     </li>
   );
 }
