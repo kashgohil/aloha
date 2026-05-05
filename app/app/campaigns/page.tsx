@@ -3,8 +3,16 @@ import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentUser } from "@/lib/current-user";
 import { getCurrentContext } from "@/lib/current-context";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
+import { ChannelIcons } from "@/components/channel-chip";
 import { cn } from "@/lib/utils";
-import { CalendarRange, Lock, Megaphone, Plus, Sparkles } from "lucide-react";
+import {
+	CalendarRange,
+	ChevronDown,
+	Lock,
+	Megaphone,
+	Plus,
+	Sparkles,
+} from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -16,6 +24,7 @@ const KIND_LABELS: Record<string, string> = {
 	sale: "Sale",
 	drip: "Drip",
 	evergreen: "Evergreen",
+	reach: "Reach",
 	custom: "Custom",
 };
 
@@ -29,6 +38,15 @@ const STATUS_STYLES: Record<string, string> = {
 	archived: "bg-background border-dashed border-border-strong text-ink/45",
 };
 
+type CampaignRow = Awaited<ReturnType<typeof listCampaigns>>[number];
+
+const MS_PER_DAY = 86_400_000;
+const startOfDay = (d: Date) => {
+	const x = new Date(d);
+	x.setHours(0, 0, 0, 0);
+	return x;
+};
+
 export default async function CampaignsPage() {
 	const user = (await getCurrentUser())!;
 	const ctx = (await getCurrentContext())!;
@@ -38,8 +56,24 @@ export default async function CampaignsPage() {
 	const museAccess = await hasMuseInviteEntitlement(user.id);
 	const campaigns = museAccess ? await listCampaigns(user.id) : [];
 
+	const today = startOfDay(new Date());
+	const active: CampaignRow[] = [];
+	const upcoming: CampaignRow[] = [];
+	const wrapped: CampaignRow[] = [];
+	for (const c of campaigns) {
+		const start = startOfDay(c.rangeStart);
+		const end = startOfDay(c.rangeEnd);
+		if (c.status === "archived" || end < today) wrapped.push(c);
+		else if (start > today) upcoming.push(c);
+		else active.push(c);
+	}
+	upcoming.sort(
+		(a, b) => a.rangeStart.getTime() - b.rangeStart.getTime(),
+	);
+	wrapped.sort((a, b) => b.rangeEnd.getTime() - a.rangeEnd.getTime());
+
 	return (
-		<div className="space-y-10">
+		<div className="space-y-12">
 			<header className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
 				<div>
 					<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
@@ -49,8 +83,8 @@ export default async function CampaignsPage() {
 						Campaigns<span className="text-primary font-light">.</span>
 					</h1>
 					<p className="mt-3 text-[14px] text-ink/65 max-w-xl leading-[1.55]">
-						Launches, webinars, sales, drips. Tell Muse the arc; get a sequenced
-						beat sheet you can review, tune, and ship.
+						Launches, webinars, sales, drips, reach pushes. Tell Muse the arc; get a
+						sequenced beat sheet you can review, tune, and ship.
 					</p>
 				</div>
 				{museAccess ? (
@@ -106,61 +140,323 @@ export default async function CampaignsPage() {
 						Start one
 					</Link>
 				</div>
-			) : museAccess ? (
-				<ul className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-					{campaigns.map((c) => {
-						const total = (c.beats as Array<{ accepted?: boolean }>).length;
-						const accepted = (c.beats as Array<{ accepted?: boolean }>).filter(
-							(b) => b.accepted,
-						).length;
-						return (
-							<li key={c.id}>
-								<Link
-									href={`/app/campaigns/${c.id}`}
-									prefetch={false}
-									className="block rounded-2xl border border-border-strong bg-background-elev p-5 hover:bg-muted/30 transition-colors"
-								>
-									<div className="flex items-center justify-between gap-2 text-[11px] uppercase tracking-[0.16em] text-ink/55">
-										<span>{KIND_LABELS[c.kind] ?? c.kind}</span>
-										<span
-											className={cn(
-												"inline-flex items-center h-5 px-2 rounded-full border tracking-wide",
-												STATUS_STYLES[c.status] ?? STATUS_STYLES.draft,
-											)}
-										>
-											{c.status}
-										</span>
-									</div>
-									<p className="mt-3 text-[15px] text-ink font-medium leading-[1.3] line-clamp-2">
-										{c.name}
-									</p>
-									<p className="mt-1.5 text-[12.5px] text-ink/60 line-clamp-2 leading-[1.5]">
-										{c.goal}
-									</p>
-									<div className="mt-4 flex items-center gap-3 text-[11.5px] text-ink/55">
-										<span className="inline-flex items-center gap-1">
-											<CalendarRange className="w-3 h-3" />
-											{new Intl.DateTimeFormat("en-US", {
-												month: "short",
-												day: "numeric",
-											}).format(c.rangeStart)}
-											{" → "}
-											{new Intl.DateTimeFormat("en-US", {
-												month: "short",
-												day: "numeric",
-											}).format(c.rangeEnd)}
-										</span>
-										<span aria-hidden>·</span>
-										<span>
-											{accepted}/{total} drafted
-										</span>
-									</div>
-								</Link>
-							</li>
-						);
-					})}
-				</ul>
+			) : null}
+
+			{museAccess && campaigns.length > 0 ? (
+				<>
+					{active.length > 0 ? (
+						<Section
+							eyebrow="Active now"
+							subtitle={`${active.length} ${active.length === 1 ? "campaign" : "campaigns"} running.`}
+						>
+							<ul className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+								{active.map((c) => (
+									<li key={c.id}>
+										<ActiveCard campaign={c} today={today} />
+									</li>
+								))}
+							</ul>
+						</Section>
+					) : null}
+
+					{upcoming.length > 0 ? (
+						<Section
+							eyebrow="Upcoming"
+							subtitle={`${upcoming.length} scheduled to start.`}
+						>
+							<ul className="space-y-2">
+								{upcoming.map((c) => (
+									<li key={c.id}>
+										<UpcomingRow campaign={c} today={today} />
+									</li>
+								))}
+							</ul>
+						</Section>
+					) : null}
+
+					{wrapped.length > 0 ? (
+						<Section
+							eyebrow="Wrapped"
+							subtitle={`${wrapped.length} ${wrapped.length === 1 ? "campaign" : "campaigns"} done.`}
+						>
+							{wrapped.length <= 5 ? (
+								<ul className="space-y-1.5">
+									{wrapped.map((c) => (
+										<li key={c.id}>
+											<WrappedRow campaign={c} />
+										</li>
+									))}
+								</ul>
+							) : (
+								<details className="group">
+									<summary className="list-none cursor-pointer inline-flex items-center gap-1.5 text-[12.5px] text-ink/55 hover:text-ink transition-colors">
+										<ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
+										Show wrapped ({wrapped.length})
+									</summary>
+									<ul className="mt-3 space-y-1.5">
+										{wrapped.map((c) => (
+											<li key={c.id}>
+												<WrappedRow campaign={c} />
+											</li>
+										))}
+									</ul>
+								</details>
+							)}
+						</Section>
+					) : null}
+				</>
 			) : null}
 		</div>
+	);
+}
+
+function Section({
+	eyebrow,
+	subtitle,
+	children,
+}: {
+	eyebrow: string;
+	subtitle?: string;
+	children: React.ReactNode;
+}) {
+	return (
+		<section className="space-y-4">
+			<header>
+				<p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-ink/55">
+					{eyebrow}
+				</p>
+				{subtitle ? (
+					<p className="mt-1 text-[12.5px] text-ink/55">{subtitle}</p>
+				) : null}
+			</header>
+			{children}
+		</section>
+	);
+}
+
+function ActiveCard({
+	campaign,
+	today,
+}: {
+	campaign: CampaignRow;
+	today: Date;
+}) {
+	const beats = campaign.beats as Array<{
+		accepted?: boolean;
+		date?: string;
+	}>;
+	const total = beats.length;
+	const accepted = beats.filter((b) => b.accepted).length;
+	const pct = total === 0 ? 0 : Math.round((accepted / total) * 100);
+	const end = startOfDay(campaign.rangeEnd);
+	const daysLeft = Math.max(
+		0,
+		Math.ceil((end.getTime() - today.getTime()) / MS_PER_DAY),
+	);
+
+	return (
+		<Link
+			href={`/app/campaigns/${campaign.id}`}
+			prefetch={false}
+			className="group block rounded-3xl border border-border-strong bg-background-elev p-6 hover:bg-muted/20 transition-colors"
+		>
+			<div className="flex items-start justify-between gap-4">
+				<div className="min-w-0 flex-1">
+					<div className="flex items-center gap-2 flex-wrap text-[10.5px] uppercase tracking-[0.18em] text-ink/55">
+						<span>{KIND_LABELS[campaign.kind] ?? campaign.kind}</span>
+						<span aria-hidden>·</span>
+						<span
+							className={cn(
+								"inline-flex items-center h-5 px-2 rounded-full border tracking-wide",
+								STATUS_STYLES[campaign.status] ?? STATUS_STYLES.draft,
+							)}
+						>
+							{campaign.status}
+						</span>
+					</div>
+					<p className="mt-2.5 font-display text-[22px] leading-[1.15] tracking-[-0.01em] text-ink line-clamp-2">
+						{campaign.name}
+					</p>
+					<p className="mt-1.5 text-[12.5px] text-ink/60 line-clamp-2 leading-[1.5]">
+						{campaign.goal}
+					</p>
+				</div>
+				<ProgressRing pct={pct} />
+			</div>
+
+			<div className="mt-5 flex items-center gap-3 flex-wrap text-[11.5px] text-ink/55">
+				<ChannelIcons channels={campaign.channels} size="sm" visible={5} />
+				<span aria-hidden>·</span>
+				<span className="inline-flex items-center gap-1">
+					<CalendarRange className="w-3 h-3" />
+					{daysLeft === 0
+						? "Wraps today"
+						: `${daysLeft} day${daysLeft === 1 ? "" : "s"} left`}
+				</span>
+				<span aria-hidden>·</span>
+				<span className="tabular-nums">
+					{accepted}/{total} drafted
+				</span>
+			</div>
+
+			<MiniTimeline beats={beats} today={today} />
+		</Link>
+	);
+}
+
+function ProgressRing({ pct }: { pct: number }) {
+	const r = 22;
+	const c = 2 * Math.PI * r;
+	const dash = (pct / 100) * c;
+	return (
+		<div className="relative shrink-0 w-14 h-14" aria-hidden>
+			<svg width="56" height="56" viewBox="0 0 56 56">
+				<circle
+					cx="28"
+					cy="28"
+					r={r}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="3"
+					className="text-border"
+				/>
+				<circle
+					cx="28"
+					cy="28"
+					r={r}
+					fill="none"
+					stroke="currentColor"
+					strokeWidth="3"
+					strokeLinecap="round"
+					strokeDasharray={`${dash} ${c}`}
+					transform="rotate(-90 28 28)"
+					className="text-primary transition-[stroke-dasharray]"
+				/>
+			</svg>
+			<span className="absolute inset-0 grid place-items-center text-[11px] font-medium text-ink tabular-nums">
+				{pct}%
+			</span>
+		</div>
+	);
+}
+
+function MiniTimeline({
+	beats,
+	today,
+}: {
+	beats: Array<{ accepted?: boolean; date?: string }>;
+	today: Date;
+}) {
+	const horizon = 30;
+	const cells: Array<{ accepted: boolean; pending: boolean; isToday: boolean }> =
+		[];
+	for (let i = 0; i < horizon; i += 1) {
+		const d = new Date(today);
+		d.setDate(d.getDate() + i);
+		const iso = d.toISOString().slice(0, 10);
+		const onDay = beats.filter((b) => b.date === iso);
+		cells.push({
+			accepted: onDay.some((b) => b.accepted),
+			pending: onDay.some((b) => !b.accepted),
+			isToday: i === 0,
+		});
+	}
+	return (
+		<div className="mt-5">
+			<div
+				className="flex items-end gap-[3px] h-7"
+				aria-label="Next 30 days of beats"
+			>
+				{cells.map((c, i) => {
+					const cls = c.accepted
+						? "bg-primary"
+						: c.pending
+							? "bg-ink/35"
+							: "bg-border";
+					const h = c.accepted || c.pending ? "h-7" : "h-2";
+					return (
+						<span
+							key={i}
+							className={cn(
+								"flex-1 rounded-sm transition-colors",
+								cls,
+								h,
+								c.isToday ? "ring-2 ring-primary/40 ring-offset-1" : "",
+							)}
+						/>
+					);
+				})}
+			</div>
+			<p className="mt-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.16em] text-ink/40">
+				<span>Today</span>
+				<span>+30d</span>
+			</p>
+		</div>
+	);
+}
+
+function UpcomingRow({
+	campaign,
+	today,
+}: {
+	campaign: CampaignRow;
+	today: Date;
+}) {
+	const total = (campaign.beats as Array<unknown>).length;
+	const start = startOfDay(campaign.rangeStart);
+	const daysOut = Math.max(
+		0,
+		Math.ceil((start.getTime() - today.getTime()) / MS_PER_DAY),
+	);
+	return (
+		<Link
+			href={`/app/campaigns/${campaign.id}`}
+			prefetch={false}
+			className="group flex items-center gap-4 rounded-2xl border border-border bg-background-elev px-4 py-3 hover:border-ink transition-colors"
+		>
+			<span className="inline-flex items-center h-5 px-2 rounded-full border border-border text-[10.5px] uppercase tracking-[0.16em] text-ink/55 shrink-0">
+				{KIND_LABELS[campaign.kind] ?? campaign.kind}
+			</span>
+			<span className="text-[14px] text-ink font-medium leading-[1.3] truncate min-w-0 flex-1">
+				{campaign.name}
+			</span>
+			<ChannelIcons channels={campaign.channels} size="sm" visible={4} />
+			<span className="text-[12px] text-ink/55 tabular-nums shrink-0">
+				starts in {daysOut}d
+			</span>
+			<span className="text-[12px] text-ink/45 tabular-nums shrink-0">
+				{total} beat{total === 1 ? "" : "s"}
+			</span>
+		</Link>
+	);
+}
+
+function WrappedRow({ campaign }: { campaign: CampaignRow }) {
+	const beats = campaign.beats as Array<{ accepted?: boolean }>;
+	const total = beats.length;
+	const accepted = beats.filter((b) => b.accepted).length;
+	const pct = total === 0 ? 0 : Math.round((accepted / total) * 100);
+	return (
+		<Link
+			href={`/app/campaigns/${campaign.id}`}
+			prefetch={false}
+			className="group flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-muted/30 transition-colors text-ink/65"
+		>
+			<span className="text-[10.5px] uppercase tracking-[0.16em] text-ink/40 shrink-0 w-20">
+				{KIND_LABELS[campaign.kind] ?? campaign.kind}
+			</span>
+			<span className="text-[13px] truncate min-w-0 flex-1">
+				{campaign.name}
+			</span>
+			<span className="text-[11.5px] text-ink/40 tabular-nums shrink-0">
+				{new Intl.DateTimeFormat("en-US", {
+					month: "short",
+					day: "numeric",
+				}).format(campaign.rangeEnd)}
+			</span>
+			<span className="text-[11.5px] text-ink/40 tabular-nums shrink-0 w-12 text-right">
+				{pct}%
+			</span>
+		</Link>
 	);
 }

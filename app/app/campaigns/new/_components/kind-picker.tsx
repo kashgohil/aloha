@@ -11,10 +11,11 @@ const CAMPAIGN_KINDS = [
   "sale",
   "drip",
   "evergreen",
+  "reach",
   "custom",
 ] as const;
 type CampaignKind = (typeof CAMPAIGN_KINDS)[number];
-const CADENCE_KINDS: readonly CampaignKind[] = ["drip", "evergreen"];
+const CADENCE_KINDS: readonly CampaignKind[] = ["drip", "evergreen", "reach"];
 
 const KIND_DETAIL: Record<
   CampaignKind,
@@ -39,6 +40,11 @@ const KIND_DETAIL: Record<
   evergreen: {
     label: "Evergreen",
     blurb: "Steady rhythm of announce + social proof + teaser. No urgency.",
+  },
+  reach: {
+    label: "Reach",
+    blurb:
+      "Discovery push — hook-led posts in high-reach formats (threads, reels, carousels).",
   },
   custom: {
     label: "Custom",
