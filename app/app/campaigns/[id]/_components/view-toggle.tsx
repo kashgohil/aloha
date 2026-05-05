@@ -17,12 +17,23 @@ export function isCanvasView(v: string): v is CanvasView {
 // Pill toggle implemented as Link nav rather than a client component — RSC
 // re-renders the page with the new search param and the canvas redraws.
 // `scroll={false}` keeps the user's scroll position when switching views.
+//
+// Filter state (ch / ph / fmt / show) carries across view switches —
+// switching from List → Calendar shouldn't silently reset what the user
+// just narrowed down to.
 export function ViewToggle({
   current,
   beat,
+  carry,
 }: {
   current: CanvasView;
   beat?: string | null;
+  carry?: {
+    ch?: string;
+    ph?: string;
+    fmt?: string;
+    show?: string;
+  };
 }) {
   return (
     <div className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background p-0.5">
@@ -30,6 +41,10 @@ export function ViewToggle({
         const params = new URLSearchParams();
         if (slug !== "list") params.set("view", slug);
         if (beat) params.set("beat", beat);
+        if (carry?.ch) params.set("ch", carry.ch);
+        if (carry?.ph) params.set("ph", carry.ph);
+        if (carry?.fmt) params.set("fmt", carry.fmt);
+        if (carry?.show) params.set("show", carry.show);
         const href = params.toString() ? `?${params.toString()}` : "?";
         const active = current === slug;
         return (
