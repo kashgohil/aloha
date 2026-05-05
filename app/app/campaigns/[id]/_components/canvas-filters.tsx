@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ChannelChip, channelLabel, CHANNEL_ICONS } from "@/components/channel-chip";
 import { formatLabelFor, formatsFor } from "@/lib/campaigns/channel-formats";
 import { cn } from "@/lib/utils";
+import { ChevronDown, SlidersHorizontal } from "lucide-react";
 
 const PHASE_LABELS: Record<string, string> = {
   teaser: "Teaser",
@@ -66,21 +67,28 @@ export function applyFilters<
   });
 }
 
+// Single-row filter strip. Show-mode (All/Pending/Drafted) stays visible
+// because it's the most-used dimension; channel/phase/format collapse
+// into a `<details>` popover so the canvas isn't pushed down by 4 rows
+// of pills. RSC-only — link nav drives all state via search params, no
+// client component needed.
 export function CanvasFilterBar({
   channels,
   phases,
   view,
   beat,
   filters,
+  visibleCount,
+  totalCount,
 }: {
   channels: string[];
   phases: string[];
   view: string;
   beat?: string | null;
   filters: CanvasFilters;
+  visibleCount: number;
+  totalCount: number;
 }) {
-  // Format options derived from the campaign's channel set so the user
-  // doesn't see formats that aren't relevant to any selected channel.
   const formats = uniqueFormatsFor(channels);
 
   const baseParams = (): URLSearchParams => {
@@ -128,95 +136,143 @@ export function CanvasFilterBar({
     return p.toString() ? `?${p.toString()}` : "?";
   };
 
-  const hasAnyFilter =
-    filters.channels.size > 0 ||
-    filters.phases.size > 0 ||
-    filters.formats.size > 0 ||
-    filters.show !== "all";
+  const dimensionCount =
+    filters.channels.size + filters.phases.size + filters.formats.size;
+  const hasAnyFilter = dimensionCount > 0 || filters.show !== "all";
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex items-center gap-2 flex-wrap">
-        <FilterGroupLabel>Show</FilterGroupLabel>
-        {(["all", "pending", "drafted"] as ShowMode[]).map((mode) => (
-          <PillLink
-            key={mode}
-            href={showHref(mode)}
-            active={filters.show === mode}
-          >
-            {mode === "all" ? "All" : mode === "pending" ? "Pending" : "Drafted"}
-          </PillLink>
-        ))}
+    <div className="flex items-center gap-3 flex-wrap">
+      <div className="inline-flex items-center gap-0.5 rounded-full border border-border bg-background p-0.5">
+        {(["all", "pending", "drafted"] as ShowMode[]).map((mode) => {
+          const active = filters.show === mode;
+          return (
+            <Link
+              key={mode}
+              href={showHref(mode)}
+              scroll={false}
+              prefetch={false}
+              className={cn(
+                "inline-flex items-center h-8 px-3 rounded-full text-[12px] font-medium transition-colors",
+                active
+                  ? "bg-ink text-background"
+                  : "text-ink/65 hover:text-ink",
+              )}
+            >
+              {mode === "all" ? "All" : mode === "pending" ? "Pending" : "Drafted"}
+            </Link>
+          );
+        })}
       </div>
 
-      {channels.length > 0 ? (
-        <div className="flex items-center gap-2 flex-wrap">
-          <FilterGroupLabel>Channel</FilterGroupLabel>
-          {channels.map((c) => {
-            const Icon = CHANNEL_ICONS[c];
-            return (
-              <PillLink
-                key={c}
-                href={toggleHref("ch", c)}
-                active={filters.channels.has(c)}
+      {channels.length + phases.length + formats.length > 0 ? (
+        <details className="relative group">
+          <summary
+            className={cn(
+              "list-none cursor-pointer inline-flex items-center gap-1.5 h-8 px-3 rounded-full border text-[12px] font-medium transition-colors select-none",
+              dimensionCount > 0
+                ? "border-ink bg-ink text-background"
+                : "border-border bg-background text-ink/70 hover:border-ink hover:text-ink",
+            )}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            Filters
+            {dimensionCount > 0 ? (
+              <span
+                className={cn(
+                  "inline-grid place-items-center min-w-4 h-4 px-1 rounded-full text-[10px] tabular-nums",
+                  dimensionCount > 0
+                    ? "bg-background/20 text-background"
+                    : "bg-muted text-ink/65",
+                )}
               >
-                {Icon ? <Icon className="w-3 h-3" /> : null}
-                {channelLabel(c)}
-              </PillLink>
-            );
-          })}
-        </div>
+                {dimensionCount}
+              </span>
+            ) : null}
+            <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
+          </summary>
+
+          <div className="absolute top-full left-0 mt-2 z-20 rounded-2xl border border-border-strong bg-background-elev shadow-lg p-4 space-y-4 min-w-[320px] max-w-[420px]">
+            {channels.length > 0 ? (
+              <FilterGroup label="Channel">
+                {channels.map((c) => {
+                  const Icon = CHANNEL_ICONS[c];
+                  return (
+                    <PillLink
+                      key={c}
+                      href={toggleHref("ch", c)}
+                      active={filters.channels.has(c)}
+                    >
+                      {Icon ? <Icon className="w-3 h-3" /> : null}
+                      {channelLabel(c)}
+                    </PillLink>
+                  );
+                })}
+              </FilterGroup>
+            ) : null}
+
+            {phases.length > 0 ? (
+              <FilterGroup label="Phase">
+                {phases.map((p) => (
+                  <PillLink
+                    key={p}
+                    href={toggleHref("ph", p)}
+                    active={filters.phases.has(p)}
+                  >
+                    {PHASE_LABELS[p] ?? p}
+                  </PillLink>
+                ))}
+              </FilterGroup>
+            ) : null}
+
+            {formats.length > 0 ? (
+              <FilterGroup label="Format">
+                {formats.map((f) => (
+                  <PillLink
+                    key={f.slug}
+                    href={toggleHref("fmt", f.slug)}
+                    active={filters.formats.has(f.slug)}
+                  >
+                    {f.label}
+                  </PillLink>
+                ))}
+              </FilterGroup>
+            ) : null}
+          </div>
+        </details>
       ) : null}
 
-      {phases.length > 0 ? (
-        <div className="flex items-center gap-2 flex-wrap">
-          <FilterGroupLabel>Phase</FilterGroupLabel>
-          {phases.map((p) => (
-            <PillLink
-              key={p}
-              href={toggleHref("ph", p)}
-              active={filters.phases.has(p)}
-            >
-              {PHASE_LABELS[p] ?? p}
-            </PillLink>
-          ))}
-        </div>
-      ) : null}
-
-      {formats.length > 0 ? (
-        <div className="flex items-center gap-2 flex-wrap">
-          <FilterGroupLabel>Format</FilterGroupLabel>
-          {formats.map((f) => (
-            <PillLink
-              key={f.slug}
-              href={toggleHref("fmt", f.slug)}
-              active={filters.formats.has(f.slug)}
-            >
-              {f.label}
-            </PillLink>
-          ))}
-        </div>
-      ) : null}
+      <span className="text-[11.5px] text-ink/55 tabular-nums ml-auto">
+        {visibleCount} of {totalCount} shown
+      </span>
 
       {hasAnyFilter ? (
         <Link
           href={clearHref()}
           scroll={false}
           prefetch={false}
-          className="inline-block text-[11.5px] text-ink/55 hover:text-ink transition-colors"
+          className="text-[11.5px] text-ink/55 hover:text-ink transition-colors"
         >
-          Clear filters
+          Clear
         </Link>
       ) : null}
     </div>
   );
 }
 
-function FilterGroupLabel({ children }: { children: React.ReactNode }) {
+function FilterGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
-    <span className="text-[10.5px] uppercase tracking-[0.18em] text-ink/45 mr-1">
-      {children}
-    </span>
+    <div className="space-y-1.5">
+      <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink/45 font-medium">
+        {label}
+      </p>
+      <div className="flex items-center gap-1.5 flex-wrap">{children}</div>
+    </div>
   );
 }
 
