@@ -157,7 +157,7 @@ export async function acceptCampaignBeatsAction(formData: FormData) {
 
 	revalidatePath(`/app/campaigns/${campaignId}`);
 	revalidatePath("/app/calendar");
-	redirect(`/app/campaigns/${campaignId}?accepted=1`);
+	redirect(`/app/campaigns/${campaignId}`);
 }
 
 export async function regenerateCampaignBeatAction(formData: FormData) {
