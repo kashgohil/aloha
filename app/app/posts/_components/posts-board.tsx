@@ -12,7 +12,8 @@ import {
 	useSensors,
 } from "@dnd-kit/core";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { composeHref } from "@/lib/compose-url";
 import { useMemo, useState, useTransition } from "react";
 // (icons no longer needed in column headers — using a colored dot instead)
 import {
@@ -66,6 +67,8 @@ export function PostsBoard({
 	workspaceRole: WorkspaceRole;
 }) {
 	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const [optimistic, setOptimistic] = useState<Row[]>(rows);
 	const [, startTransition] = useTransition();
 	const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -101,7 +104,12 @@ export function PostsBoard({
 		// instead. Keeping this slice free of inline date pickers.
 		if (target === "scheduled") {
 			toast.info("Open the post to pick a schedule time.");
-			router.push(`/app/composer?post=${row.id}`);
+			router.push(
+				composeHref(
+					{ pathname, search: new URLSearchParams(searchParams.toString()) },
+					{ mode: "edit", postId: row.id },
+				),
+			);
 			return;
 		}
 

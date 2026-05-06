@@ -38,7 +38,7 @@ export function IdeasCard({
 					{fresh.map((idea) => (
 						<li key={idea.id}>
 							<Link
-								href={`/app/composer?idea=${idea.id}`}
+								href={`?compose=new&idea=${idea.id}`}
 								className="group flex items-start gap-2.5 text-[13px] text-ink/80 hover:text-ink transition-colors"
 							>
 								<Lightbulb className="w-3.5 h-3.5 mt-[3px] text-primary shrink-0" />

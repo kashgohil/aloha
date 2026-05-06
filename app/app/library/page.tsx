@@ -96,7 +96,7 @@ export default async function LibraryPage({
         <div>
           {museAccess ? (
             <Link
-              href="/app/composer"
+              href="?compose=new"
               className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
             >
               <Sparkles className="w-4 h-4" />
@@ -177,7 +177,7 @@ function EmptyState({ tab }: { tab: Tab }) {
       </p>
       <div className="mt-6">
         <Link
-          href="/app/composer"
+          href="?compose=new"
           className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border-strong text-[12.5px] font-medium text-ink transition-colors"
         >
           <PenSquare className="w-3.5 h-3.5" />

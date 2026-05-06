@@ -198,7 +198,7 @@ export function PostsList({
 							<Link
 								href={
 									p.status === "draft"
-										? `/app/composer?post=${p.id}`
+										? `?compose=${p.id}`
 										: `/app/posts/${p.id}`
 								}
 								prefetch={false}

@@ -252,7 +252,7 @@ export default async function PostsPage({
 					</p>
 				</div>
 				<Link
-					href="/app/composer"
+					href="?compose=new"
 					className="inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
 				>
 					<PenSquare className="w-4 h-4" />
@@ -381,7 +381,7 @@ export default async function PostsPage({
 					</p>
 					{filter !== "deleted" && (
 						<Link
-							href="/app/composer"
+							href="?compose=new"
 							className="mt-6 inline-flex items-center gap-1.5 h-11 px-5 rounded-full bg-ink text-background text-[14px] font-medium hover:bg-primary transition-colors"
 						>
 							<PenSquare className="w-4 h-4" />

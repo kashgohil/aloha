@@ -176,7 +176,7 @@ export function IdeaPanel({
               <div className="flex items-center gap-1 shrink-0">
                 {isEdit && idea ? (
                   <Link
-                    href={`/app/composer?idea=${idea.id}`}
+                    href={`?compose=new&idea=${idea.id}`}
                     className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-[13px] font-medium text-ink hover:border-ink transition-colors"
                   >
                     <PenLine className="w-3.5 h-3.5" />

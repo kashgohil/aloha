@@ -259,7 +259,7 @@ export function PostHeaderActions({
             <TooltipTrigger
               render={
                 <Link
-                  href={`/app/composer?post=${postId}`}
+                  href={`?compose=${postId}`}
                   aria-label={status === "draft" ? "Edit" : "Open"}
                   className={ghostIconBtn}
                 >

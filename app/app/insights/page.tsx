@@ -59,7 +59,7 @@ export default async function InsightsPage() {
             start surfacing your top performers and patterns to lean into.
           </p>
           <Link
-            href="/app/composer"
+            href="?compose=new"
             className="mt-5 inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
           >
             Open composer

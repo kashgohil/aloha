@@ -324,7 +324,7 @@ function IdeaCard({ idea }: { idea: IdeaRow }) {
       <div className="mt-auto pt-1 flex items-center gap-1 flex-wrap">
         {!isArchived ? (
           <Link
-            href={`/app/composer?idea=${idea.id}`}
+            href={`?compose=new&idea=${idea.id}`}
             className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-ink text-background text-[12px] font-medium hover:bg-primary transition-colors"
           >
             <PenSquare className="w-3.5 h-3.5" />

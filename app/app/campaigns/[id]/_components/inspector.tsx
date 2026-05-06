@@ -223,7 +223,7 @@ export function BeatInspector({
 
       {accepted && beat.acceptedPostId ? (
         <Link
-          href={`/app/composer?post=${beat.acceptedPostId}`}
+          href={`?compose=${beat.acceptedPostId}`}
           prefetch={false}
           className="inline-flex items-center justify-center gap-1.5 h-10 px-4 rounded-full bg-ink text-background text-[13px] font-medium hover:bg-primary transition-colors"
         >

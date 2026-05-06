@@ -422,7 +422,7 @@ function BeatRowAccepted({ beat }: { beat: CampaignBeat }) {
   // side panel without leaving the page. acceptedPostId is set when the
   // beat was accepted; defensive fallback to the inspector if missing.
   const composerHref = beat.acceptedPostId
-    ? `/app/composer?post=${beat.acceptedPostId}`
+    ? `?compose=${beat.acceptedPostId}`
     : `?beat=${beat.id}`;
   return (
     <div className="flex items-stretch">
