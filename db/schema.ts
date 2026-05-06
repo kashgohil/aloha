@@ -23,18 +23,17 @@ export type PostMedia = {
 
 // Per-channel customization. Any field left undefined inherits the post's
 // base content/media. Keyed by platform id ("twitter", "linkedin", etc.).
+//
+// `form` and `payload` carry the per-channel structured authoring state
+// (formerly the standalone `studioMode` / `studioPayload` columns). When
+// `form` is set, the publisher dispatches via the capability registry
+// using `payload`; when unset, the channel falls back to the flat
+// `content` + `media` overrides.
 export type ChannelOverride = {
   content?: string;
   media?: PostMedia[];
-};
-
-// When a draft enters Studio mode it is pinned to a single channel + post
-// form (e.g. X thread, LinkedIn article). `platforms` narrows to `[channel]`
-// and the publisher reads `studio_payload` instead of the flat `content`.
-// Null for drafts composed the regular multi-channel way.
-export type StudioMode = {
-  channel: string;
-  form: string;
+  form?: string;
+  payload?: StudioPayload;
 };
 
 // Channel-form-specific structured content. Shape is validated by the
@@ -422,12 +421,6 @@ export const posts = pgTable("posts", {
   // `content`; this is additive, the composer reads it to surface a sidebar
   // with alt hooks and rationale. Null for manual drafts.
   draftMeta: jsonb("draftMeta").$type<DraftMeta>(),
-  // Studio mode pins this draft to one channel + post form. When set,
-  // `platforms` is expected to be `[studio_mode.channel]` and the publisher
-  // dispatches to the capability registry using `studio_payload`. Null means
-  // regular multi-channel fanout using `content` + `channelContent`.
-  studioMode: jsonb("studio_mode").$type<StudioMode>(),
-  studioPayload: jsonb("studio_payload").$type<StudioPayload>(),
   status: text("status", {
     enum: [
       "draft",

@@ -10,8 +10,6 @@ import {
   type ChannelOverride,
   type DraftMeta,
   type PostMedia,
-  type StudioMode,
-  type StudioPayload,
 } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { Client } from "@upstash/qstash";
@@ -42,6 +40,9 @@ export type ComposerPayload = {
   content: string;
   platforms: string[];
   media?: PostMedia[];
+  // Per-channel customization. Each entry can carry content/media overrides
+  // and (for channels in form/studio mode) a `form` + structured `payload`
+  // the publisher dispatches via the capability registry.
   channelContent?: Record<string, ChannelOverride>;
   // When the composer was seeded from an idea, the client threads the idea
   // id back so we can stamp provenance on the post and flip the idea to
@@ -52,12 +53,6 @@ export type ComposerPayload = {
   // composer sidebar reads it on open. Undefined means "don't touch" on
   // update; null clears.
   draftMeta?: DraftMeta | null;
-  // Studio mode pins this draft to a single channel + form. When set,
-  // `platforms` must be exactly `[studioMode.channel]` and publishing
-  // reads `studioPayload` via the capability registry. Undefined = leave
-  // alone on update; null = clear (return to compose mode).
-  studioMode?: StudioMode | null;
-  studioPayload?: StudioPayload | null;
 };
 
 async function flipIdeaToDrafted(
@@ -82,8 +77,6 @@ async function flipIdeaToDrafted(
 export async function saveDraft(payload: ComposerPayload) {
   const ctx = await assertRole(ROLES.EDITOR);
 
-  assertStudioInvariant(payload);
-
   try {
     const [row] = await db
       .insert(posts)
@@ -93,17 +86,13 @@ export async function saveDraft(payload: ComposerPayload) {
         content: payload.content,
         platforms: payload.platforms,
         media: payload.media ?? [],
-        // Studio-mode drafts are pinned to a single channel; per-channel
-        // overrides are meaningless, so we write an empty object and let
-        // the publisher read `studioPayload` instead.
-        channelContent: payload.studioMode
-          ? {}
-          : sanitizeOverrides(payload.channelContent, payload.platforms),
+        channelContent: sanitizeOverrides(
+          payload.channelContent,
+          payload.platforms,
+        ),
         status: "draft",
         sourceIdeaId: payload.sourceIdeaId ?? null,
         draftMeta: payload.draftMeta ?? null,
-        studioMode: payload.studioMode ?? null,
-        studioPayload: payload.studioPayload ?? null,
       })
       .returning({ id: posts.id });
 
@@ -225,8 +214,6 @@ export async function updatePost(postId: string, payload: ComposerPayload) {
     );
   }
 
-  assertStudioInvariant(payload);
-
   try {
     await db
       .update(posts)
@@ -234,18 +221,13 @@ export async function updatePost(postId: string, payload: ComposerPayload) {
         content: payload.content,
         platforms: payload.platforms,
         media: payload.media ?? [],
-        channelContent: payload.studioMode
-          ? {}
-          : sanitizeOverrides(payload.channelContent, payload.platforms),
+        channelContent: sanitizeOverrides(
+          payload.channelContent,
+          payload.platforms,
+        ),
         // `undefined` means "leave alone"; null clears; a value overwrites.
         ...(payload.draftMeta !== undefined
           ? { draftMeta: payload.draftMeta }
-          : {}),
-        ...(payload.studioMode !== undefined
-          ? { studioMode: payload.studioMode }
-          : {}),
-        ...(payload.studioPayload !== undefined
-          ? { studioPayload: payload.studioPayload }
           : {}),
         updatedAt: new Date(),
       })
@@ -475,23 +457,9 @@ export async function bulkDeletePosts(
   return { success: true, count: ownedIds.length };
 }
 
-// Studio-mode drafts are pinned to one channel. Reject payloads that
-// violate the invariant so we never persist a mismatched state that the
-// publisher would then throw on at dispatch time.
-function assertStudioInvariant(payload: ComposerPayload) {
-  if (!payload.studioMode) return;
-  if (
-    payload.platforms.length !== 1 ||
-    payload.platforms[0] !== payload.studioMode.channel
-  ) {
-    throw new Error(
-      "Studio drafts must target exactly their pinned channel.",
-    );
-  }
-}
-
 // Keep only entries that actually differ from base and target a selected
-// platform — avoids dead overrides lingering in JSONB.
+// platform — avoids dead overrides lingering in JSONB. Preserves `form` +
+// `payload` for channels in studio mode.
 function sanitizeOverrides(
   overrides: Record<string, ChannelOverride> | undefined,
   platforms: string[],
@@ -504,7 +472,14 @@ function sanitizeOverrides(
     const entry: ChannelOverride = {};
     if (typeof o.content === "string") entry.content = o.content;
     if (Array.isArray(o.media)) entry.media = o.media;
-    if (entry.content !== undefined || entry.media !== undefined) {
+    if (typeof o.form === "string") entry.form = o.form;
+    if (o.payload && typeof o.payload === "object") entry.payload = o.payload;
+    if (
+      entry.content !== undefined ||
+      entry.media !== undefined ||
+      entry.form !== undefined ||
+      entry.payload !== undefined
+    ) {
       out[platform] = entry;
     }
   }

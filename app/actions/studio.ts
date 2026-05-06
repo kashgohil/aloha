@@ -3,15 +3,23 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db";
-import { posts, type StudioPayload } from "@/db/schema";
+import {
+  posts,
+  type ChannelOverride,
+  type StudioPayload,
+} from "@/db/schema";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import { ROLES } from "@/lib/workspaces/roles";
 import { getCapability, getForm } from "@/lib/channels/capabilities";
 
-// Enter Studio mode for an existing draft. Seeds `studio_mode` and
-// `studio_payload` if they aren't set yet, and pins `platforms` to the
-// chosen channel. No-op when already in Studio for the same (channel,
-// form) pair — lets scheduled reopen + accidental double-clicks coalesce.
+// Enter Studio mode for a draft on a single channel. Writes the channel's
+// form + structured payload into `channelContent[channel]`, and pins
+// `platforms` to `[channel]` while we still have a single-channel studio
+// shell. (When the merged Compose surface lands, multi-channel studio
+// state coexists in `channelContent` without touching `platforms`.)
+//
+// No-op when the channel is already pinned to the same form — lets reopen
+// + accidental double-clicks coalesce.
 export async function enterStudio(
   postId: string,
   channel: string,
@@ -25,8 +33,7 @@ export async function enterStudio(
       content: posts.content,
       media: posts.media,
       status: posts.status,
-      studioMode: posts.studioMode,
-      studioPayload: posts.studioPayload,
+      channelContent: posts.channelContent,
     })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
@@ -44,11 +51,8 @@ export async function enterStudio(
     : cap.forms[0];
   if (!form) throw new Error(`Unknown Studio form: ${formId ?? "(default)"}`);
 
-  // Already pinned to the same form — nothing to seed.
-  if (
-    post.studioMode?.channel === channel &&
-    post.studioMode?.form === form.id
-  ) {
+  const existing = post.channelContent?.[channel];
+  if (existing?.form === form.id) {
     return { success: true };
   }
 
@@ -57,26 +61,28 @@ export async function enterStudio(
     media: post.media ?? [],
   });
 
+  const nextChannelContent: Record<string, ChannelOverride> = {
+    [channel]: { ...(existing ?? {}), form: form.id, payload },
+  };
+
   await db
     .update(posts)
     .set({
       platforms: [channel],
-      channelContent: {},
-      studioMode: { channel, form: form.id },
-      studioPayload: payload,
+      channelContent: nextChannelContent,
       updatedAt: new Date(),
     })
     .where(eq(posts.id, postId));
 
-  revalidatePath(`/app/composer/${postId}/studio`);
   return { success: true };
 }
 
-// Update the studio payload in-place while the user edits inside the
-// shell. Separate from `updatePost` so we don't pay for the full
-// `ComposerPayload` round-trip on every keystroke-coalesced save.
+// Update the studio payload for a channel in-place while the user edits.
+// Separate from `updatePost` so we don't pay for the full ComposerPayload
+// round-trip on every keystroke-coalesced save.
 export async function saveStudioPayload(
   postId: string,
+  channel: string,
   payload: StudioPayload,
 ) {
   const ctx = await assertRole(ROLES.EDITOR);
@@ -85,14 +91,15 @@ export async function saveStudioPayload(
     .select({
       id: posts.id,
       status: posts.status,
-      studioMode: posts.studioMode,
+      channelContent: posts.channelContent,
     })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
   if (!post) throw new Error("Post not found");
-  if (!post.studioMode) {
-    throw new Error("Post is not in Studio mode.");
+  const existing = post.channelContent?.[channel];
+  if (!existing?.form) {
+    throw new Error("Channel is not in Studio mode.");
   }
   if (post.status !== "draft") {
     throw new Error(
@@ -102,7 +109,13 @@ export async function saveStudioPayload(
 
   await db
     .update(posts)
-    .set({ studioPayload: payload, updatedAt: new Date() })
+    .set({
+      channelContent: {
+        ...post.channelContent,
+        [channel]: { ...existing, payload },
+      },
+      updatedAt: new Date(),
+    })
     .where(eq(posts.id, postId));
 
   return { success: true };
@@ -111,22 +124,26 @@ export async function saveStudioPayload(
 // Swap to a different form within the same channel. Re-hydrates from the
 // current payload by routing through the outgoing form's `flatten` and the
 // incoming form's `hydrate` — lossy but predictable.
-export async function switchStudioForm(postId: string, nextFormId: string) {
+export async function switchStudioForm(
+  postId: string,
+  channel: string,
+  nextFormId: string,
+) {
   const ctx = await assertRole(ROLES.EDITOR);
 
   const [post] = await db
     .select({
       id: posts.id,
       status: posts.status,
-      studioMode: posts.studioMode,
-      studioPayload: posts.studioPayload,
+      channelContent: posts.channelContent,
       media: posts.media,
     })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
-  if (!post || !post.studioMode) {
-    throw new Error("Post is not in Studio mode.");
+  const existing = post?.channelContent?.[channel];
+  if (!post || !existing?.form) {
+    throw new Error("Channel is not in Studio mode.");
   }
   if (post.status !== "draft") {
     throw new Error(
@@ -134,11 +151,11 @@ export async function switchStudioForm(postId: string, nextFormId: string) {
     );
   }
 
-  const current = getForm(post.studioMode.channel, post.studioMode.form);
-  const next = getForm(post.studioMode.channel, nextFormId);
+  const current = getForm(channel, existing.form);
+  const next = getForm(channel, nextFormId);
   if (!current || !next) throw new Error("Unknown Studio form.");
 
-  const flat = current.flatten(post.studioPayload ?? {});
+  const flat = current.flatten(existing.payload ?? {});
   const nextPayload = next.hydrate({
     content: flat.text,
     media: flat.media,
@@ -147,35 +164,37 @@ export async function switchStudioForm(postId: string, nextFormId: string) {
   await db
     .update(posts)
     .set({
-      studioMode: { channel: post.studioMode.channel, form: nextFormId },
-      studioPayload: nextPayload,
+      channelContent: {
+        ...post.channelContent,
+        [channel]: { ...existing, form: nextFormId, payload: nextPayload },
+      },
       updatedAt: new Date(),
     })
     .where(eq(posts.id, postId));
 
-  revalidatePath(`/app/composer/${postId}/studio`);
   return { success: true };
 }
 
-// Exit Studio and return to multi-channel Compose. Flattens the structured
-// payload back into the flat `content` + `media` fields, clears
-// studio_*, and preserves `platforms` (still pinned to the Studio channel
-// so the user can explicitly re-fanout from Compose if they want).
-export async function exitStudio(postId: string) {
+// Exit Studio for a single channel and return to multi-channel Compose.
+// Flattens the structured payload back into the flat `content` + `media`
+// fields and clears `form`/`payload` for the channel. `platforms` stays
+// pinned to the studio channel so the user can explicitly re-fanout from
+// Compose if they want.
+export async function exitStudio(postId: string, channel: string) {
   const ctx = await assertRole(ROLES.EDITOR);
 
   const [post] = await db
     .select({
       id: posts.id,
       status: posts.status,
-      studioMode: posts.studioMode,
-      studioPayload: posts.studioPayload,
+      channelContent: posts.channelContent,
     })
     .from(posts)
     .where(and(eq(posts.id, postId), eq(posts.workspaceId, ctx.workspace.id)))
     .limit(1);
-  if (!post || !post.studioMode) {
-    throw new Error("Post is not in Studio mode.");
+  const existing = post?.channelContent?.[channel];
+  if (!post || !existing?.form) {
+    throw new Error("Channel is not in Studio mode.");
   }
   if (post.status !== "draft") {
     throw new Error(
@@ -183,18 +202,32 @@ export async function exitStudio(postId: string) {
     );
   }
 
-  const form = getForm(post.studioMode.channel, post.studioMode.form);
+  const form = getForm(channel, existing.form);
   const flat = form
-    ? form.flatten(post.studioPayload ?? {})
+    ? form.flatten(existing.payload ?? {})
     : { text: "", media: [] };
+
+  // Strip form + payload from this channel's override. If nothing else
+  // remains, drop the entry so JSONB stays tidy.
+  const nextEntry: ChannelOverride = { ...existing };
+  delete nextEntry.form;
+  delete nextEntry.payload;
+  const nextChannelContent = { ...post.channelContent };
+  if (
+    nextEntry.content === undefined &&
+    nextEntry.media === undefined
+  ) {
+    delete nextChannelContent[channel];
+  } else {
+    nextChannelContent[channel] = nextEntry;
+  }
 
   await db
     .update(posts)
     .set({
       content: flat.text,
       media: flat.media,
-      studioMode: null,
-      studioPayload: null,
+      channelContent: nextChannelContent,
       updatedAt: new Date(),
     })
     .where(eq(posts.id, postId));
