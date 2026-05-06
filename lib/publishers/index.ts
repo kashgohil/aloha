@@ -195,10 +195,12 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 			continue;
 		}
 
-		// Studio-mode posts route through the capability registry, which
-		// has its own per-channel publishers — no need to gate on the
-		// legacy `PUBLISHERS` map.
-		if (!post.studioMode && !isSupportedPlatform(platform)) {
+		// Per-channel dispatch: if the channel has a `form` set in
+		// channelContent, route through the capability registry's form
+		// publisher; otherwise fall back to the flat-text PUBLISHERS map.
+		const override = post.channelContent?.[platform];
+		const studioForm = override?.form;
+		if (!studioForm && !isSupportedPlatform(platform)) {
 			await markDeliveryFailed(
 				delivery.id,
 				"unsupported_platform",
@@ -211,33 +213,24 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 		try {
 			let remotePostId: string;
 			let remoteUrl: string;
-			if (post.studioMode) {
-				// Studio-mode posts are pinned to one channel; the dispatcher
-				// only reaches this branch for that channel (save/schedule
-				// enforce platforms === [studio_mode.channel]).
-				if (post.studioMode.channel !== platform) {
-					throw new PublishError(
-						"forbidden",
-						`Studio post pinned to ${post.studioMode.channel} but dispatching to ${platform}`,
-					);
-				}
-				const form = getForm(platform, post.studioMode.form);
+			if (studioForm) {
+				const form = getForm(platform, studioForm);
 				if (!form) {
 					throw new PublishError(
 						"unsupported_platform",
-						`No Studio capability registered for ${platform}/${post.studioMode.form}`,
+						`No Studio capability registered for ${platform}/${studioForm}`,
 					);
 				}
-				const publish = getFormPublisher(platform, post.studioMode.form);
+				const publish = getFormPublisher(platform, studioForm);
 				if (!publish) {
 					throw new PublishError(
 						"unsupported_platform",
-						`No Studio publisher registered for ${platform}/${post.studioMode.form}`,
+						`No Studio publisher registered for ${platform}/${studioForm}`,
 					);
 				}
 				const result = await publish({
 					workspaceId: post.workspaceId,
-					payload: post.studioPayload ?? {},
+					payload: override?.payload ?? {},
 				});
 				remotePostId = result.remotePostId;
 				remoteUrl = result.remoteUrl;
@@ -251,7 +244,6 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 					);
 				}
 				const publisher = PUBLISHERS[platform];
-				const override = post.channelContent?.[platform];
 				const rawMedia = override?.media ?? post.media;
 				// Strip PDFs for every channel except LinkedIn — they're only
 				// supported as LinkedIn document carousels. Without this the
