@@ -79,7 +79,8 @@ import {
 	X as XIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { composeHref } from "@/lib/compose-url";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { DraftMetaPanel } from "./draft-meta-panel";
@@ -262,6 +263,8 @@ export function Composer({
 	mentionableMembers?: PostNoteMention[];
 }) {
 	const router = useRouter();
+	const pathname = usePathname();
+	const searchParams = useSearchParams();
 	const [baseContent, setBaseContent] = useState(initialContent);
 	const isEditing = editingPostId !== null;
 	// `isReadOnly` now covers all non-draft stages: published / failed /
@@ -759,7 +762,12 @@ export function Composer({
 				const id = await persistContent();
 				await enterStudio(id, channel);
 				toast.dismiss(toastId);
-				router.push(`/app/composer/${id}/studio`);
+				router.push(
+					composeHref(
+						{ pathname, search: new URLSearchParams(searchParams.toString()) },
+						{ mode: "studio", postId: id },
+					),
+				);
 			} catch {
 				toast.error("Couldn't open Studio. Please try again.", {
 					id: toastId,

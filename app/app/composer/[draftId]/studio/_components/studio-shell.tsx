@@ -10,7 +10,8 @@ import {
   Send,
   Sparkles,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { composeHref } from "@/lib/compose-url";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -80,6 +81,8 @@ export function StudioShell({
   workspaceRole: WorkspaceRole;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [payload, setPayload] = useState<StudioPayload>(initialPayload);
   const [currentForm, setCurrentForm] = useState(formId);
   const [isSaving, startSaving] = useTransition();
@@ -113,7 +116,7 @@ export function StudioShell({
   const persist = () =>
     startSaving(async () => {
       try {
-        await saveStudioPayload(postId, payload);
+        await saveStudioPayload(postId, channel, payload);
       } catch {
         toast.error("Couldn't save changes.");
       }
@@ -125,8 +128,8 @@ export function StudioShell({
     // from the latest content, not stale DB state.
     startSaving(async () => {
       try {
-        await saveStudioPayload(postId, payload);
-        const res = await switchStudioForm(postId, nextId);
+        await saveStudioPayload(postId, channel, payload);
+        const res = await switchStudioForm(postId, channel, nextId);
         if (res.success) {
           setCurrentForm(nextId);
           // The server action re-hydrates the payload for the new form;
@@ -150,7 +153,7 @@ export function StudioShell({
     const toastId = toast.loading("Submitting for review…");
     startSaving(async () => {
       try {
-        await saveStudioPayload(postId, payload);
+        await saveStudioPayload(postId, channel, payload);
         await submitForReview(postId);
         toast.success("Submitted for review.", { id: toastId });
         router.push(`/app/posts/${postId}`);
@@ -192,7 +195,7 @@ export function StudioShell({
     startPublishing(async () => {
       const toastId = toast.loading("Publishing…");
       try {
-        await saveStudioPayload(postId, payload);
+        await saveStudioPayload(postId, channel, payload);
         const result = await publishPostNow(postId);
         if (result.summary?.anyOk) {
           toast.success("Posted.", { id: toastId });
@@ -231,7 +234,7 @@ export function StudioShell({
     const toastId = toast.loading("Scheduling…");
     startPublishing(async () => {
       try {
-        await saveStudioPayload(postId, payload);
+        await saveStudioPayload(postId, channel, payload);
         const when = tzLocalInputToUtcDate(scheduleInput, timezone);
         if (status === "scheduled") {
           await reschedulePost(postId, when);
@@ -253,10 +256,15 @@ export function StudioShell({
     startSaving(async () => {
       const toastId = toast.loading("Exiting Studio…");
       try {
-        await saveStudioPayload(postId, payload);
-        await exitStudio(postId);
+        await saveStudioPayload(postId, channel, payload);
+        await exitStudio(postId, channel);
         toast.success("Back to Compose.", { id: toastId });
-        router.push(`/app/composer?post=${postId}`);
+        router.push(
+          composeHref(
+            { pathname, search: new URLSearchParams(searchParams.toString()) },
+            { mode: "edit", postId },
+          ),
+        );
       } catch {
         toast.error("Couldn't exit Studio.", { id: toastId });
       }
