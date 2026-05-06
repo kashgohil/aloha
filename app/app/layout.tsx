@@ -8,6 +8,7 @@ import { routes } from "@/lib/routes";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
+import { ComposerDialog } from "@/components/composer-dialog";
 import { AppSidebar } from "./_components/app-sidebar";
 import { AppTopBar } from "./_components/app-top-bar";
 import { FrozenBanner } from "./_components/frozen-banner";
@@ -77,6 +78,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 					</main>
 				</div>
 			</div>
+			<Suspense fallback={null}>
+				<ComposerDialog />
+			</Suspense>
 		</ThemeProvider>
 	);
 }

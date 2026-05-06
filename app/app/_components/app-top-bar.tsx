@@ -30,7 +30,7 @@ export function AppTopBar({
 
         <div className="flex items-center gap-1.5">
           <Link
-            href="/app/composer"
+            href="?compose=new"
             aria-label="Compose"
             className="h-9 w-9 grid place-items-center rounded-full bg-ink text-background hover:bg-primary transition-colors"
           >
