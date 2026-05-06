@@ -3,6 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { MediaPicker } from "@/components/media-picker";
 import type { PostMedia } from "@/db/schema";
+import { cn } from "@/lib/utils";
 import type { FormEditorProps } from "@/lib/channels/capabilities/types";
 import {
   readThreadPayload,
@@ -89,9 +90,12 @@ export function makeThreadEditor(options: {
           return (
             <div
               key={i}
-              className="relative rounded-2xl border border-border bg-background p-3"
+              className={cn(
+                "relative",
+                i > 0 && "pt-3 border-t border-border/70",
+              )}
             >
-              <div className="mb-2 flex items-center justify-between text-[11px] text-ink/55">
+              <div className="mb-1 flex items-center justify-between text-[11px] text-ink/55">
                 <span>
                   {i + 1} / {parts.length}
                 </span>
@@ -125,7 +129,7 @@ export function makeThreadEditor(options: {
                 onChange={(e) => setText(i, e.target.value)}
                 disabled={disabled}
                 rows={4}
-                className="w-full rounded-xl border border-border bg-background-elev p-2.5 text-[14.5px] leading-[1.5] text-ink focus:outline-none focus:ring-2 focus:ring-ink/20 disabled:opacity-60"
+                className="w-full bg-transparent border-0 px-0 py-0 text-[15px] leading-[1.55] text-ink resize-none focus:outline-none focus:ring-0 placeholder:text-ink/35 disabled:opacity-60"
                 placeholder={i === 0 ? firstPlaceholder : continuePlaceholder}
               />
               {maxMediaPerPart > 0 ? (
