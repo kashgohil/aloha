@@ -9,6 +9,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AdminLink } from "./admin-link";
 import { AvatarMenu } from "./avatar-menu";
+import { ComposeButton } from "./compose-button";
 import { CreditsPill } from "./credits-pill";
 import { NavLinks } from "./nav-links";
 import { NotificationsBell } from "./notifications-bell";
@@ -105,6 +106,15 @@ export function AppSidebar({
 						collapsed={collapsed}
 						canCreate={canCreateWorkspace}
 					/>
+				</div>
+
+				<div
+					className={cn(
+						"pb-3",
+						collapsed ? "px-0 flex justify-center" : "px-3",
+					)}
+				>
+					<ComposeButton collapsed={collapsed} />
 				</div>
 
 				<nav className="flex-1 overflow-y-auto px-3">

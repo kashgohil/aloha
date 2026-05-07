@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { PenSquare } from "lucide-react";
 import { NavLinks } from "./nav-links";
 import { AvatarMenu } from "./avatar-menu";
+import { ComposeButton } from "./compose-button";
 import { NotificationsBell } from "./notifications-bell";
 import type { CurrentUser } from "@/lib/current-user";
 
@@ -29,13 +29,7 @@ export function AppTopBar({
         </Link>
 
         <div className="flex items-center gap-1.5">
-          <Link
-            href="?compose=new"
-            aria-label="Compose"
-            className="h-9 w-9 grid place-items-center rounded-full bg-ink text-background hover:bg-primary transition-colors"
-          >
-            <PenSquare className="w-3.5 h-3.5" />
-          </Link>
+          <ComposeButton variant="topbar" />
           <NotificationsBell />
           <AvatarMenu
             name={user.name}
