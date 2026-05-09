@@ -22,6 +22,7 @@ import { CHANNEL_ICONS, CHANNEL_LABELS, channelLabel } from "@/components/channe
 import type { PostStatus } from "@/lib/posts/transitions";
 import { PostHeaderActions } from "./_components/post-header-actions";
 import { MarkPostedButton } from "./_components/mark-posted-button";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 import { PostAnalytics } from "./_components/post-analytics";
 import { PostReplies } from "./_components/post-replies";
@@ -90,11 +91,7 @@ function statusDotClass(status: string, selected: boolean): string {
 
 function formatDateTime(date: Date | null, tz: string) {
   if (!date) return null;
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: tz,
-  }).format(date);
+  return formatTzDateOrdinal(date, tz, { time: true });
 }
 
 // Subheader label on the preview card ("Jan 12 · 2:30 PM" / "Scheduled for …" /

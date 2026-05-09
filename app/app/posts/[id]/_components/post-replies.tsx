@@ -1,5 +1,6 @@
 import { db } from "@/db";
 import { postComments } from "@/db/schema";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { and, asc, eq } from "drizzle-orm";
 import { MessageSquare } from "lucide-react";
 
@@ -49,11 +50,7 @@ function buildTree(rows: CommentRow[]): TreeNode[] {
 }
 
 function formatWhen(date: Date, tz: string) {
-  return new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: tz,
-  }).format(date);
+  return formatTzDateOrdinal(date, tz, { time: true });
 }
 
 function CommentNode({

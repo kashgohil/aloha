@@ -27,6 +27,7 @@ import type { PostMedia } from "@/db/schema";
 import type { WorkspaceRole } from "@/lib/current-context";
 import { previewContent } from "@/lib/post-preview";
 import { canTransition, type PostStatus } from "@/lib/posts/transitions";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import { toast } from "sonner";
@@ -352,13 +353,7 @@ function CardPreview({
 
 function timestampLabel(row: Row, tz: string): string {
 	const fmt = (d: Date) =>
-		new Intl.DateTimeFormat("en-US", {
-			month: "short",
-			day: "numeric",
-			hour: "numeric",
-			minute: "2-digit",
-			timeZone: tz,
-		}).format(d);
+		formatTzDateOrdinal(d, tz, { year: false, time: true });
 	if (row.status === "published" && row.publishedAt)
 		return fmt(row.publishedAt);
 	if (row.status === "scheduled" && row.scheduledAt)

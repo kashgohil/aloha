@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Label } from "@/components/ui/label";
 import { previewContent } from "@/lib/post-preview";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 import {
 	AlertCircle,
@@ -297,11 +298,5 @@ export function PostsList({
 }
 
 function formatDate(date: Date, tz: string) {
-	return new Intl.DateTimeFormat("en-US", {
-		month: "short",
-		day: "numeric",
-		hour: "numeric",
-		minute: "2-digit",
-		timeZone: tz,
-	}).format(date);
+	return formatTzDateOrdinal(date, tz, { year: false, time: true });
 }
