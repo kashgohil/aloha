@@ -511,12 +511,10 @@ export async function markBeatAccepted(
   const next = (row.beats as CampaignBeat[]).map((b) =>
     b.id === beatId ? { ...b, accepted: true, acceptedPostId: postId } : b,
   );
-  const nextStatus = row.status === "ready" ? "running" : row.status;
   await db
     .update(campaigns)
     .set({
       beats: next as unknown as Array<Record<string, unknown>>,
-      status: nextStatus,
       updatedAt: new Date(),
     })
     .where(eq(campaigns.id, campaignId));
