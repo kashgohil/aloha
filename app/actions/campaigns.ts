@@ -25,7 +25,7 @@ import { computeLifecycleStatus } from "@/lib/campaigns/lifecycle";
 import { env } from "@/lib/env";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import { ROLES } from "@/lib/workspaces/roles";
-import { Client as QStashClient } from "@upstash/qstash";
+import { qstashClient } from "@/lib/qstash";
 import { and, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -179,8 +179,6 @@ export async function regenerateCampaignBeatAction(formData: FormData) {
 	revalidatePath(`/app/campaigns/${campaignId}`);
 	redirect(`/app/campaigns/${campaignId}`);
 }
-
-const qstashClient = new QStashClient({ token: env.QSTASH_TOKEN });
 
 // Sweep all draft posts under this campaign whose scheduledAt is still in
 // the future, flip them to `scheduled`, and enqueue QStash. Past-due drafts

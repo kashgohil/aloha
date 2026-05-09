@@ -12,8 +12,8 @@ import {
   type PostMedia,
 } from "@/db/schema";
 import { revalidatePath } from "next/cache";
-import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
+import { qstashClient } from "@/lib/qstash";
 import { canPublish } from "@/lib/billing/trial";
 import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
@@ -30,11 +30,6 @@ import {
   formatGuidanceFor as channelFormatGuidanceFor,
   isValidFormat,
 } from "@/lib/campaigns/channel-formats";
-
-const qstashClient = new Client({
-  token: env.QSTASH_TOKEN,
-  baseUrl: env.QSTASH_URL,
-});
 
 export type ComposerPayload = {
   content: string;

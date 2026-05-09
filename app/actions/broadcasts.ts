@@ -1,7 +1,6 @@
 "use server";
 
 import { and, eq, isNull } from "drizzle-orm";
-import { Client } from "@upstash/qstash";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireContext } from "@/lib/current-context";
@@ -15,11 +14,7 @@ import { generateBroadcastDraft } from "@/lib/ai/broadcast";
 import { requireBroadcastEntitlement } from "@/lib/billing/broadcasts";
 import { requireMuseAccess } from "@/lib/billing/muse";
 import { env } from "@/lib/env";
-
-const qstashClient = new Client({
-  token: env.QSTASH_TOKEN,
-  baseUrl: env.QSTASH_URL,
-});
+import { qstashClient } from "@/lib/qstash";
 
 async function requireUserId() {
   const session = await auth();

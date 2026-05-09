@@ -1,4 +1,4 @@
-import { Client, Receiver } from "@upstash/qstash";
+import { Receiver } from "@upstash/qstash";
 import { and, eq, isNull, notInArray } from "drizzle-orm";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -9,11 +9,7 @@ import {
   subscribers,
 } from "@/db/schema";
 import { env } from "@/lib/env";
-
-const qstashClient = new Client({
-  token: env.QSTASH_TOKEN,
-  baseUrl: env.QSTASH_URL,
-});
+import { qstashClient } from "@/lib/qstash";
 
 async function verify(req: NextRequest, body: string) {
   const signature = req.headers.get("upstash-signature");

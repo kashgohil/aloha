@@ -1,11 +1,11 @@
 import "server-only";
 
 import { and, eq } from "drizzle-orm";
-import { Client } from "@upstash/qstash";
 import { db } from "@/db";
 import { broadcasts, sendingDomains } from "@/db/schema";
 import { hasBroadcastEntitlement } from "@/lib/billing/broadcasts";
 import { env } from "@/lib/env";
+import { qstashClient } from "@/lib/qstash";
 import { requireActiveWorkspaceId } from "@/lib/workspaces/resolve";
 import {
   registerAction,
@@ -20,11 +20,6 @@ import {
 // the user's single verified domain, and skip cleanly if there's ambiguity
 // (zero or multiple verified domains) so the automation never silently
 // picks the wrong sender.
-
-const qstashClient = new Client({
-  token: env.QSTASH_TOKEN,
-  baseUrl: env.QSTASH_URL,
-});
 
 async function resolveSendingDomain(
   userId: string,

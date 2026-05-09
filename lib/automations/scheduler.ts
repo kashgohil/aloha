@@ -1,7 +1,7 @@
 import "server-only";
 
-import { Client } from "@upstash/qstash";
 import { env } from "@/lib/env";
+import { qstashClient } from "@/lib/qstash";
 import { captureException } from "@/lib/logger";
 
 // Delayed-message scheduling for automation fires and delay-step resumes.
@@ -20,13 +20,6 @@ export type TickBody = {
   // nextFireAt/resumeAt to reject stale messages after reschedule.
   intendedAt: string;
 };
-
-let cached: Client | null = null;
-function client(): Client {
-  if (cached) return cached;
-  cached = new Client({ token: env.QSTASH_TOKEN, baseUrl: env.QSTASH_URL });
-  return cached;
-}
 
 function tickUrl(): string {
   return `${env.APP_URL}/api/qstash/automations-tick`;
@@ -50,7 +43,7 @@ export async function schedule(args: {
     intendedAt: args.at.toISOString(),
   };
   try {
-    const res = await client().publishJSON({
+    const res = await qstashClient.publishJSON({
       url: tickUrl(),
       body,
       notBefore,
@@ -68,7 +61,7 @@ export async function schedule(args: {
 export async function cancel(messageId: string | null | undefined): Promise<void> {
   if (!messageId) return;
   try {
-    await client().messages.cancel(messageId);
+    await qstashClient.messages.cancel(messageId);
   } catch (err) {
     // Common and expected: the message already fired or was already
     // canceled. Log at debug level — nothing to recover.
