@@ -161,9 +161,28 @@ export function Compose({
   const [content, setContent] = useState(initialContent);
   const [media, setMedia] = useState<PostMedia[]>(initialMedia);
   const [platforms, setPlatforms] = useState<string[]>(initialPlatforms);
+  // Auto-upgrade any loaded channel that's missing a `form`. Channels in
+  // the new model always have a form; legacy posts may have been saved
+  // before that contract existed (or with a content-only override).
+  // Hydrate them into the first capability form so the editor never has
+  // to fall back to a plain-text override panel.
   const [channelContent, setChannelContent] = useState<
     Record<string, ChannelOverride>
-  >(initialChannelContent);
+  >(() => {
+    const next: Record<string, ChannelOverride> = { ...initialChannelContent };
+    for (const channel of initialPlatforms) {
+      const override = next[channel] ?? {};
+      if (override.form) continue;
+      const cap = getCapability(channel);
+      const form = cap?.forms[0];
+      if (!form) continue;
+      const text = override.content ?? initialContent;
+      const mediaList = override.media ?? initialMedia;
+      const payload = form.hydrate({ content: text, media: mediaList });
+      next[channel] = { form: form.id, payload };
+    }
+    return next;
+  });
   const [draftMeta, setDraftMeta] = useState<DraftMeta | null>(
     initialDraftMeta,
   );
@@ -171,18 +190,30 @@ export function Compose({
   // so the footer's available actions reflect the post's actual state
   // without a round-trip through the server loader.
   const [status, setStatus] = useState<PostStatus | null>(initialStatus);
-  // Active assist panel keyed by accordion. When set, the matching panel
-  // renders inside that accordion's body (above the editor). Null = none.
-  const [activePanel, setActivePanel] = useState<
-    | { kind: "muse"; target: string }
-    | { kind: "score"; target: string }
-    | { kind: "library"; target: string }
-    | { kind: "image"; target: string }
-    | { kind: "variants"; target: string }
-    | { kind: "import"; target: string }
-    | { kind: "fanout"; target: string }
-    | null
-  >(null);
+  // Active assist panel per accordion. Each accordion (Draft or a channel)
+  // can have its own panel open independently — opening Muse on Bluesky
+  // doesn't close a panel on Draft. Map keyed by target → panel kind.
+  type PanelKind =
+    | "muse"
+    | "score"
+    | "library"
+    | "image"
+    | "variants"
+    | "import"
+    | "fanout";
+  const [activePanels, setActivePanels] = useState<Map<string, PanelKind>>(
+    () => new Map(),
+  );
+  const isPanelOpen = (kind: PanelKind, target: string) =>
+    activePanels.get(target) === kind;
+  const closePanel = (target: string) => {
+    setActivePanels((prev) => {
+      if (!prev.has(target)) return prev;
+      const next = new Map(prev);
+      next.delete(target);
+      return next;
+    });
+  };
   const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set([DRAFT_TAB]),
   );
@@ -198,8 +229,36 @@ export function Compose({
   // Anything NOT in this set inherits live from the base Draft — typing
   // in Draft re-hydrates each non-customized channel's payload. Once a
   // channel is marked customized, it stops inheriting until reset.
+  //
+  // On load: a channel is considered customized if its flattened text
+  // differs from the base draft. Otherwise it's a clean inherit and
+  // should re-hydrate as the user types.
   const [customizedChannels, setCustomizedChannels] = useState<Set<string>>(
-    () => new Set(),
+    () => {
+      const set = new Set<string>();
+      for (const channel of initialPlatforms) {
+        const override = initialChannelContent[channel];
+        if (!override) continue;
+        if (
+          typeof override.content === "string" &&
+          override.content !== initialContent
+        ) {
+          set.add(channel);
+          continue;
+        }
+        if (override.form && override.payload) {
+          const cap = getCapability(channel);
+          const form = cap?.forms.find((f) => f.id === override.form);
+          if (form) {
+            const flat = form.flatten(override.payload);
+            if (flat.text !== initialContent) {
+              set.add(channel);
+            }
+          }
+        }
+      }
+      return set;
+    },
   );
   const [dirty, setDirty] = useState(false);
   const [closePrompt, setClosePrompt] = useState<{
@@ -449,22 +508,24 @@ export function Compose({
 
   const [isMusing, startMusing] = useTransition();
 
-  const togglePanel = (
-    kind:
-      | "muse"
-      | "score"
-      | "library"
-      | "image"
-      | "variants"
-      | "import"
-      | "fanout",
-    target: string,
-  ) => {
-    setActivePanel((prev) =>
-      prev?.kind === kind && prev.target === target
-        ? null
-        : { kind, target },
-    );
+  const togglePanel = (kind: PanelKind, target: string) => {
+    setActivePanels((prev) => {
+      const next = new Map(prev);
+      if (next.get(target) === kind) {
+        next.delete(target);
+      } else {
+        next.set(target, kind);
+        // Opening a panel on a collapsed accordion would render hidden —
+        // make sure the host accordion is expanded so the panel shows.
+        setExpanded((cur) => {
+          if (cur.has(target)) return cur;
+          const out = new Set(cur);
+          out.add(target);
+          return out;
+        });
+      }
+      return next;
+    });
   };
   const toggleMusePanel = (target: string) => togglePanel("muse", target);
   const toggleScorePanel = (target: string) => togglePanel("score", target);
@@ -524,7 +585,7 @@ export function Compose({
       }
       return merged;
     });
-    setActivePanel(null);
+    closePanel(DRAFT_TAB);
   };
 
   // Resolve a channel's current text for scoring / similar ops. Channels
@@ -581,7 +642,7 @@ export function Compose({
     }
     const payload = form.hydrate({ content: flat.text, media: merged });
     updatePayload(channel, payload);
-    setActivePanel(null);
+    closePanel(channel);
   };
 
   // Apply an improved text back into a channel's current form payload —
@@ -643,7 +704,7 @@ export function Compose({
             updatePayload(target, payload);
           }
         }
-        setActivePanel(null);
+        closePanel(target);
         toast.success("Draft ready.", { id: toastId });
       } catch (err) {
         toast.error(
@@ -766,24 +827,6 @@ export function Compose({
   };
 
   // ──────────────────────────────────────────────────────────────────
-
-  const updateOverrideContent = (channel: string, text: string) => {
-    setDirty(true);
-    markCustomized(channel);
-    setChannelContent((prev) => {
-      const existing = prev[channel] ?? {};
-      const next = { ...prev };
-      if (text === "" || text === content) {
-        const { content: _drop, ...rest } = existing;
-        void _drop;
-        if (Object.keys(rest).length === 0) delete next[channel];
-        else next[channel] = rest;
-      } else {
-        next[channel] = { ...existing, content: text };
-      }
-      return next;
-    });
-  };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -925,45 +968,30 @@ export function Compose({
                 setMedia(next);
               }}
               disabled={isReadOnly}
-              museOpen={
-                activePanel?.kind === "muse" &&
-                activePanel.target === DRAFT_TAB
-              }
+              museOpen={isPanelOpen("muse", DRAFT_TAB)}
               onMuseRun={(topic) => runMuse(DRAFT_TAB, topic)}
-              onMuseClose={() => setActivePanel(null)}
+              onMuseClose={() => closePanel(DRAFT_TAB)}
               isMusing={isMusing}
-              libraryOpen={
-                activePanel?.kind === "library" &&
-                activePanel.target === DRAFT_TAB
-              }
+              libraryOpen={isPanelOpen("library", DRAFT_TAB)}
               onLibraryAttach={attachToBase}
-              onLibraryClose={() => setActivePanel(null)}
-              imageOpen={
-                activePanel?.kind === "image" &&
-                activePanel.target === DRAFT_TAB
-              }
+              onLibraryClose={() => closePanel(DRAFT_TAB)}
+              imageOpen={isPanelOpen("image", DRAFT_TAB)}
               onImageRun={(prompt, aspect) =>
                 runImage(DRAFT_TAB, prompt, aspect)
               }
-              onImageClose={() => setActivePanel(null)}
+              onImageClose={() => closePanel(DRAFT_TAB)}
               isGeneratingImage={isGeneratingImage}
-              variantsOpen={
-                activePanel?.kind === "variants" &&
-                activePanel.target === DRAFT_TAB
-              }
+              variantsOpen={isPanelOpen("variants", DRAFT_TAB)}
               variantPlatforms={platforms.map((p) => ({
                 id: p,
                 name: channelLabel(p),
                 Icon: CHANNEL_ICONS[p],
               }))}
               onVariantsAccept={applyChannelText}
-              onVariantsClose={() => setActivePanel(null)}
-              importOpen={
-                activePanel?.kind === "import" &&
-                activePanel.target === DRAFT_TAB
-              }
+              onVariantsClose={() => closePanel(DRAFT_TAB)}
+              importOpen={isPanelOpen("import", DRAFT_TAB)}
               onImportAccept={applyChannelText}
-              onImportClose={() => setActivePanel(null)}
+              onImportClose={() => closePanel(DRAFT_TAB)}
             />
           </AccordionItem>
 
@@ -1117,33 +1145,22 @@ export function Compose({
                 <ChannelBody
                   channel={channel}
                   override={override}
-                  baseContent={content}
                   customized={customized}
                   onSwitchForm={(id) => switchForm(channel, id)}
                   onPayloadChange={(p) => updatePayload(channel, p)}
-                  onOverrideContent={(t) => updateOverrideContent(channel, t)}
                   onReset={() => resetChannelToBase(channel)}
                   author={author}
                   profile={channelProfiles[channel] ?? null}
                   disabled={isReadOnly}
-                  museOpen={
-                    activePanel?.kind === "muse" &&
-                    activePanel.target === channel
-                  }
+                  museOpen={isPanelOpen("muse", channel)}
                   onMuseRun={(topic) => runMuse(channel, topic)}
-                  onMuseClose={() => setActivePanel(null)}
+                  onMuseClose={() => closePanel(channel)}
                   isMusing={isMusing}
-                  scoreOpen={
-                    activePanel?.kind === "score" &&
-                    activePanel.target === channel
-                  }
+                  scoreOpen={isPanelOpen("score", channel)}
                   scoreContent={channelText(channel)}
                   onScoreApply={(text) => applyChannelText(channel, text)}
-                  onScoreClose={() => setActivePanel(null)}
-                  fanoutOpen={
-                    activePanel?.kind === "fanout" &&
-                    activePanel.target === channel
-                  }
+                  onScoreClose={() => closePanel(channel)}
+                  fanoutOpen={isPanelOpen("fanout", channel)}
                   fanoutSourceContent={channelText(channel)}
                   fanoutTargets={platforms
                     .filter((p) => p !== channel)
@@ -1153,11 +1170,8 @@ export function Compose({
                       Icon: CHANNEL_ICONS[p],
                     }))}
                   onFanoutAccept={applyChannelText}
-                  onFanoutClose={() => setActivePanel(null)}
-                  libraryOpen={
-                    activePanel?.kind === "library" &&
-                    activePanel.target === channel
-                  }
+                  onFanoutClose={() => closePanel(channel)}
+                  libraryOpen={isPanelOpen("library", channel)}
                   libraryAttachedUrls={channelMedia(channel).map(
                     (m) => m.url,
                   )}
@@ -1167,15 +1181,12 @@ export function Compose({
                   onLibraryAttach={(items) =>
                     attachToChannel(channel, items)
                   }
-                  onLibraryClose={() => setActivePanel(null)}
-                  imageOpen={
-                    activePanel?.kind === "image" &&
-                    activePanel.target === channel
-                  }
+                  onLibraryClose={() => closePanel(channel)}
+                  imageOpen={isPanelOpen("image", channel)}
                   onImageRun={(prompt, aspect) =>
                     runImage(channel, prompt, aspect)
                   }
-                  onImageClose={() => setActivePanel(null)}
+                  onImageClose={() => closePanel(channel)}
                   isGeneratingImage={isGeneratingImage}
                 />
               </AccordionItem>
@@ -1869,11 +1880,9 @@ function MuseDrawer({
 function ChannelBody({
   channel,
   override,
-  baseContent,
   customized,
   onSwitchForm,
   onPayloadChange,
-  onOverrideContent,
   onReset,
   author,
   profile,
@@ -1903,11 +1912,9 @@ function ChannelBody({
 }: {
   channel: string;
   override: ChannelOverride;
-  baseContent: string;
   customized: boolean;
   onSwitchForm: (id: string | null) => void;
   onPayloadChange: (p: StudioPayload) => void;
-  onOverrideContent: (text: string) => void;
   onReset: () => void;
   author: ComposeAuthor;
   profile: ComposeProfile | null;
@@ -2002,7 +2009,7 @@ function ChannelBody({
           onClose={onImageClose}
         />
       ) : null}
-      {formId && view ? (
+      {view ? (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] gap-6">
           <div className="min-w-0">
             <view.Editor
@@ -2023,13 +2030,9 @@ function ChannelBody({
           </div>
         </div>
       ) : (
-        <PlainOverride
-          override={override}
-          baseContent={baseContent}
-          onChange={onOverrideContent}
-          disabled={disabled}
-          channel={channel}
-        />
+        <p className="text-[13px] text-ink/65">
+          Editor for {channel} / {formId} is not registered.
+        </p>
       )}
     </div>
   );
@@ -2088,52 +2091,7 @@ function FormatPills({
   );
 }
 
-function PlainOverride({
-  override,
-  baseContent,
-  onChange,
-  disabled,
-  channel,
-}: {
-  override: ChannelOverride;
-  baseContent: string;
-  onChange: (text: string) => void;
-  disabled: boolean;
-  channel: string;
-}) {
-  const text = override.content ?? baseContent;
-  const isOverriding = typeof override.content === "string";
-  return (
-    <div className="rounded-2xl border border-border bg-background-elev p-5 space-y-3">
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <p className="text-[12.5px] text-ink/65">
-          {isOverriding
-            ? `Custom text for ${channelLabel(channel)}.`
-            : `Inheriting the base draft. Type below to override for ${channelLabel(channel)} only.`}
-        </p>
-        {isOverriding ? (
-          <button
-            type="button"
-            onClick={() => onChange("")}
-            className="text-[12px] text-ink/55 hover:text-ink transition-colors"
-          >
-            Reset to base
-          </button>
-        ) : null}
-      </div>
-      <textarea
-        value={text}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        rows={9}
-        placeholder="Override the base text for this channel only."
-        className="w-full bg-transparent text-[14.5px] leading-[1.6] text-ink placeholder:text-ink/35 focus:outline-none resize-none"
-      />
-    </div>
-  );
-}
-
-// ── Footer (visual placeholder; wires in 3B / 3C) ────────────────────────
+// ── Footer ───────────────────────────────────────────────────────────────
 
 // Action sets shown as icon buttons on each accordion's header.
 //   - GENERIC_ACTIONS run against the base draft (no channel context).
