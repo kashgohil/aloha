@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { type CampaignBeat } from "@/lib/ai/campaign";
 import { CHANNEL_ICONS } from "@/components/channel-chip";
+import { tzDateIso } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 import { DragChip, DropDate } from "./canvas-drag";
 
@@ -38,11 +39,13 @@ export function CalendarCanvas({
   rangeStart,
   rangeEnd,
   selectedBeatId,
+  tz,
 }: {
   beats: CampaignBeat[];
   rangeStart: Date;
   rangeEnd: Date;
   selectedBeatId: string | null;
+  tz: string;
 }) {
   const months = monthsBetween(rangeStart, rangeEnd);
   const byDate = new Map<string, CampaignBeat[]>();
@@ -54,7 +57,7 @@ export function CalendarCanvas({
 
   const startISO = isoOf(startOfDay(rangeStart));
   const endISO = isoOf(startOfDay(rangeEnd));
-  const todayISO = isoOf(startOfDay(new Date()));
+  const todayISO = tzDateIso(new Date(), tz);
 
   return (
     <div className="space-y-6">

@@ -110,6 +110,7 @@ export default async function CampaignDetailPage({
     redirect("/app/dashboard");
   }
   const canManage = hasRole(ctxOrThrow.role, ROLES.ADMIN);
+  const tz = ctxOrThrow.workspace.timezone ?? "UTC";
   const selectedBeatId = first(q.beat) ?? null;
   const viewParam = first(q.view) ?? "list";
   const view: CanvasView = isCanvasView(viewParam) ? viewParam : "list";
@@ -282,6 +283,7 @@ export default async function CampaignDetailPage({
                   rangeStart={campaign.rangeStart}
                   rangeEnd={campaign.rangeEnd}
                   selectedBeatId={selectedBeatId}
+                  tz={tz}
                 />
               </DragSurface>
             )
@@ -301,6 +303,7 @@ export default async function CampaignDetailPage({
                 rangeStart={campaign.rangeStart}
                 rangeEnd={campaign.rangeEnd}
                 selectedBeatId={selectedBeatId}
+                tz={tz}
               />
             )
           ) : dates.length === 0 ? (

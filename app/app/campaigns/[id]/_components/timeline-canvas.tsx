@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { type CampaignBeat } from "@/lib/ai/campaign";
 import { CHANNEL_ICONS, channelLabel } from "@/components/channel-chip";
+import { tzDateIso } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 
 const PHASE_DOT: Record<string, string> = {
@@ -42,12 +43,14 @@ export function TimelineCanvas({
   rangeStart,
   rangeEnd,
   selectedBeatId,
+  tz,
 }: {
   beats: CampaignBeat[];
   channels: string[];
   rangeStart: Date;
   rangeEnd: Date;
   selectedBeatId: string | null;
+  tz: string;
 }) {
   const start = startOfDay(rangeStart);
   const end = startOfDay(rangeEnd);
@@ -55,7 +58,7 @@ export function TimelineCanvas({
     Math.max(1, Math.round((end.getTime() - start.getTime()) / MS_PER_DAY)) +
     1;
   const cellWidth = totalDays <= 21 ? 56 : totalDays <= 60 ? 36 : 22;
-  const todayISO = isoOf(startOfDay(new Date()));
+  const todayISO = tzDateIso(new Date(), tz);
 
   const dayLabels = Array.from({ length: totalDays }, (_, i) => {
     const d = new Date(start.getTime() + i * MS_PER_DAY);

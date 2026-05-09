@@ -72,6 +72,21 @@ export function buildTzLocalInput(
   return `${year}-${pad2(month)}-${pad2(day)}T${time}`;
 }
 
+// UTC Date → "YYYY-MM-DD" as it reads in `tz`. Use for "what calendar
+// day is this instant on, in the user's timezone" — server runtime is UTC
+// on Vercel, so naive `getFullYear/getMonth/getDate` calls will report
+// the wrong day around midnight for any non-UTC user.
+export function tzDateIso(d: Date, tz: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
 export function formatTzLocalInputForDisplay(
   local: string,
   tz: string,
