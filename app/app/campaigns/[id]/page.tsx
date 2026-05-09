@@ -6,7 +6,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import { ChannelChip } from "@/components/channel-chip";
+import { ChannelChip, ChannelIcons } from "@/components/channel-chip";
 import { CalendarCanvas } from "./_components/calendar-canvas";
 import { DragSurface } from "./_components/canvas-drag";
 import {
@@ -15,18 +15,22 @@ import {
   parseFilters,
 } from "./_components/canvas-filters";
 import { TimelineCanvas } from "./_components/timeline-canvas";
-import { CampaignActionBand } from "./_components/action-band";
-import { CampaignControls } from "./_components/campaign-controls";
+import { CampaignHeaderActions } from "./_components/header-actions";
 import { BeatInspector, CampaignOverview } from "./_components/inspector";
+import { StatusDot } from "./_components/status-dot";
 import {
   isCanvasView,
   ViewToggle,
   type CanvasView,
 } from "./_components/view-toggle";
 import { acceptCampaignBeatsAction } from "@/app/actions/campaigns";
+import { db } from "@/db";
+import { channelProfiles } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { loadCampaign, type CampaignBeat } from "@/lib/ai/campaign";
 import { formatLabelFor } from "@/lib/campaigns/channel-formats";
 import { getCurrentContext } from "@/lib/current-context";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { cn } from "@/lib/utils";
 
@@ -36,16 +40,6 @@ type Params = Promise<{ id: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const first = (v: string | string[] | undefined) =>
   Array.isArray(v) ? v[0] : v;
-
-const KIND_LABELS: Record<string, string> = {
-  launch: "Launch",
-  webinar: "Webinar",
-  sale: "Sale",
-  drip: "Drip",
-  evergreen: "Evergreen",
-  reach: "Reach",
-  custom: "Custom",
-};
 
 const PHASE_LABELS: Record<string, string> = {
   teaser: "Teaser",
@@ -58,28 +52,24 @@ const PHASE_LABELS: Record<string, string> = {
   follow_up: "Follow-up",
 };
 
-const STATUS_CHIPS: Record<string, { label: string; className: string }> = {
-  scheduled: {
-    label: "Scheduled",
-    className: "border-peach-300 bg-peach-100 text-ink",
-  },
-  running: {
-    label: "Running",
-    className: "border-primary/40 bg-primary-soft text-primary-deep",
-  },
-  paused: {
-    label: "Paused",
-    className:
-      "border-dashed border-primary/50 bg-background text-primary-deep",
-  },
-  complete: {
-    label: "Complete",
-    className: "border-ink bg-ink text-background",
-  },
-  archived: {
-    label: "Archived",
-    className: "border-dashed border-border-strong bg-background text-ink/45",
-  },
+const STATUS_LABELS: Record<string, string> = {
+  draft: "Draft",
+  ready: "Ready",
+  scheduled: "Scheduled",
+  running: "Running",
+  paused: "Paused",
+  complete: "Complete",
+  archived: "Archived",
+};
+
+const STATUS_DOTS: Record<string, string> = {
+  draft: "bg-border-strong",
+  ready: "bg-peach-300",
+  scheduled: "bg-peach-300",
+  running: "bg-primary",
+  paused: "bg-primary/40 ring-1 ring-primary",
+  complete: "bg-ink",
+  archived: "bg-border-strong opacity-60",
 };
 
 const PHASE_STYLES: Record<string, string> = {
@@ -118,6 +108,34 @@ export default async function CampaignDetailPage({
 
   const campaign = await loadCampaign(ctxOrThrow.user.id, id);
   if (!campaign) notFound();
+
+  // Per-channel connected profile (avatar + display name + handle) so the
+  // beat inspector preview shows the same identity that the composer
+  // accordion and the post-detail preview surface — not the generic
+  // Aloha account holder.
+  const profileRows = await db
+    .select({
+      channel: channelProfiles.channel,
+      displayName: channelProfiles.displayName,
+      handle: channelProfiles.handle,
+      avatarUrl: channelProfiles.avatarUrl,
+    })
+    .from(channelProfiles)
+    .where(eq(channelProfiles.workspaceId, ctxOrThrow.workspace.id));
+  const profileByChannel = new Map(
+    profileRows.map((p) => [
+      p.channel,
+      {
+        displayName: p.displayName,
+        handle: p.handle,
+        avatarUrl: p.avatarUrl,
+      },
+    ]),
+  );
+  const author = {
+    name: ctxOrThrow.user.name ?? "You",
+    image: ctxOrThrow.user.image ?? null,
+  };
 
   const phaseOrder: Record<string, number> = {
     teaser: 0,
@@ -163,33 +181,30 @@ export default async function CampaignDetailPage({
           <ArrowLeft className="w-3.5 h-3.5" />
           Back to campaigns
         </Link>
-        <div className="mt-4 flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="inline-flex items-center h-6 px-2.5 rounded-full border border-border text-[11px] uppercase tracking-[0.18em] text-ink/60">
-              {KIND_LABELS[campaign.kind] ?? campaign.kind}
-            </span>
-            {STATUS_CHIPS[campaign.status] ? (
-              <span
-                className={cn(
-                  "inline-flex items-center h-6 px-2.5 rounded-full border text-[11px] uppercase tracking-[0.18em]",
-                  STATUS_CHIPS[campaign.status].className,
-                )}
-              >
-                {STATUS_CHIPS[campaign.status].label}
-              </span>
+        <div className="mt-4 flex items-center gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-wrap min-w-0 flex-1">
+            <h1 className="font-display text-[40px] leading-[1.05] tracking-[-0.02em] text-ink min-w-0">
+              {campaign.name}
+            </h1>
+            <ChannelIcons channels={campaign.channels} size="lg" visible={6} />
+            {STATUS_DOTS[campaign.status] ? (
+              <StatusDot
+                label={STATUS_LABELS[campaign.status] ?? campaign.status}
+                className={STATUS_DOTS[campaign.status]}
+              />
             ) : null}
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {campaign.channels.map((c) => (
-                <ChannelChip key={c} channel={c} />
-              ))}
-            </div>
           </div>
-          <CampaignControls campaignId={campaign.id} canManage={canManage} />
+          <CampaignHeaderActions
+            campaignId={campaign.id}
+            status={campaign.status}
+            total={total}
+            accepted={accepted}
+            pending={pending}
+            formId="campaign-accept-form"
+            canManage={canManage}
+          />
         </div>
-        <h1 className="mt-3 font-display text-[40px] leading-[1.05] tracking-[-0.02em] text-ink">
-          {campaign.name}
-        </h1>
-        <p className="mt-2 text-[14px] text-ink/70 leading-[1.5]">
+        <p className="mt-3 text-[14px] text-ink/70 leading-[1.5]">
           {campaign.goal}
         </p>
         <div className="mt-3 flex items-center gap-4 flex-wrap text-[12.5px] text-ink/55">
@@ -198,15 +213,8 @@ export default async function CampaignDetailPage({
           </span>
           <span aria-hidden>·</span>
           <span>
-            {new Intl.DateTimeFormat("en-US", {
-              month: "short",
-              day: "numeric",
-            }).format(campaign.rangeStart)}{" "}
-            →{" "}
-            {new Intl.DateTimeFormat("en-US", {
-              month: "short",
-              day: "numeric",
-            }).format(campaign.rangeEnd)}
+            {formatTzDateOrdinal(campaign.rangeStart, tz)} →{" "}
+            {formatTzDateOrdinal(campaign.rangeEnd, tz)}
           </span>
           <span aria-hidden>·</span>
           <span className="tabular-nums">
@@ -215,11 +223,11 @@ export default async function CampaignDetailPage({
         </div>
       </div>
 
-      {/* Container for the BeatRow checkbox island. The action band reads
-          this form's FormData on click; the `action` attribute is a
-          fallback in case a native submit ever fires (it shouldn't —
-          there's no submit button inside, and checkboxes don't submit on
-          Enter). The toast UX flows through the action band. */}
+      {/* Container for the BeatRow checkbox island. The header's
+          Create-drafts button reads this form's FormData on click; the
+          `action` attribute is a fallback in case a native submit ever
+          fires (it shouldn't — there's no submit button inside, and
+          checkboxes don't submit on Enter). */}
       <form
         id="campaign-accept-form"
         action={acceptCampaignBeatsAction}
@@ -227,16 +235,6 @@ export default async function CampaignDetailPage({
       >
         <input type="hidden" name="campaignId" value={campaign.id} />
       </form>
-
-      <CampaignActionBand
-        campaignId={campaign.id}
-        status={campaign.status}
-        total={total}
-        accepted={accepted}
-        pending={pending}
-        formId="campaign-accept-form"
-        canManage={canManage}
-      />
 
       <div className="flex items-center gap-3 flex-wrap">
         <ViewToggle
@@ -313,11 +311,7 @@ export default async function CampaignDetailPage({
               <section key={date} className="space-y-2">
                 <header className="flex items-center gap-2 text-[11.5px] uppercase tracking-[0.18em] text-ink/55">
                   <CalendarIcon className="w-3 h-3" />
-                  {new Intl.DateTimeFormat("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                  }).format(new Date(`${date}T12:00:00Z`))}
+                  {formatTzDateOrdinal(new Date(`${date}T12:00:00Z`), tz)}
                 </header>
                 <ul className="space-y-2">
                   {(byDate.get(date) ?? []).map((beat) => (
@@ -325,6 +319,7 @@ export default async function CampaignDetailPage({
                       key={beat.id}
                       beat={beat}
                       isSelected={selectedBeatId === beat.id}
+                      tz={tz}
                     />
                   ))}
                 </ul>
@@ -335,7 +330,13 @@ export default async function CampaignDetailPage({
 
         <div className="lg:sticky lg:top-6">
           {selectedBeat ? (
-            <BeatInspector campaignId={campaign.id} beat={selectedBeat} />
+            <BeatInspector
+              campaignId={campaign.id}
+              beat={selectedBeat}
+              tz={tz}
+              author={author}
+              profile={profileByChannel.get(selectedBeat.channel) ?? null}
+            />
           ) : (
             <CampaignOverview beats={campaign.beats} />
           )}
@@ -362,9 +363,11 @@ function emptyCanvasMessage(totalBeats: number): string {
 function BeatRow({
   beat,
   isSelected,
+  tz,
 }: {
   beat: CampaignBeat;
   isSelected: boolean;
+  tz: string;
 }) {
   const accepted = Boolean(beat.accepted);
   // Drafted beats become Link-only cards: clicking opens the post in the
@@ -382,12 +385,21 @@ function BeatRow({
       )}
     >
       {accepted ? (
-        <BeatRowAccepted beat={beat} />
+        <BeatRowAccepted beat={beat} tz={tz} />
       ) : (
         <BeatRowPending beat={beat} />
       )}
     </li>
   );
+}
+
+function formatBeatTime(d: Date, tz: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(d);
 }
 
 function BeatRowPending({ beat }: { beat: CampaignBeat }) {
@@ -416,13 +428,16 @@ function BeatRowPending({ beat }: { beat: CampaignBeat }) {
   );
 }
 
-function BeatRowAccepted({ beat }: { beat: CampaignBeat }) {
+function BeatRowAccepted({ beat, tz }: { beat: CampaignBeat; tz: string }) {
   // Whole card opens the composer; a small inspector affordance opens the
   // side panel without leaving the page. acceptedPostId is set when the
   // beat was accepted; defensive fallback to the inspector if missing.
   const composerHref = beat.acceptedPostId
     ? `?compose=${beat.acceptedPostId}`
     : `?beat=${beat.id}`;
+  const timeLabel = beat.scheduledAt
+    ? formatBeatTime(beat.scheduledAt, tz)
+    : null;
   return (
     <div className="flex items-stretch">
       <Link href={composerHref} prefetch={false} className="flex-1 min-w-0 p-4">
@@ -441,6 +456,14 @@ function BeatRowAccepted({ beat }: { beat: CampaignBeat }) {
             <span className="text-ink/65">
               {formatLabelFor(beat.channel, beat.format)}
             </span>
+            {timeLabel ? (
+              <>
+                <span aria-hidden>·</span>
+                <span className="text-ink/65 tabular-nums normal-case tracking-normal">
+                  {timeLabel}
+                </span>
+              </>
+            ) : null}
           </div>
           <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-ink text-background text-[10.5px] tracking-wide shrink-0">
             <Check className="w-3 h-3" />

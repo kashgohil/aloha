@@ -20,6 +20,7 @@ import {
   ideas,
   platformContentCache,
   platformInsights,
+  posts,
 } from "@/db/schema";
 import { generate } from "./router";
 import { PROMPTS, registerPrompts } from "./prompts";
@@ -91,6 +92,14 @@ export type CampaignBeat = {
   rationale?: string;
   accepted?: boolean;
   acceptedPostId?: string;
+  // Hydrated by `loadCampaign` from the linked post when accepted. Lets
+  // the UI surface the actual scheduled clock time (post may have been
+  // tuned in the composer) instead of guessing the noon default, and
+  // render a preview of what the post actually says.
+  scheduledAt?: Date | null;
+  postContent?: string | null;
+  postStatus?: string | null;
+  postMedia?: import("@/db/schema").PostMedia[] | null;
 };
 
 export type GenerateCampaignInput = {
@@ -543,6 +552,49 @@ export async function loadCampaign(
     .where(and(eq(campaigns.id, campaignId), eq(campaigns.createdByUserId, userId)))
     .limit(1);
   if (!row) return null;
+  const rawBeats = row.beats as CampaignBeat[];
+  const acceptedPostIds = rawBeats
+    .map((b) => b.acceptedPostId)
+    .filter((id): id is string => Boolean(id));
+  const postById = new Map<
+    string,
+    {
+      scheduledAt: Date | null;
+      content: string | null;
+      status: string | null;
+      media: import("@/db/schema").PostMedia[] | null;
+    }
+  >();
+  if (acceptedPostIds.length > 0) {
+    const rows = await db
+      .select({
+        id: posts.id,
+        scheduledAt: posts.scheduledAt,
+        content: posts.content,
+        status: posts.status,
+        media: posts.media,
+      })
+      .from(posts)
+      .where(inArray(posts.id, acceptedPostIds));
+    for (const r of rows)
+      postById.set(r.id, {
+        scheduledAt: r.scheduledAt,
+        content: r.content,
+        status: r.status,
+        media: r.media,
+      });
+  }
+  const beats: CampaignBeat[] = rawBeats.map((b) => {
+    if (!b.acceptedPostId) return b;
+    const p = postById.get(b.acceptedPostId);
+    return {
+      ...b,
+      scheduledAt: p?.scheduledAt ?? null,
+      postContent: p?.content ?? null,
+      postStatus: p?.status ?? null,
+      postMedia: p?.media ?? null,
+    };
+  });
   return {
     id: row.id,
     name: row.name,
@@ -553,7 +605,7 @@ export async function loadCampaign(
     postsPerWeek: row.postsPerWeek,
     rangeStart: row.rangeStart,
     rangeEnd: row.rangeEnd,
-    beats: row.beats as CampaignBeat[],
+    beats,
     status: row.status,
     createdAt: row.createdAt,
   };

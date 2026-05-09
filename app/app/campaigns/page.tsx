@@ -1,6 +1,7 @@
 import { listCampaigns } from "@/lib/ai/campaign";
 import { hasMuseInviteEntitlement } from "@/lib/billing/muse";
 import { getCurrentContext } from "@/lib/current-context";
+import { formatTzDateOrdinal } from "@/lib/tz";
 import { hasRole, ROLES } from "@/lib/workspaces/roles";
 import { ChannelIcons } from "@/components/channel-chip";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,7 @@ const startOfDay = (d: Date) => {
 
 export default async function CampaignsPage() {
 	const ctx = (await getCurrentContext())!;
+	const tz = ctx.workspace.timezone ?? "UTC";
 	if (!hasRole(ctx.role, ROLES.ADMIN)) {
 		redirect("/app/dashboard");
 	}
@@ -184,7 +186,7 @@ export default async function CampaignsPage() {
 								<ul className="space-y-1.5">
 									{wrapped.map((c) => (
 										<li key={c.id}>
-											<WrappedRow campaign={c} />
+											<WrappedRow campaign={c} tz={tz} />
 										</li>
 									))}
 								</ul>
@@ -197,7 +199,7 @@ export default async function CampaignsPage() {
 									<ul className="mt-3 space-y-1.5">
 										{wrapped.map((c) => (
 											<li key={c.id}>
-												<WrappedRow campaign={c} />
+												<WrappedRow campaign={c} tz={tz} />
 											</li>
 										))}
 									</ul>
@@ -432,7 +434,13 @@ function UpcomingRow({
 	);
 }
 
-function WrappedRow({ campaign }: { campaign: CampaignRow }) {
+function WrappedRow({
+	campaign,
+	tz,
+}: {
+	campaign: CampaignRow;
+	tz: string;
+}) {
 	const beats = campaign.beats as Array<{ accepted?: boolean }>;
 	const total = beats.length;
 	const accepted = beats.filter((b) => b.accepted).length;
@@ -450,10 +458,7 @@ function WrappedRow({ campaign }: { campaign: CampaignRow }) {
 				{campaign.name}
 			</span>
 			<span className="text-[11.5px] text-ink/40 tabular-nums shrink-0">
-				{new Intl.DateTimeFormat("en-US", {
-					month: "short",
-					day: "numeric",
-				}).format(campaign.rangeEnd)}
+				{formatTzDateOrdinal(campaign.rangeEnd, tz, { year: false })}
 			</span>
 			<span className="text-[11.5px] text-ink/40 tabular-nums shrink-0 w-12 text-right">
 				{pct}%

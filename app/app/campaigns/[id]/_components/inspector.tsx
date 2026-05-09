@@ -6,8 +6,14 @@ import {
   rescheduleBeatAction,
 } from "@/app/actions/campaigns";
 import { ChannelChip } from "@/components/channel-chip";
+import {
+  PostPreviewCard,
+  type PostPreviewAuthor,
+  type PostPreviewProfile,
+} from "@/components/post-preview-card";
 import { type CampaignBeat } from "@/lib/ai/campaign";
 import { formatsFor } from "@/lib/campaigns/channel-formats";
+import { formatChannelTimestamp, formatTzDateOrdinal } from "@/lib/tz";
 import { cn } from "@/lib/utils";
 import {
   Check,
@@ -44,16 +50,42 @@ const PHASE_STYLES: Record<string, string> = {
 export function BeatInspector({
   campaignId,
   beat,
+  tz,
+  author,
+  profile,
 }: {
   campaignId: string;
   beat: CampaignBeat;
+  tz: string;
+  author: PostPreviewAuthor;
+  profile: PostPreviewProfile | null;
 }) {
   const formatOpts = formatsFor(beat.channel);
   const accepted = Boolean(beat.accepted);
   const otherFormats = formatOpts.filter((f) => f.slug !== beat.format);
+  const scheduledInstant = beat.scheduledAt
+    ? beat.scheduledAt
+    : new Date(`${beat.date}T12:00:00Z`);
+  const dateLabel = beat.scheduledAt
+    ? formatTzDateOrdinal(beat.scheduledAt, tz, { time: true })
+    : formatTzDateOrdinal(new Date(`${beat.date}T12:00:00Z`), tz);
+  const previewTimestamp = formatChannelTimestamp(
+    scheduledInstant,
+    tz,
+    beat.channel,
+  );
 
   return (
-    <aside className="rounded-3xl border border-border-strong bg-background-elev p-5 space-y-5 lg:sticky lg:top-6">
+    <div className="space-y-5 lg:sticky lg:top-6">
+      {accepted && beat.postContent ? (
+        <AcceptedPreview
+          beat={beat}
+          author={author}
+          profile={profile}
+          timestampLabel={previewTimestamp}
+        />
+      ) : null}
+      <aside className="rounded-3xl border border-border-strong bg-background-elev p-5 space-y-5">
       <header className="space-y-2.5">
         <div className="flex items-center gap-2 flex-wrap">
           <span
@@ -77,9 +109,9 @@ export function BeatInspector({
         </p>
       </header>
 
-      <Row label="Date">
+      <Row label={accepted ? "Scheduled" : "Date"}>
         {accepted ? (
-          <span className="text-[13px] text-ink">{beat.date}</span>
+          <span className="text-[13px] text-ink tabular-nums">{dateLabel}</span>
         ) : (
           <form
             action={rescheduleBeatAction}
@@ -116,9 +148,7 @@ export function BeatInspector({
         )}
       </Row>
 
-      {accepted ? (
-        <ReadOnlyBody beat={beat} />
-      ) : (
+      {accepted ? null : (
         <form
           action={editBeatAction}
           className="space-y-3.5 border-t border-border pt-4"
@@ -230,7 +260,8 @@ export function BeatInspector({
           Open in composer →
         </Link>
       ) : null}
-    </aside>
+      </aside>
+    </div>
   );
 }
 
@@ -342,44 +373,31 @@ function RegenAndDeleteRow({
   );
 }
 
-function ReadOnlyBody({ beat }: { beat: CampaignBeat }) {
+function AcceptedPreview({
+  beat,
+  author,
+  profile,
+  timestampLabel,
+}: {
+  beat: CampaignBeat;
+  author: PostPreviewAuthor;
+  profile: PostPreviewProfile | null;
+  timestampLabel: string;
+}) {
+  // Renders the same channel-styled card used by the composer accordion
+  // and the post-detail right rail. Sits on its own — no shared bounding
+  // box with the metadata aside below.
+  if (!beat.postContent) return null;
   return (
-    <div className="space-y-2.5 border-t border-border pt-4">
-      <p className="text-[14.5px] text-ink font-medium leading-[1.3]">
-        {beat.title}
-      </p>
-      {beat.angle ? (
-        <p className="text-[13px] text-ink/70 leading-[1.55]">{beat.angle}</p>
-      ) : null}
-      {beat.hook ? (
-        <p className="rounded-xl bg-muted/40 border border-border px-3 py-2 text-[13px] text-ink leading-[1.5]">
-          <span className="block text-[10.5px] uppercase tracking-[0.18em] text-ink/50 mb-1">
-            Hook
-          </span>
-          {beat.hook}
-        </p>
-      ) : null}
-      {beat.keyPoints && beat.keyPoints.length > 0 ? (
-        <ol className="list-decimal pl-5 space-y-1 text-[13px] text-ink/80 leading-[1.5]">
-          {beat.keyPoints.map((p, i) => (
-            <li key={i}>{p}</li>
-          ))}
-        </ol>
-      ) : null}
-      {beat.cta ? (
-        <p className="text-[13px] text-ink/80">
-          <span className="text-[10.5px] uppercase tracking-[0.18em] text-ink/50 mr-1.5">
-            CTA
-          </span>
-          {beat.cta}
-        </p>
-      ) : null}
-      {beat.hashtags && beat.hashtags.length > 0 ? (
-        <p className="text-[12.5px] text-ink/60 break-words">
-          {beat.hashtags.join(" ")}
-        </p>
-      ) : null}
-    </div>
+    <PostPreviewCard
+      channel={beat.channel}
+      author={author}
+      profile={profile}
+      content={beat.postContent}
+      media={beat.postMedia ?? []}
+      timestampLabel={timestampLabel}
+      articleClassName="max-w-none"
+    />
   );
 }
 
