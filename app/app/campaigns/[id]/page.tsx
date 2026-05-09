@@ -17,10 +17,7 @@ import {
 import { TimelineCanvas } from "./_components/timeline-canvas";
 import { CampaignActionBand } from "./_components/action-band";
 import { CampaignControls } from "./_components/campaign-controls";
-import {
-  BeatInspector,
-  CampaignOverview,
-} from "./_components/inspector";
+import { BeatInspector, CampaignOverview } from "./_components/inspector";
 import {
   isCanvasView,
   ViewToggle,
@@ -132,9 +129,7 @@ export default async function CampaignDetailPage({
     follow_up: 7,
   };
   const visibleBeats = applyFilters(campaign.beats, filters);
-  const phasesPresent = Array.from(
-    new Set(campaign.beats.map((b) => b.phase)),
-  );
+  const phasesPresent = Array.from(new Set(campaign.beats.map((b) => b.phase)));
   const byDate = new Map<string, CampaignBeat[]>();
   for (const beat of visibleBeats) {
     const list = byDate.get(beat.date) ?? [];
@@ -143,8 +138,7 @@ export default async function CampaignDetailPage({
   }
   for (const list of byDate.values()) {
     list.sort(
-      (a, b) =>
-        (phaseOrder[a.phase] ?? 99) - (phaseOrder[b.phase] ?? 99),
+      (a, b) => (phaseOrder[a.phase] ?? 99) - (phaseOrder[b.phase] ?? 99),
     );
   }
   const dates = Array.from(byDate.keys()).sort();
@@ -155,7 +149,7 @@ export default async function CampaignDetailPage({
   const pct = total === 0 ? 0 : Math.round((accepted / total) * 100);
 
   const selectedBeat = selectedBeatId
-    ? campaign.beats.find((b) => b.id === selectedBeatId) ?? null
+    ? (campaign.beats.find((b) => b.id === selectedBeatId) ?? null)
     : null;
 
   return (
@@ -189,10 +183,7 @@ export default async function CampaignDetailPage({
               ))}
             </div>
           </div>
-          <CampaignControls
-            campaignId={campaign.id}
-            canManage={canManage}
-          />
+          <CampaignControls campaignId={campaign.id} canManage={canManage} />
         </div>
         <h1 className="mt-3 font-display text-[40px] leading-[1.05] tracking-[-0.02em] text-ink">
           {campaign.name}
@@ -256,7 +247,9 @@ export default async function CampaignDetailPage({
                 ? [...filters.channels].join(",")
                 : undefined,
             ph:
-              filters.phases.size > 0 ? [...filters.phases].join(",") : undefined,
+              filters.phases.size > 0
+                ? [...filters.phases].join(",")
+                : undefined,
             fmt:
               filters.formats.size > 0
                 ? [...filters.formats].join(",")
@@ -279,7 +272,9 @@ export default async function CampaignDetailPage({
         <div className="space-y-6 min-w-0">
           {view === "calendar" ? (
             visibleBeats.length === 0 ? (
-              <EmptyCanvas message={emptyCanvasMessage(campaign.beats.length)} />
+              <EmptyCanvas
+                message={emptyCanvasMessage(campaign.beats.length)}
+              />
             ) : (
               <DragSurface campaignId={campaign.id}>
                 <CalendarCanvas
@@ -292,7 +287,9 @@ export default async function CampaignDetailPage({
             )
           ) : view === "timeline" ? (
             visibleBeats.length === 0 ? (
-              <EmptyCanvas message={emptyCanvasMessage(campaign.beats.length)} />
+              <EmptyCanvas
+                message={emptyCanvasMessage(campaign.beats.length)}
+              />
             ) : (
               <TimelineCanvas
                 beats={visibleBeats}
@@ -331,7 +328,6 @@ export default async function CampaignDetailPage({
               </section>
             ))
           )}
-
         </div>
 
         <div className="lg:sticky lg:top-6">
@@ -374,7 +370,7 @@ function BeatRow({
   return (
     <li
       className={cn(
-        "rounded-2xl border transition-colors group",
+        "rounded-2xl border transition-colors group overflow-clip",
         accepted
           ? "border-primary/40 bg-primary-soft/30 hover:border-primary"
           : isSelected
@@ -426,11 +422,7 @@ function BeatRowAccepted({ beat }: { beat: CampaignBeat }) {
     : `?beat=${beat.id}`;
   return (
     <div className="flex items-stretch">
-      <Link
-        href={composerHref}
-        prefetch={false}
-        className="flex-1 min-w-0 p-4"
-      >
+      <Link href={composerHref} prefetch={false} className="flex-1 min-w-0 p-4">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-[0.16em] text-ink/55 min-w-0">
             <span
