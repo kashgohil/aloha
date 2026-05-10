@@ -25,6 +25,7 @@ import { computeLifecycleStatus } from "@/lib/campaigns/lifecycle";
 import { env } from "@/lib/env";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import { ROLES } from "@/lib/workspaces/roles";
+import { fitContentToChannelLimit } from "@/lib/channels/fit-to-limit";
 import { qstashClient } from "@/lib/qstash";
 import { and, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -122,7 +123,11 @@ export async function acceptCampaignBeatsAction(formData: FormData) {
 		if (beat.accepted) continue;
 
 		const scheduledAt = new Date(`${beat.date}T12:00:00Z`);
-		const content = composeBeatBody(beat);
+		const content = fitContentToChannelLimit(
+			composeBeatBody(beat),
+			beat.channel,
+			beat.format,
+		);
 		const draftMeta = {
 			...(beat.hook ? { hook: beat.hook } : {}),
 			...(beat.keyPoints && beat.keyPoints.length > 0
