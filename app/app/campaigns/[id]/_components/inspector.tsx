@@ -85,68 +85,71 @@ export function BeatInspector({
           timestampLabel={previewTimestamp}
         />
       ) : null}
-      <aside className="rounded-3xl border border-border-strong bg-background-elev p-5 space-y-5">
-      <header className="space-y-2.5">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={cn(
-              "inline-flex items-center h-5 px-2 rounded-full border text-[10.5px] font-medium tracking-wide",
-              PHASE_STYLES[beat.phase] ?? PHASE_STYLES.announce,
-            )}
-          >
-            {PHASE_LABELS[beat.phase] ?? beat.phase}
+      <aside className="rounded-3xl border border-border-strong bg-background-elev p-5 space-y-4">
+      <header className="flex items-center gap-2 flex-wrap">
+        <span
+          className={cn(
+            "inline-flex items-center h-5 px-2 rounded-full border text-[10.5px] font-medium tracking-wide",
+            PHASE_STYLES[beat.phase] ?? PHASE_STYLES.announce,
+          )}
+        >
+          {PHASE_LABELS[beat.phase] ?? beat.phase}
+        </span>
+        <ChannelChip channel={beat.channel} />
+        {accepted ? (
+          <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-ink text-background text-[10.5px] tracking-wide">
+            <Check className="w-3 h-3" />
+            Drafted
           </span>
-          <ChannelChip channel={beat.channel} />
-          {accepted ? (
-            <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full bg-ink text-background text-[10.5px] tracking-wide">
-              <Check className="w-3 h-3" />
-              Drafted
-            </span>
-          ) : null}
-        </div>
-        <p className="text-[10.5px] uppercase tracking-[0.18em] text-ink/45">
-          Selected beat
-        </p>
+        ) : null}
       </header>
 
-      <Row label={accepted ? "Scheduled" : "Date"}>
-        {accepted ? (
-          <span className="text-[13px] text-ink tabular-nums">{dateLabel}</span>
-        ) : (
-          <form
-            action={rescheduleBeatAction}
-            className="inline-flex items-center gap-2"
-          >
-            <input type="hidden" name="campaignId" value={campaignId} />
-            <input type="hidden" name="beatId" value={beat.id} />
-            <input
-              type="date"
-              name="date"
-              defaultValue={beat.date}
-              className="h-9 px-3 rounded-full border border-border bg-background text-[12.5px] text-ink focus:outline-none focus:border-ink"
-            />
-            <button
-              type="submit"
-              className="inline-flex items-center h-8 px-3 rounded-full border border-border text-[11.5px] text-ink/70 hover:border-ink hover:text-ink transition-colors"
-            >
-              Save
-            </button>
-          </form>
-        )}
-      </Row>
+      <div className="space-y-2.5">
+        <Row label="Selected beat">
+          <span className="text-[13px] text-ink text-right line-clamp-2">
+            {beat.title}
+          </span>
+        </Row>
 
-      <Row label="Format">
-        {accepted ? (
-          <span className="text-[13px] text-ink capitalize">{beat.format}</span>
-        ) : (
-          <FormatSelect
-            campaignId={campaignId}
-            beatId={beat.id}
-            current={beat.format}
-            options={formatOpts}
-          />
-        )}
-      </Row>
+        <Row label={accepted ? "Scheduled" : "Date"}>
+          {accepted ? (
+            <span className="text-[13px] text-ink tabular-nums">{dateLabel}</span>
+          ) : (
+            <form
+              action={rescheduleBeatAction}
+              className="inline-flex items-center gap-2"
+            >
+              <input type="hidden" name="campaignId" value={campaignId} />
+              <input type="hidden" name="beatId" value={beat.id} />
+              <input
+                type="date"
+                name="date"
+                defaultValue={beat.date}
+                className="h-9 px-3 rounded-full border border-border bg-background text-[12.5px] text-ink focus:outline-none focus:border-ink"
+              />
+              <button
+                type="submit"
+                className="inline-flex items-center h-8 px-3 rounded-full border border-border text-[11.5px] text-ink/70 hover:border-ink hover:text-ink transition-colors"
+              >
+                Save
+              </button>
+            </form>
+          )}
+        </Row>
+
+        <Row label="Format">
+          {accepted ? (
+            <span className="text-[13px] text-ink capitalize">{beat.format}</span>
+          ) : (
+            <FormatSelect
+              campaignId={campaignId}
+              beatId={beat.id}
+              current={beat.format}
+              options={formatOpts}
+            />
+          )}
+        </Row>
+      </div>
 
       {accepted ? null : (
         <form
