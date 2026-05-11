@@ -16,6 +16,10 @@
 		{
 			"path": "/api/cron/campaign-rollover",
 			"schedule": "0 * * * *"
+		},
+		{
+			"path": "/api/cron/qstash-sweep",
+			"schedule": "0 * * * *"
 		}
 	],
 	"git": {
