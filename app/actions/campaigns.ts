@@ -22,11 +22,10 @@ import {
 import { CostCapExceededError } from "@/lib/ai/cost-cap";
 import { requireMuseAccess } from "@/lib/billing/muse";
 import { computeLifecycleStatus } from "@/lib/campaigns/lifecycle";
-import { env } from "@/lib/env";
 import { assertRole } from "@/lib/workspaces/assert-role";
 import { ROLES } from "@/lib/workspaces/roles";
 import { fitContentToChannelLimit } from "@/lib/channels/fit-to-limit";
-import { qstashClient } from "@/lib/qstash";
+import { enqueuePostDelivery } from "@/lib/qstash";
 import { and, eq, gt, inArray, isNotNull } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -237,18 +236,7 @@ export async function approveCampaignAction(formData: FormData) {
 
 		for (const r of sweepable) {
 			if (!r.scheduledAt) continue;
-			const delay = Math.max(
-				0,
-				Math.floor((r.scheduledAt.getTime() - Date.now()) / 1000),
-			);
-			await qstashClient.publishJSON({
-				url: `${env.APP_URL}/api/qstash`,
-				body: {
-					postId: r.id,
-					intendedScheduledAt: r.scheduledAt.toISOString(),
-				},
-				delay,
-			});
+			await enqueuePostDelivery(r.id, r.scheduledAt);
 		}
 	}
 
@@ -371,18 +359,7 @@ export async function resumeCampaignAction(formData: FormData) {
 
 		for (const r of resumable) {
 			if (!r.scheduledAt) continue;
-			const delay = Math.max(
-				0,
-				Math.floor((r.scheduledAt.getTime() - Date.now()) / 1000),
-			);
-			await qstashClient.publishJSON({
-				url: `${env.APP_URL}/api/qstash`,
-				body: {
-					postId: r.id,
-					intendedScheduledAt: r.scheduledAt.toISOString(),
-				},
-				delay,
-			});
+			await enqueuePostDelivery(r.id, r.scheduledAt);
 		}
 	}
 

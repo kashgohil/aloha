@@ -12,8 +12,7 @@ import {
   type PostMedia,
 } from "@/db/schema";
 import { revalidatePath } from "next/cache";
-import { env } from "@/lib/env";
-import { qstashClient } from "@/lib/qstash";
+import { enqueuePostDelivery } from "@/lib/qstash";
 import { canPublish } from "@/lib/billing/trial";
 import { ROLES } from "@/lib/workspaces/roles";
 import { assertRole } from "@/lib/workspaces/assert-role";
@@ -132,18 +131,7 @@ export async function schedulePost(postId: string, scheduledAt: Date) {
     })
     .where(eq(posts.id, postId));
 
-  const delay = Math.max(
-    0,
-    Math.floor((scheduledAt.getTime() - Date.now()) / 1000),
-  );
-  await qstashClient.publishJSON({
-    url: `${env.APP_URL}/api/qstash`,
-    body: {
-      postId,
-      intendedScheduledAt: scheduledAt.toISOString(),
-    },
-    delay,
-  });
+  await enqueuePostDelivery(postId, scheduledAt);
 
   revalidatePostPaths(postId);
   return { success: true, postId };
@@ -275,18 +263,7 @@ export async function reschedulePost(postId: string, scheduledAt: Date) {
     .set({ scheduledAt, updatedAt: new Date() })
     .where(eq(posts.id, postId));
 
-  const delay = Math.max(
-    0,
-    Math.floor((scheduledAt.getTime() - Date.now()) / 1000),
-  );
-  await qstashClient.publishJSON({
-    url: `${env.APP_URL}/api/qstash`,
-    body: {
-      postId,
-      intendedScheduledAt: scheduledAt.toISOString(),
-    },
-    delay,
-  });
+  await enqueuePostDelivery(postId, scheduledAt);
 
   revalidatePath("/app/dashboard");
   revalidatePath("/app/calendar");
