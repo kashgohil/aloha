@@ -44,7 +44,7 @@ export async function enqueuePostDelivery(
       intendedScheduledAt: scheduledAt.toISOString(),
     },
     delay,
-    deduplicationId: `post:${postId}:${scheduledAt.getTime()}`,
+    deduplicationId: `post_${postId}_${scheduledAt.getTime()}`,
   });
   return { enqueued: true };
 }

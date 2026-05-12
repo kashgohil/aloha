@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, gt, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { env } from "@/lib/env";
@@ -7,13 +7,17 @@ import { captureException } from "@/lib/logger";
 import { QSTASH_MAX_DELAY_SECONDS, enqueuePostDelivery } from "@/lib/qstash";
 
 // Hourly sweep that hands posts off to QStash once their scheduledAt
-// falls inside QStash's max-delay window (7 days on our plan). At launch
-// time the campaign action skips any beat beyond that window because
-// `publishJSON` would reject it with a `maxDelay exceeded` error; those
-// far-future posts wait here in `scheduled` state without an in-flight
-// QStash message. The sweep keys idempotency on the deduplication id
-// inside `enqueuePostDelivery`, so calling it on the same (post,
-// scheduledAt) twice within QStash's 90-day dedup retention is a no-op.
+// falls inside QStash's max-delay window (7 days on our plan). Two cases
+// land here:
+//   1. Far-future posts that the action skipped at launch because the
+//      delay exceeded QStash's cap.
+//   2. Overdue posts whose enqueue was lost — e.g. an approve/launch run
+//      that flipped rows to `scheduled` in DB but then failed mid-loop
+//      before publishJSON went out. Those get queued with delay=0 so the
+//      worker publishes them on the next tick.
+// Idempotency comes from `enqueuePostDelivery`'s deduplicationId
+// (post:postId:scheduledAt), valid for 90 days, so re-running the sweep
+// is a no-op for rows already in QStash.
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -34,7 +38,6 @@ export async function GET(req: NextRequest) {
         and(
           eq(posts.status, "scheduled"),
           isNotNull(posts.scheduledAt),
-          gt(posts.scheduledAt, now),
           lte(posts.scheduledAt, horizon),
         ),
       );
