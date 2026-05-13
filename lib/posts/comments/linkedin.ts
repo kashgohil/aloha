@@ -1,6 +1,12 @@
 import { LINKEDIN_API_VERSION } from "@/lib/linkedin/api-version";
+import {
+  LINKEDIN_SOCIAL_READ_SCOPE,
+  hasLinkedInScope,
+} from "@/lib/linkedin/scopes";
 import { getFreshToken, forceRefresh } from "@/lib/publishers/tokens";
 import type { CommentsFetchResult, NormalizedComment } from "./types";
+
+const EMPTY_RESULT: CommentsFetchResult = { comments: [], newCursor: null };
 
 const PAGE_SIZE = 50;
 
@@ -47,6 +53,13 @@ export async function fetchLinkedInPostComments(
 ): Promise<CommentsFetchResult> {
   let account = await getFreshToken(workspaceId, "linkedin");
 
+  // Same scope gate as the metrics fetcher — /rest/socialActions/.../comments
+  // needs r_member_social, granted only via the Community Management API
+  // product. Without it, skip silently instead of paging Sentry.
+  if (!hasLinkedInScope(account.scope, LINKEDIN_SOCIAL_READ_SCOPE)) {
+    return EMPTY_RESULT;
+  }
+
   const start = cursor ? parseInt(cursor, 10) || 0 : 0;
 
   let res: CommentsResponse;
@@ -54,7 +67,11 @@ export async function fetchLinkedInPostComments(
     res = await fetchPage(account.accessToken, rootRemoteId, start);
   } catch (err) {
     if (String(err).includes("401")) {
-      account = await forceRefresh(workspaceId, "linkedin");
+      try {
+        account = await forceRefresh(workspaceId, "linkedin");
+      } catch {
+        return EMPTY_RESULT;
+      }
       res = await fetchPage(account.accessToken, rootRemoteId, start);
     } else {
       throw err;
