@@ -6,7 +6,7 @@
 // "published" with publishedAt set to the earliest success. Only an
 // all-platforms-failed outcome is marked "failed".
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne } from "drizzle-orm";
 import { db } from "@/db";
 import { captureException } from "@/lib/logger";
 import {
@@ -291,6 +291,10 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 				err instanceof PublishError ? err.category : "transient";
 			const message = err instanceof Error ? err.message : String(err);
 			const status = code === "needs_reauth" ? "needs_reauth" : "failed";
+			// Concurrency guard: if a sibling run already flipped this row
+			// to `published` (it raced ahead of us and LinkedIn now returns
+			// DUPLICATE_POST to our call), don't overwrite the success
+			// state. The delivery is live; our error is downstream noise.
 			await db
 				.update(postDeliveries)
 				.set({
@@ -300,7 +304,12 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 					attemptCount: delivery.attemptCount + 1,
 					updatedAt: new Date(),
 				})
-				.where(eq(postDeliveries.id, delivery.id));
+				.where(
+					and(
+						eq(postDeliveries.id, delivery.id),
+						ne(postDeliveries.status, "published"),
+					),
+				);
 			if (code === "needs_reauth") {
 				await setReauthRequired(post.workspaceId, platform, true);
 			}
