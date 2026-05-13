@@ -392,7 +392,19 @@ export async function publishPost(postId: string): Promise<PublishSummary> {
 }
 
 async function upsertDelivery(postId: string, platform: string) {
-	const [existing] = await db
+	// Race-safe upsert backed by the `post_deliveries_post_platform`
+	// unique index. A naive SELECT-then-INSERT lets two concurrent
+	// publishPost runs both observe "no row" and both insert; LinkedIn
+	// then ships one and rejects the other with DUPLICATE_POST, leaving
+	// the user with a "Failed" status on a post that's actually live.
+	await db
+		.insert(postDeliveries)
+		.values({ postId, platform, status: "pending" })
+		.onConflictDoNothing({
+			target: [postDeliveries.postId, postDeliveries.platform],
+		});
+
+	const [row] = await db
 		.select()
 		.from(postDeliveries)
 		.where(
@@ -402,13 +414,12 @@ async function upsertDelivery(postId: string, platform: string) {
 			),
 		)
 		.limit(1);
-	if (existing) return existing;
-
-	const [created] = await db
-		.insert(postDeliveries)
-		.values({ postId, platform, status: "pending" })
-		.returning();
-	return created;
+	if (!row) {
+		throw new Error(
+			`postDeliveries row missing after upsert (${postId}/${platform})`,
+		);
+	}
+	return row;
 }
 
 async function markDeliveryFailed(id: string, code: string, message: string) {

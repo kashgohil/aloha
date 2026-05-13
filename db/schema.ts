@@ -554,7 +554,17 @@ export const postDeliveries = pgTable("post_deliveries", {
     .notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
-});
+}, (table) => [
+  // One delivery row per (post, platform). `upsertDelivery` relies on
+  // this to be race-safe via ON CONFLICT DO NOTHING — without it,
+  // concurrent publishPost runs for the same post would each insert
+  // their own row and we'd end up with zombie failed siblings of a
+  // live LinkedIn post (DUPLICATE_POST trips the LinkedIn API).
+  uniqueIndex("post_deliveries_post_platform").on(
+    table.postId,
+    table.platform,
+  ),
+]);
 
 export const wishlist = pgTable("wishlist", {
   id: uuid("id").defaultRandom().primaryKey(),

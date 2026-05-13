@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "post_deliveries_post_platform" ON "post_deliveries" USING btree ("postId","platform");
