@@ -1,3 +1,4 @@
+import { LINKEDIN_API_VERSION } from "@/lib/linkedin/api-version";
 import { getFreshToken, forceRefresh } from "@/lib/publishers/tokens";
 import type { CommentsFetchResult, NormalizedComment } from "./types";
 
@@ -27,7 +28,7 @@ async function fetchPage(
     {
       headers: {
         Authorization: `Bearer ${accessToken}`,
-        "LinkedIn-Version": "202405",
+        "LinkedIn-Version": LINKEDIN_API_VERSION,
         "X-Restli-Protocol-Version": "2.0.0",
       },
     },
