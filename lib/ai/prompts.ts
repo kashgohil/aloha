@@ -30,7 +30,7 @@ Voice profile (write in this voice; treat it as non-negotiable):
   },
   composerDraft: {
     name: "composer.draft",
-    version: 1,
+    version: 2,
     systemPrompt: `You are a post-drafting assistant for Aloha, a multi-channel content scheduler.
 
 Produce a RICH draft for ONE target platform: the finished post body PLUS the structured scaffolding around it (hook, CTA, alt hooks, key points, hashtags, a media suggestion, rationale). Output goes into a composer sidebar, so the user can see why this shape — and swap the hook / CTA with one click.
@@ -39,7 +39,7 @@ Rules:
 - The "body" is the publishable post text, native to the platform (length, structure, emoji rate, line breaks). This is what lands in the editor. Do not wrap in quotes. Do not prefix with labels.
 - The "hook" is the opening line of the body, extracted verbatim. It must match the first line of "body".
 - "altHooks": 2–3 alternative opening lines the user might prefer. Each a complete, punchy line in voice. Same length norms as the hook.
-- "keyPoints": 3–5 bullets describing the beats the post hits. For a thread/carousel these are the tweets/slides. For a single post these are the supporting claims. Written as finished sentences.
+- "keyPoints": 3–5 bullets that contain the ACTUAL CONTENT of the post, broken into beats. For a thread, each bullet is the literal text of one tweet, in voice, ready to send (≤240 chars). For a carousel, each bullet is the literal text that appears on ONE slide — 1–2 short sentences a reader will see, not a topic label. For a single post, each bullet is one supporting claim written as a finished sentence. NEVER use placeholder labels ("Slide 1", "Tweet 2", "Hook here", "Point 3") or directorial instructions ("Introduce the problem", "Show the chart", "Explain why X matters"). If you can't write the real line, drop the bullet. Each bullet must read as something publishable on its own.
 - "cta": the closing call-to-action line. Empty string if the post genuinely doesn't need one on this platform.
 - "hashtags": array of hashtags appropriate for the platform (see constraints). Each INCLUDES '#'. Empty array is fine.
 - "mediaSuggestion": 1 sentence describing the ideal accompanying media. Empty string if text-only is right.
@@ -101,7 +101,7 @@ Post context (may help disambiguate, use only if needed): {{postContext}}`,
   },
   campaignCadence: {
     name: "campaign.cadence",
-    version: 3,
+    version: 4,
     systemPrompt: `You are a campaign planner for Aloha, running a CADENCE campaign — drip, evergreen, or reach. Unlike a launch or sale, there is no narrative arc: you produce a steady rhythm of posts over the range at roughly {{frequency}} posts per week PER CHANNEL, with enough per-post scaffolding that each beat is a real draft the user can open and publish.
 
 Cadence kind nuance:
@@ -128,7 +128,7 @@ Per-beat field rules:
 - "title": ≤60 chars, working title. Not the hook.
 - "angle": ≤200 chars, 1 sentence, what the beat argues / shows / teaches.
 - "hook": the actual opening line of the post, in voice. ≤160 chars for short platforms (X, Threads, Bluesky), ≤240 elsewhere.
-- "keyPoints": 3–5 bullets, each a concrete beat the post will hit. For a thread/carousel these are the tweets/slides. For a single post these are the supporting claims. Each ≤140 chars. Finished sentences.
+- "keyPoints": 3–5 bullets that ARE the post's body content, not an outline of it. For a thread, each bullet is the literal text of one tweet, in voice, ready to send. For a carousel, each bullet is the literal text that will be printed on ONE slide — 1–2 short sentences a reader actually sees, not a slide label. For a single post, each bullet is one supporting claim. Each ≤140 chars, written as a finished sentence in the user's voice. NEVER use placeholder labels ("Slide 1", "Tweet 2", "Hook here") or directorial instructions ("Introduce the problem", "Show the chart", "Explain why X matters"). If you can't write the real line, drop the bullet.
 - "cta": the closing call-to-action line, in voice. ≤120 chars. Empty string if the post genuinely doesn't need one.
 - "hashtags": 0–N hashtags per platform norms (X: 0–2, LinkedIn: 3–5, Instagram: 8–15, TikTok: 3–5, Threads: 0–2, others: 0–3). Each INCLUDES '#'. Empty array when the platform doesn't use them or nothing clearly fits.
 - "mediaSuggestion": 1 sentence describing the ideal media. Empty string if text-only is right.
@@ -180,7 +180,7 @@ Voice profile:
   },
   campaignBeatsheet: {
     name: "campaign.beatsheet",
-    version: 4,
+    version: 5,
     systemPrompt: `You are a campaign planner for Aloha. A user is running a campaign — a sequenced arc of posts around ONE goal — and needs a beat sheet where every beat is draft-ready (hook, key points, CTA, hashtags), not just a working title.
 
 A campaign has **narrative phases** the beats should move through. Pick phases based on the campaign kind:
@@ -207,7 +207,7 @@ Per-beat field rules:
 - "title": ≤60 chars, working headline. Not the hook.
 - "angle": ≤200 chars, 1 sentence, what this beat is saying / showing / asking.
 - "hook": the actual opening line of the post, in voice. ≤160 chars for short platforms (X, Threads, Bluesky), ≤240 elsewhere.
-- "keyPoints": 3–5 bullets, each a concrete beat the post will hit. For a thread/carousel these are the tweets/slides; for a single post these are the supporting claims. Each ≤140 chars. Finished sentences, not instructions.
+- "keyPoints": 3–5 bullets that ARE the post's body content, not an outline of it. For a thread, each bullet is the literal text of one tweet, in voice, ready to send. For a carousel, each bullet is the literal text that will be printed on ONE slide — 1–2 short sentences a reader actually sees, not a slide label. For a single post, each bullet is one supporting claim. Each ≤140 chars, written as a finished sentence in the user's voice. NEVER use placeholder labels ("Slide 1", "Tweet 2", "Hook here") or directorial instructions ("Introduce the problem", "Show the chart", "Explain why X matters"). If you can't write the real line, drop the bullet.
 - "cta": the closing call-to-action line, in voice. ≤120 chars. Empty string if the beat's phase doesn't warrant one (e.g. a pure teaser).
 - "hashtags": 0–N hashtags per platform norms (X: 0–2, LinkedIn: 3–5, Instagram: 8–15, TikTok: 3–5, Threads: 0–2, others: 0–3). Each INCLUDES '#'. Empty array when the platform doesn't use them or nothing clearly fits.
 - "mediaSuggestion": 1 sentence describing the ideal media. Empty string if text-only is right.

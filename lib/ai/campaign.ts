@@ -35,6 +35,7 @@ import {
   formatGuidanceFor as formatGuidanceForChannel,
   isValidFormat,
 } from "@/lib/campaigns/channel-formats";
+import { hasPlaceholderKeyPoint } from "@/lib/content/placeholders";
 import { desc, inArray, isNotNull } from "drizzle-orm";
 
 export const CAMPAIGN_KINDS = [
@@ -164,38 +165,43 @@ export async function generateCampaign(
     formatGuidance: formatGuidanceBlock(input.channels),
   };
 
-  const result = cadence
-    ? await generate({
-        userId: input.userId,
-        feature: "campaign.cadence",
-        template: PROMPTS.campaignCadence,
-        vars: {
-          ...sharedVars,
-          kind: input.kind,
-          themes:
-            input.themes.length > 0
-              ? input.themes.join(", ")
-              : "(none specified)",
-          frequency: String(input.postsPerWeek ?? 5),
+  const { parsed, generationId } = cadence
+    ? await generateAndParseBeats(
+        {
+          userId: input.userId,
+          feature: "campaign.cadence",
+          template: PROMPTS.campaignCadence,
+          vars: {
+            ...sharedVars,
+            kind: input.kind,
+            themes:
+              input.themes.length > 0
+                ? input.themes.join(", ")
+                : "(none specified)",
+            frequency: String(input.postsPerWeek ?? 5),
+          },
+          userMessage:
+            "Produce the cadence run as strict JSON. No markdown, no prose outside the JSON object.",
+          temperature: 0.7,
         },
-        userMessage:
-          "Produce the cadence run as strict JSON. No markdown, no prose outside the JSON object.",
-        temperature: 0.7,
-      })
-    : await generate({
-        userId: input.userId,
-        feature: "campaign.beatsheet",
-        template: PROMPTS.campaignBeatsheet,
-        vars: {
-          ...sharedVars,
-          kind: input.kind,
+        input.channels,
+      )
+    : await generateAndParseBeats(
+        {
+          userId: input.userId,
+          feature: "campaign.beatsheet",
+          template: PROMPTS.campaignBeatsheet,
+          vars: {
+            ...sharedVars,
+            kind: input.kind,
+          },
+          userMessage:
+            "Produce the beat sheet as strict JSON. No markdown, no prose outside the JSON object.",
+          temperature: 0.6,
         },
-        userMessage:
-          "Produce the beat sheet as strict JSON. No markdown, no prose outside the JSON object.",
-        temperature: 0.6,
-      });
+        input.channels,
+      );
 
-  const parsed = parseCampaignJson(result.text, input.channels);
   const beatsWithIds: CampaignBeat[] = parsed.beats.map((b) => ({
     ...b,
     id: crypto.randomUUID(),
@@ -217,7 +223,7 @@ export async function generateCampaign(
       rangeEnd: input.rangeEnd,
       beats: beatsWithIds as unknown as Array<Record<string, unknown>>,
       status: "ready",
-      generationId: result.generationId,
+      generationId,
     })
     .returning({ id: campaigns.id });
 
@@ -229,6 +235,51 @@ export async function generateCampaign(
 }
 
 // ---- parsing --------------------------------------------------------------
+
+// Thrown by parseCampaignJson when the model returned outline-style
+// placeholders ("Slide 1", "Tweet 2", "[CTA here]") in keyPoints instead of
+// publishable copy. Callers should retry generation once with a stricter
+// user message before giving up — a real LinkedIn post once shipped with
+// "1. Slide 1\n2. Slide 2" because we didn't catch this.
+class PlaceholderBeatError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PlaceholderBeatError";
+  }
+}
+
+// One-shot escape-hatch retry. If the first pass returns placeholder
+// keyPoints we re-issue with an explicit warning appended to the user
+// message; if it still comes back bad we surface the error rather than
+// silently shipping garbage into the post body.
+async function generateAndParseBeats(
+  input: Parameters<typeof generate>[0],
+  channels: string[],
+): Promise<{
+  parsed: ReturnType<typeof parseCampaignJson>;
+  generationId: string;
+}> {
+  let result = await generate(input);
+  try {
+    return {
+      parsed: parseCampaignJson(result.text, channels),
+      generationId: result.generationId,
+    };
+  } catch (err) {
+    if (!(err instanceof PlaceholderBeatError)) throw err;
+    const strictMessage = [
+      input.userMessage,
+      "",
+      'CRITICAL: The previous attempt put placeholder labels like "Slide 1" / "Tweet 2" / "[Hook here]" in keyPoints. EVERY keyPoint MUST be the literal sentence a reader will see — written in voice, ready to publish. No labels, no brackets, no directorial instructions ("Show ...", "Explain ...", "Introduce ..."). If you can\'t write the real line, drop the bullet.',
+    ].join("\n");
+    result = await generate({ ...input, userMessage: strictMessage });
+    return {
+      parsed: parseCampaignJson(result.text, channels),
+      generationId: result.generationId,
+    };
+  }
+}
+
 
 function parseCampaignJson(
   text: string,
@@ -305,6 +356,11 @@ function parseCampaignJson(
           .filter(Boolean)
           .slice(0, 8)
       : [];
+    if (keyPoints.length > 0 && hasPlaceholderKeyPoint(keyPoints)) {
+      throw new PlaceholderBeatError(
+        `Beat "${title || channel}" came back with placeholder slide/tweet labels instead of real copy.`,
+      );
+    }
     const hashtags = Array.isArray(r.hashtags)
       ? r.hashtags
           .filter((k): k is string => typeof k === "string")
@@ -690,36 +746,41 @@ export async function regenerateCampaignBeat(
     "Return strict JSON — no markdown, no prose outside the JSON object.",
   ].join("\n");
 
-  const result = cadence
-    ? await generate({
-        userId,
-        feature: "campaign.cadence",
-        template: PROMPTS.campaignCadence,
-        vars: {
-          ...sharedVars,
-          kind: campaign.kind,
-          themes:
-            campaign.themes.length > 0
-              ? campaign.themes.join(", ")
-              : "(none specified)",
-          frequency: String(campaign.postsPerWeek ?? 1),
+  const { parsed } = cadence
+    ? await generateAndParseBeats(
+        {
+          userId,
+          feature: "campaign.cadence",
+          template: PROMPTS.campaignCadence,
+          vars: {
+            ...sharedVars,
+            kind: campaign.kind,
+            themes:
+              campaign.themes.length > 0
+                ? campaign.themes.join(", ")
+                : "(none specified)",
+            frequency: String(campaign.postsPerWeek ?? 1),
+          },
+          userMessage,
+          temperature: 0.85,
         },
-        userMessage,
-        temperature: 0.85,
-      })
-    : await generate({
-        userId,
-        feature: "campaign.beatsheet",
-        template: PROMPTS.campaignBeatsheet,
-        vars: {
-          ...sharedVars,
-          kind: campaign.kind,
+        campaign.channels,
+      )
+    : await generateAndParseBeats(
+        {
+          userId,
+          feature: "campaign.beatsheet",
+          template: PROMPTS.campaignBeatsheet,
+          vars: {
+            ...sharedVars,
+            kind: campaign.kind,
+          },
+          userMessage,
+          temperature: 0.85,
         },
-        userMessage,
-        temperature: 0.85,
-      });
+        campaign.channels,
+      );
 
-  const parsed = parseCampaignJson(result.text, campaign.channels);
   const fresh = parsed.beats[0];
   if (!fresh) throw new Error("Regeneration came back empty. Try again.");
 
@@ -991,33 +1052,38 @@ export async function addSiblingBeat(
     "Return strict JSON — no markdown, no prose outside the JSON object.",
   ].join("\n");
 
-  const result = cadence
-    ? await generate({
-        userId,
-        feature: "campaign.cadence",
-        template: PROMPTS.campaignCadence,
-        vars: {
-          ...sharedVars,
-          kind: campaign.kind,
-          themes:
-            campaign.themes.length > 0
-              ? campaign.themes.join(", ")
-              : "(none specified)",
-          frequency: String(campaign.postsPerWeek ?? 1),
+  const { parsed } = cadence
+    ? await generateAndParseBeats(
+        {
+          userId,
+          feature: "campaign.cadence",
+          template: PROMPTS.campaignCadence,
+          vars: {
+            ...sharedVars,
+            kind: campaign.kind,
+            themes:
+              campaign.themes.length > 0
+                ? campaign.themes.join(", ")
+                : "(none specified)",
+            frequency: String(campaign.postsPerWeek ?? 1),
+          },
+          userMessage,
+          temperature: 0.85,
         },
-        userMessage,
-        temperature: 0.85,
-      })
-    : await generate({
-        userId,
-        feature: "campaign.beatsheet",
-        template: PROMPTS.campaignBeatsheet,
-        vars: { ...sharedVars, kind: campaign.kind },
-        userMessage,
-        temperature: 0.85,
-      });
+        campaign.channels,
+      )
+    : await generateAndParseBeats(
+        {
+          userId,
+          feature: "campaign.beatsheet",
+          template: PROMPTS.campaignBeatsheet,
+          vars: { ...sharedVars, kind: campaign.kind },
+          userMessage,
+          temperature: 0.85,
+        },
+        campaign.channels,
+      );
 
-  const parsed = parseCampaignJson(result.text, campaign.channels);
   const fresh = parsed.beats[0];
   if (!fresh) throw new Error("Sibling generation came back empty.");
 
