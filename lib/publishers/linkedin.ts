@@ -3,8 +3,24 @@
 // Images: up to 9 allowed by LinkedIn; we cap at 4 (composer limit).
 
 import type { PostMedia } from "@/db/schema";
+import { findPlaceholderInBody } from "@/lib/content/placeholders";
 import { categorizeHttpStatus, PublishError } from "./errors";
 import { forceRefresh, getFreshToken, type ProviderAccount } from "./tokens";
+
+// Belt-and-braces guard against shipping AI-outline text as a real post. We
+// once published "1. Slide 1\n2. Slide 2" to LinkedIn because the upstream
+// beatsheet generator emitted placeholder labels in keyPoints. Both checks
+// upstream now reject these, but this is the last gate before the API call —
+// refuse rather than embarrass the user.
+function assertPublishableBody(text: string): void {
+  const offending = findPlaceholderInBody(text);
+  if (offending) {
+    throw new PublishError(
+      "invalid_content",
+      `Post body contains placeholder text ("${offending.slice(0, 60)}") — edit before publishing.`,
+    );
+  }
+}
 
 export type LinkedInPostResult = {
 	remotePostId: string;
@@ -149,6 +165,7 @@ export async function publishToLinkedIn(args: {
 	text: string;
 	media?: PostMedia[];
 }): Promise<LinkedInPostResult> {
+	assertPublishableBody(args.text);
 	let account = await getFreshToken(args.workspaceId, "linkedin");
 	const media = args.media ?? [];
 	let assets: string[] = [];
@@ -255,6 +272,7 @@ export async function publishLinkedInDocument(args: {
 			"LinkedIn document posts require a PDF.",
 		);
 	}
+	assertPublishableBody(args.text);
 	let account = await getFreshToken(args.workspaceId, "linkedin");
 
 	const upload = async () => {
