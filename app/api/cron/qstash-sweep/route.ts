@@ -1,23 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, lte } from "drizzle-orm";
 import { db } from "@/db";
 import { posts } from "@/db/schema";
 import { env } from "@/lib/env";
 import { captureException } from "@/lib/logger";
 import { QSTASH_MAX_DELAY_SECONDS, enqueuePostDelivery } from "@/lib/qstash";
 
-// Hourly sweep that hands posts off to QStash once their scheduledAt
-// falls inside QStash's max-delay window (7 days on our plan). Two cases
-// land here:
+// Hourly sweep that hands posts off to the delivery queue once their
+// scheduledAt falls inside the provider's max-delay window (7 days on
+// our QStash plan). Two cases land here:
 //   1. Far-future posts that the action skipped at launch because the
-//      delay exceeded QStash's cap.
+//      delay exceeded the cap.
 //   2. Overdue posts whose enqueue was lost — e.g. an approve/launch run
-//      that flipped rows to `scheduled` in DB but then failed mid-loop
-//      before publishJSON went out. Those get queued with delay=0 so the
-//      worker publishes them on the next tick.
-// Idempotency comes from `enqueuePostDelivery`'s deduplicationId
-// (post:postId:scheduledAt), valid for 90 days, so re-running the sweep
-// is a no-op for rows already in QStash.
+//      that flipped rows to `scheduled` in DB but then failed before
+//      publish went out. Those get queued with delay=0 so the worker
+//      publishes them on the next tick.
+// Idempotency comes from `posts.enqueuedAt`: enqueuePostDelivery stamps
+// it after a successful publish, and we filter on `IS NULL` here so
+// already-dispatched rows are skipped. Reschedule clears the stamp.
 
 export async function GET(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
           eq(posts.status, "scheduled"),
           isNotNull(posts.scheduledAt),
           lte(posts.scheduledAt, horizon),
+          isNull(posts.enqueuedAt),
         ),
       );
 

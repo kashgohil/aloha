@@ -1,6 +1,9 @@
 import "server-only";
 
 import { Client } from "@upstash/qstash";
+import { eq } from "drizzle-orm";
+import { db } from "@/db";
+import { posts } from "@/db/schema";
 import { env } from "@/lib/env";
 
 // Single QStash client for the whole app. Imports as a const because
@@ -21,11 +24,10 @@ export const QSTASH_MAX_DELAY_SECONDS = 6 * 24 * 60 * 60;
 
 // Enqueue a post for delivery at `scheduledAt`. Posts further out than
 // QSTASH_MAX_DELAY_SECONDS are skipped here — the hourly sweep cron
-// (`/api/cron/qstash-sweep`) re-checks them and enqueues them once they
-// fall inside the window. `deduplicationId` keys on postId + the exact
-// scheduled time, so re-running the sweep is a no-op and a reschedule
-// to a different time produces a fresh message (the stale one no-ops
-// via the worker's scheduledAt guard).
+// (`/api/cron/qstash-sweep`) picks them up once they fall inside the
+// window. After a successful publish we stamp `enqueuedAt` on the row,
+// which is the only thing the sweep checks to avoid double-dispatch.
+// Reschedule actions clear `enqueuedAt` so a fresh message goes out.
 export async function enqueuePostDelivery(
   postId: string,
   scheduledAt: Date,
@@ -44,7 +46,10 @@ export async function enqueuePostDelivery(
       intendedScheduledAt: scheduledAt.toISOString(),
     },
     delay,
-    deduplicationId: `post_${postId}_${scheduledAt.getTime()}`,
   });
+  await db
+    .update(posts)
+    .set({ enqueuedAt: new Date() })
+    .where(eq(posts.id, postId));
   return { enqueued: true };
 }

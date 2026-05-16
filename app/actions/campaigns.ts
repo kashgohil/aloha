@@ -229,7 +229,7 @@ export async function approveCampaignAction(formData: FormData) {
 		const ids = sweepable.map((r) => r.id);
 		await db
 			.update(posts)
-			.set({ status: "scheduled", updatedAt: now })
+			.set({ status: "scheduled", enqueuedAt: null, updatedAt: now })
 			.where(
 				and(eq(posts.workspaceId, ctx.workspace.id), inArray(posts.id, ids)),
 			);
@@ -352,7 +352,7 @@ export async function resumeCampaignAction(formData: FormData) {
 		const ids = resumable.map((r) => r.id);
 		await db
 			.update(posts)
-			.set({ status: "scheduled", updatedAt: now })
+			.set({ status: "scheduled", enqueuedAt: null, updatedAt: now })
 			.where(
 				and(eq(posts.workspaceId, ctx.workspace.id), inArray(posts.id, ids)),
 			);

@@ -260,7 +260,7 @@ export async function reschedulePost(postId: string, scheduledAt: Date) {
 
   await db
     .update(posts)
-    .set({ scheduledAt, updatedAt: new Date() })
+    .set({ scheduledAt, enqueuedAt: null, updatedAt: new Date() })
     .where(eq(posts.id, postId));
 
   await enqueuePostDelivery(postId, scheduledAt);
